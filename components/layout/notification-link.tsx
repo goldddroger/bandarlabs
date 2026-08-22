@@ -9,6 +9,7 @@ import {
   parseBestEntrySnapshot,
   type BestEntryRecord,
 } from "@/lib/best-entry-store";
+import { getFcaWatchSnapshot, parseFcaWatchSnapshot, subscribeFcaWatch } from "@/lib/fca-watch-store";
 
 type QuoteMap = Record<
   string,
@@ -36,9 +37,11 @@ function countReachedEntries(entries: BestEntryRecord[], quotes: QuoteMap) {
 export function NotificationLink() {
   const [quotes, setQuotes] = useState<QuoteMap>({});
   const snapshot = useSyncExternalStore(subscribeBestEntry, getBestEntrySnapshot, () => "[]");
+  const fcaSnapshot = useSyncExternalStore(subscribeFcaWatch, getFcaWatchSnapshot, () => "[]");
   const entries = useMemo(() => parseBestEntrySnapshot(snapshot), [snapshot]);
+  const fcaUnreadCount = useMemo(() => parseFcaWatchSnapshot(fcaSnapshot).filter((record) => record.alert?.unread).length, [fcaSnapshot]);
   const tickers = useMemo(() => entries.map((entry) => entry.ticker).join(","), [entries]);
-  const reachedCount = countReachedEntries(entries, quotes);
+  const reachedCount = countReachedEntries(entries, quotes) + fcaUnreadCount;
 
   useEffect(() => {
     if (!tickers) return;

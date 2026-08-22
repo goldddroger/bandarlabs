@@ -55,8 +55,9 @@ Buka [http://localhost:3000](http://localhost:3000).
 1. Buat project baru di Supabase.
 2. Jalankan [`supabase/migrations/202608200001_bandarlab_schema.sql`](supabase/migrations/202608200001_bandarlab_schema.sql) melalui SQL Editor.
 3. Jalankan file dalam [`supabase/seed-parts`](supabase/seed-parts) secara berurutan dari `001-seed.sql` sampai `018-seed.sql`.
-4. Jalankan migration terbaru [`supabase/migrations/202608220001_ownership_import.sql`](supabase/migrations/202608220001_ownership_import.sql) untuk mengaktifkan upload Excel Ownership Tracker.
-5. Jangan menempel `supabase/seed.sql` secara utuh ke SQL Editor karena ukurannya melewati batas editor.
+4. Jalankan [`supabase/migrations/202608220001_ownership_import.sql`](supabase/migrations/202608220001_ownership_import.sql) untuk mengaktifkan upload Excel Ownership Tracker.
+5. Jalankan [`supabase/migrations/202608220002_fca_tracker.sql`](supabase/migrations/202608220002_fca_tracker.sql) untuk mengaktifkan FCA Tracker, histori perubahan, dan upload daftar BEI.
+6. Jangan menempel `supabase/seed.sql` secara utuh ke SQL Editor karena ukurannya melewati batas editor.
 
 Untuk membuat ulang seed lengkap dan seed parts:
 
@@ -92,6 +93,8 @@ Jangan commit `.env.local`, password database, atau service-role key.
 Master saham, screener, ownership, corporate action, timeline, dan grup konglomerasi sudah tersedia dalam seed Supabase. Harga pasar tetap diambil melalui endpoint quote karena nilainya berubah setiap saat.
 
 Ownership Tracker menerima file `.xlsx` kepemilikan 1% bulanan dan perubahan kepemilikan 5%. Aplikasi mendeteksi format, tanggal, dan emiten, lalu mengganti snapshot pada threshold dan tanggal yang sama secara atomik.
+
+FCA Tracker menerima file `.xlsx` Efek pada Papan Pemantauan Khusus. Status masuk, keluar, perubahan kriteria, histori ticker, dan reminder saham yang dipantau akan diperbarui dari file terbaru.
 
 Sebagian data pribadi masih dibaca dari `localStorage`. Schema, RLS, SSR client, dan alat ekspor SQL sudah tersedia untuk tahap pemindahan penuh ke query Supabase.
 

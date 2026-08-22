@@ -5,7 +5,6 @@ import {
   CalendarDays,
   ChartNoAxesCombined,
   FileText,
-  GitCommitVertical,
   HelpCircle,
   LayoutDashboard,
   Network,
@@ -13,6 +12,7 @@ import {
   Radar,
   RefreshCw,
   Settings,
+  ShieldAlert,
   Users,
 } from "lucide-react";
 import { getIdxListedStock } from "@/lib/idx-listed-stocks";
@@ -116,7 +116,7 @@ export const menuSections = [
       { label: "Stocks", href: "/stocks", icon: ChartNoAxesCombined },
       { label: "Broker Summary", href: "/broker-summary", icon: Users },
       { label: "Ownership Tracker", href: "/ownership", icon: Network },
-      { label: "Stock Timeline", href: "/timeline", icon: GitCommitVertical },
+      { label: "FCA Tracker", href: "/fca", icon: ShieldAlert },
     ],
   },
   {
