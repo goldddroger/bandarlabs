@@ -11,8 +11,10 @@ import {
   Layers3,
   Percent,
   Search,
+  Upload,
   Users,
 } from "lucide-react";
+import { OwnershipImportDialog } from "@/components/ownership/ownership-import-dialog";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -72,7 +74,7 @@ function formatDate(value: string) {
 
 function ownershipLabel(value: string | null) {
   if (value === "L") return "Lokal";
-  if (value === "A") return "Asing";
+  if (value === "A" || value === "F") return "Asing";
   return value || "-";
 }
 
@@ -132,6 +134,7 @@ export function OwnershipTracker() {
   const [reloadKey, setReloadKey] = useState(0);
   const [suggestions, setSuggestions] = useState<StockSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     const term = tickerInput.trim();
@@ -189,8 +192,9 @@ export function OwnershipTracker() {
         .limit(1000);
 
       if (scope !== "all") {
-        dataQuery = dataQuery.eq("local_foreign", scope);
-        summaryQuery = summaryQuery.eq("local_foreign", scope);
+        const values = scope === "A" ? ["A", "F"] : ["L"];
+        dataQuery = dataQuery.in("local_foreign", values);
+        summaryQuery = summaryQuery.in("local_foreign", values);
       }
       if (investorSearch.trim()) {
         dataQuery = dataQuery.ilike("investor_name", `%${investorSearch.trim()}%`);
@@ -309,10 +313,16 @@ export function OwnershipTracker() {
             </div>
           </form>
 
-          <div className="flex items-center gap-2 text-xs font-medium text-green-700">
-            <span className="size-2 rounded-full bg-green-500" />
-            <Database className="size-4" />
-            Data Supabase
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="size-4" />
+              Unggah Excel
+            </Button>
+            <div className="flex items-center gap-2 text-xs font-medium text-green-700">
+              <span className="size-2 rounded-full bg-green-500" />
+              <Database className="size-4" />
+              Data Supabase
+            </div>
           </div>
         </div>
       </section>
@@ -478,6 +488,20 @@ export function OwnershipTracker() {
           </div>
         </div>
       </section>
+      <OwnershipImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={({ threshold: importedThreshold, firstTicker }) => {
+          setThreshold(importedThreshold);
+          setTickerInput(firstTicker);
+          setSelectedTicker(firstTicker);
+          setInvestorSearch("");
+          setScope("all");
+          setPage(1);
+          setReloadKey((value) => value + 1);
+          setImportOpen(false);
+        }}
+      />
     </div>
   );
 }
