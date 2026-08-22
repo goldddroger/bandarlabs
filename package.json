@@ -9,6 +9,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "auth:generate": "tsx scripts/generate-admin-auth.ts",
     "db:seed": "node --experimental-strip-types prisma/seed.ts",
     "supabase:seed:generate": "tsx scripts/generate-supabase-seed.ts"
   },

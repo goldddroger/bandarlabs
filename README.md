@@ -38,10 +38,21 @@ Buat `.env.local` berdasarkan `.env.example`:
 ```ini
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
+ADMIN_USERNAME=YOUR_ADMIN_USERNAME
+ADMIN_PASSWORD_HASH=YOUR_PBKDF2_PASSWORD_HASH
+AUTH_SESSION_SECRET=YOUR_RANDOM_SESSION_SECRET
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
 OWNERSHIP_IMPORT_SECRET=YOUR_LONG_RANDOM_ADMIN_SECRET
 JOURNAL_ACCESS_KEY=YOUR_LONG_PRIVATE_JOURNAL_PASSWORD
 ```
+
+Buat hash password dan secret session admin dengan:
+
+```bash
+npm run auth:generate -- "password-admin-baru"
+```
+
+Salin hasilnya ke `.env.local` dan Environment Variables Vercel bersama `ADMIN_USERNAME`.
 
 Jalankan development server:
 
@@ -78,6 +89,7 @@ npm run dev                       # Development server
 npm run lint                      # ESLint
 npm run build                     # Production build
 npm run start                     # Menjalankan production build
+npm run auth:generate -- "..."   # Membuat hash password dan session secret
 npm run supabase:seed:generate    # Membuat ulang Supabase seed
 ```
 

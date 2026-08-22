@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, ExternalLink, X } from "lucide-react";
 import { menuSections } from "@/lib/data";
+import { LogoutButton } from "@/components/auth/logout-button";
 import { cn } from "@/lib/utils";
 
 function getMenuKey(sectionLabel: string, itemLabel: string) {
@@ -97,6 +98,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         ))}
       </nav>
+      <div className="border-t border-gray-200 p-3">
+        <LogoutButton />
+      </div>
     </>
   );
 }

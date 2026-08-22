@@ -2,12 +2,18 @@
 
 import { useState } from "react";
 import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { Toaster } from "sonner";
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+
+  if (pathname === "/login") {
+    return <><div className="min-h-screen bg-white text-gray-900">{children}</div><Toaster richColors position="top-right" /></>;
+  }
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
