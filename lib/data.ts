@@ -8,6 +8,7 @@ import {
   HelpCircle,
   LayoutDashboard,
   Network,
+  NotebookPen,
   WalletCards,
   Radar,
   RefreshCw,
@@ -111,6 +112,7 @@ export const menuSections = [
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { label: "Accumulation Radar", href: "/accumulation", icon: Radar },
+      { label: "Jurnal Riset", href: "/journal", icon: NotebookPen },
       { label: "Portfolio Saya", href: "/portfolio", icon: WalletCards },
       { label: "Corporate Action", href: "/corporate-action", icon: FileText },
       { label: "Stocks", href: "/stocks", icon: ChartNoAxesCombined },

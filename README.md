@@ -40,6 +40,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
 OWNERSHIP_IMPORT_SECRET=YOUR_LONG_RANDOM_ADMIN_SECRET
+JOURNAL_ACCESS_KEY=YOUR_LONG_PRIVATE_JOURNAL_PASSWORD
 ```
 
 Jalankan development server:
@@ -57,7 +58,8 @@ Buka [http://localhost:3000](http://localhost:3000).
 3. Jalankan file dalam [`supabase/seed-parts`](supabase/seed-parts) secara berurutan dari `001-seed.sql` sampai `018-seed.sql`.
 4. Jalankan [`supabase/migrations/202608220001_ownership_import.sql`](supabase/migrations/202608220001_ownership_import.sql) untuk mengaktifkan upload Excel Ownership Tracker.
 5. Jalankan [`supabase/migrations/202608220002_fca_tracker.sql`](supabase/migrations/202608220002_fca_tracker.sql) untuk mengaktifkan FCA Tracker, histori perubahan, dan upload daftar BEI.
-6. Jangan menempel `supabase/seed.sql` secara utuh ke SQL Editor karena ukurannya melewati batas editor.
+6. Jalankan [`supabase/migrations/202608220003_research_journal.sql`](supabase/migrations/202608220003_research_journal.sql) untuk membuat jurnal riset dan bucket gambar privat.
+7. Jangan menempel `supabase/seed.sql` secara utuh ke SQL Editor karena ukurannya melewati batas editor.
 
 Untuk membuat ulang seed lengkap dan seed parts:
 
@@ -95,6 +97,8 @@ Master saham, screener, ownership, corporate action, timeline, dan grup konglome
 Ownership Tracker menerima file `.xlsx` kepemilikan 1% bulanan dan perubahan kepemilikan 5%. Aplikasi mendeteksi format, tanggal, dan emiten, lalu mengganti snapshot pada threshold dan tanggal yang sama secara atomik.
 
 FCA Tracker menerima file `.xlsx` Efek pada Papan Pemantauan Khusus. Status masuk, keluar, perubahan kriteria, histori ticker, dan reminder saham yang dipantau akan diperbarui dari file terbaru.
+
+Jurnal Riset menyimpan catatan mentor, thesis, observasi, tag, ticker terkait, dan lampiran gambar di Supabase. Bucket `journal-media` bersifat privat; gambar ditampilkan menggunakan signed URL sementara dari server.
 
 Sebagian data pribadi masih dibaca dari `localStorage`. Schema, RLS, SSR client, dan alat ekspor SQL sudah tersedia untuk tahap pemindahan penuh ke query Supabase.
 
