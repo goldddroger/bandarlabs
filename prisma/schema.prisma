@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Stock {
+  id                 String              @id @default(cuid())
+  ticker             String              @unique
+  name               String
+  sector             String
+  price              Int
+  changePercent      Float
+  marketCap          String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  accumulationScores AccumulationScore[]
+  corporateActions   CorporateAction[]
+  brokerActivities   BrokerActivity[]
+  watchlists         Watchlist[]
+  alerts             Alert[]
+  timeline           StockTimeline[]
+}
+
+model AccumulationScore {
+  id          String   @id @default(cuid())
+  stockId     String
+  period      String
+  score       Int
+  brokerScore Int
+  volumeScore Int
+  priceScore  Int
+  date        DateTime
+  stock       Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+}
+
+model CorporateAction {
+  id             String   @id @default(cuid())
+  stockId        String
+  type           String
+  title          String
+  documentNumber String
+  publishedAt    DateTime
+  description    String
+  impact         String
+  stock          Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+}
+
+model BrokerActivity {
+  id           String @id @default(cuid())
+  stockId      String
+  brokerCode   String
+  netBuy       Float
+  averagePrice Int
+  buyDays      Int
+  sellDays     Int
+  consistency  Int
+  period       String
+  stock        Stock  @relation(fields: [stockId], references: [id], onDelete: Cascade)
+}
+
+model Watchlist {
+  id        String   @id @default(cuid())
+  stockId   String
+  createdAt DateTime @default(now())
+  stock     Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+}
+
+model Alert {
+  id          String   @id @default(cuid())
+  stockId     String
+  type        String
+  title       String
+  description String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  stock       Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+}
+
+model StockTimeline {
+  id          String   @id @default(cuid())
+  stockId     String
+  type        String
+  title       String
+  description String
+  eventDate   DateTime
+  stock       Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+}
