@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { BellRing, CheckCircle2, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   bestEntryChangeEventName,
   emitBestEntryChange,
@@ -46,6 +47,7 @@ export function BestEntryAlert({
   priceSource?: string;
   updatedAt?: string;
 }) {
+  const { confirm, confirmationDialog } = useConfirmDialog();
   const [inputValue, setInputValue] = useState("");
   const storageKey = getBestEntryStorageKey(ticker);
   const rawEntry = useSyncExternalStore(
@@ -109,7 +111,14 @@ export function BestEntryAlert({
     });
   }
 
-  function handleDelete() {
+  async function handleDelete() {
+    const confirmed = await confirm({
+      title: "Hapus best entry?",
+      description: "Alert harga untuk saham ini akan dihentikan dan tidak muncul lagi di pusat notifikasi.",
+      subject: `${ticker} · ${formatPrice(entry?.price ?? null)}`,
+      confirmLabel: "Hapus Alert",
+    });
+    if (!confirmed) return;
     window.localStorage.removeItem(storageKey);
     window.localStorage.removeItem(getBestEntryLastFiredKey(ticker));
     emitBestEntryChange();
@@ -218,6 +227,7 @@ export function BestEntryAlert({
           ) : null}
         </div>
       </div>
+      {confirmationDialog}
     </section>
   );
 }

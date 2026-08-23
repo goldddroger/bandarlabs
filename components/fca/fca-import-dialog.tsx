@@ -14,7 +14,6 @@ export function FcaImportDialog({ open, onClose, onImported }: { open: boolean; 
   const [fileName, setFileName] = useState("");
   const [parsed, setParsed] = useState<ParsedFcaFile | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [secret, setSecret] = useState("");
   const [reading, setReading] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -56,12 +55,12 @@ export function FcaImportDialog({ open, onClose, onImported }: { open: boolean; 
   }
 
   async function importFile() {
-    if (!parsed || !secret.trim()) return;
+    if (!parsed) return;
     setImporting(true);
     try {
       const response = await fetch("/api/fca/import", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-import-key": secret },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sourceDate: parsed.sourceDate, sourceFile: fileName, rows: parsed.rows }),
       });
       const result = await response.json() as { error?: string; importedCount?: number };
@@ -102,11 +101,10 @@ export function FcaImportDialog({ open, onClose, onImported }: { open: boolean; 
                 <div><dt className="text-xs text-gray-500">Sudah keluar</dt><dd className="mt-1 text-sm font-semibold text-green-700">{parsed.rows.length - activeCount}</dd></div>
               </dl>
               <div className="overflow-x-auto rounded-md border border-gray-200"><table className="w-full min-w-[560px] text-left text-xs"><thead className="bg-gray-50 text-gray-500"><tr><th className="px-3 py-2">Ticker</th><th className="px-3 py-2">Perusahaan</th><th className="px-3 py-2">Masuk</th><th className="px-3 py-2">Keluar</th><th className="px-3 py-2">Kriteria</th></tr></thead><tbody>{parsed.rows.slice(0, 6).map((row) => <tr key={`${row.ticker}-${row.entered_at}`} className="border-t border-gray-100"><td className="px-3 py-2 font-semibold">{row.ticker}</td><td className="max-w-52 truncate px-3 py-2">{row.company_name}</td><td className="px-3 py-2">{row.entered_at}</td><td className="px-3 py-2">{row.exited_at ?? "Aktif"}</td><td className="px-3 py-2">{row.criteria.join(", ")}</td></tr>)}</tbody></table></div>
-              <label className="block text-sm font-semibold text-gray-800">Kunci admin import<input type="password" value={secret} onChange={(event) => setSecret(event.target.value)} placeholder="Gunakan secret yang sama dengan import Ownership" className="mt-2 h-11 w-full rounded-md border border-gray-300 px-3 text-sm font-normal" /></label>
             </div>
           ) : null}
         </div>
-        <footer className="flex justify-end gap-2 border-t border-gray-200 px-4 py-4 sm:px-6"><Button type="button" variant="ghost" onClick={onClose} disabled={importing}>Batal</Button><Button type="button" onClick={importFile} disabled={!parsed || !secret.trim() || importing}>{importing ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}{importing ? "Mengimpor..." : "Import ke Supabase"}</Button></footer>
+        <footer className="flex justify-end gap-2 border-t border-gray-200 px-4 py-4 sm:px-6"><Button type="button" variant="ghost" onClick={onClose} disabled={importing}>Batal</Button><Button type="button" onClick={importFile} disabled={!parsed || importing}>{importing ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}{importing ? "Mengimpor..." : "Import ke Supabase"}</Button></footer>
       </section>
     </div>
   );

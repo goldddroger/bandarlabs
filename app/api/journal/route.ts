@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
 import { journalCategories, type JournalAttachment, type JournalEntry, type JournalPayload } from "@/lib/journal";
-import { journalAccessKey, journalKeyMatches, journalServerConfig } from "@/lib/journal-server";
+import { journalServerConfig } from "@/lib/journal-server";
 
 export const runtime = "nodejs";
 
-function authorize(request: Request) {
+function authorize() {
   const config = journalServerConfig();
   if (!config) return { response: NextResponse.json({ error: "Jurnal belum dikonfigurasi pada server." }, { status: 503 }) };
-  if (!journalKeyMatches(journalAccessKey(request), config.accessKey)) {
-    return { response: NextResponse.json({ error: "Kunci akses jurnal tidak valid." }, { status: 401 }) };
-  }
   return { config };
 }
 
@@ -47,8 +44,8 @@ async function withSignedUrls(entries: JournalEntry[], supabase: NonNullable<Ret
   })));
 }
 
-export async function GET(request: Request) {
-  const auth = authorize(request);
+export async function GET() {
+  const auth = authorize();
   if ("response" in auth) return auth.response;
   const { data, error } = await auth.config.supabase
     .from("journal_entries")
@@ -61,7 +58,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = authorize(request);
+  const auth = authorize();
   if ("response" in auth) return auth.response;
   const payload = normalizePayload(await request.json().catch(() => null));
   if (!payload) return NextResponse.json({ error: "Isi jurnal belum valid." }, { status: 400 });
@@ -71,7 +68,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = authorize(request);
+  const auth = authorize();
   if ("response" in auth) return auth.response;
   const body = await request.json().catch(() => null) as ({ id?: string } & Partial<JournalPayload>) | null;
   const payload = normalizePayload(body);
@@ -82,7 +79,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = authorize(request);
+  const auth = authorize();
   if ("response" in auth) return auth.response;
   const body = await request.json().catch(() => null) as { id?: string; attachmentId?: string } | null;
   if (!body?.id) return NextResponse.json({ error: "ID jurnal tidak valid." }, { status: 400 });

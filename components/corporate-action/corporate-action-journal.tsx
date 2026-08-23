@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 
 type JournalTab = "agenda" | "timeline" | "notes" | "documents";
@@ -183,6 +184,7 @@ function saveNotes(notes: MeetingNote[]) {
 }
 
 export function CorporateActionJournal() {
+  const { confirm, confirmationDialog } = useConfirmDialog();
   const [activeTab, setActiveTab] = useState<JournalTab>("agenda");
   const [selectedTicker, setSelectedTicker] = useState(events[0].ticker);
   const [modalOpen, setModalOpen] = useState(false);
@@ -219,7 +221,16 @@ export function CorporateActionJournal() {
     setEditingNote(null);
   }
 
-  function deleteNote(noteId: string) {
+  async function deleteNote(noteId: string) {
+    const note = notes.find((item) => item.id === noteId);
+    const event = events.find((item) => item.id === note?.eventId);
+    const confirmed = await confirm({
+      title: "Hapus catatan corporate action?",
+      description: "Pesan manajemen, keputusan RUPS, dan tindak lanjut pribadi dalam catatan ini akan dihapus.",
+      subject: event ? `${event.ticker} · ${event.type}` : "Catatan corporate action",
+      confirmLabel: "Hapus Catatan",
+    });
+    if (!confirmed) return;
     saveNotes(notes.filter((note) => note.id !== noteId));
   }
 
@@ -298,6 +309,7 @@ export function CorporateActionJournal() {
           onSave={saveNote}
         />
       ) : null}
+      {confirmationDialog}
     </section>
   );
 }

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { CalendarDays, History, Pencil, Plus, Search, Trash2, TrendingDown, TrendingUp, X } from "lucide-react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   accumulationDataUpdatedAt,
   addSelectedStocks,
@@ -716,6 +717,7 @@ function RecommendationTable({
 }
 
 export function AccumulationRadar() {
+  const { confirm, confirmationDialog } = useConfirmDialog();
   const selectedStocks = useSelectedAccumulationStocks();
   const selectedRows = useSelectedAccumulationRows();
   const externalRecommendationSnapshot = useSyncExternalStore(
@@ -888,12 +890,27 @@ export function AccumulationRadar() {
     setModalOpen(false);
   }
 
-  function removeStock(ticker: string) {
+  async function removeStock(ticker: string) {
+    const confirmed = await confirm({
+      title: "Hapus saham dari radar?",
+      description: "Harga masuk, status, dan riwayat pemantauan lokal untuk saham ini akan dihapus.",
+      subject: ticker,
+      confirmLabel: "Hapus dari Radar",
+    });
+    if (!confirmed) return;
     removeSelectedStock(ticker);
     setCheckedStocks((currentStocks) => currentStocks.filter((stock) => stock !== ticker));
   }
 
-  function resetStocks() {
+  async function resetStocks() {
+    if (selectedStocks.length === 0) return;
+    const confirmed = await confirm({
+      title: "Kosongkan seluruh radar?",
+      description: "Semua saham pada Watchlist Pribadi akan dihapus sekaligus. Rekomendasi eksternal tidak ikut terhapus.",
+      subject: `${selectedStocks.length} saham aktif`,
+      confirmLabel: "Kosongkan Radar",
+    });
+    if (!confirmed) return;
     resetSelectedStocks();
     setCheckedStocks([]);
   }
@@ -929,7 +946,15 @@ export function AccumulationRadar() {
     setRecommendationModalOpen(true);
   }
 
-  function deleteRecommendation(id: string) {
+  async function deleteRecommendation(id: string) {
+    const recommendation = externalRecommendations.find((row) => row.id === id);
+    const confirmed = await confirm({
+      title: "Hapus rekomendasi eksternal?",
+      description: "Sumber, harga masuk, catatan, dan rekam pemantauan rekomendasi ini akan dihapus.",
+      subject: recommendation ? `${recommendation.stock} · ${recommendation.source}` : "Rekomendasi eksternal",
+      confirmLabel: "Hapus Rekomendasi",
+    });
+    if (!confirmed) return;
     saveExternalRecommendations(externalRecommendations.filter((row) => row.id !== id));
   }
 
@@ -1588,6 +1613,7 @@ export function AccumulationRadar() {
           onClose={() => setTrackRecordTarget(null)}
         />
       ) : null}
+      {confirmationDialog}
     </section>
   );
 }

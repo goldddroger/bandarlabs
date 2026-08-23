@@ -1,25 +1,14 @@
-import { timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import type { FcaEpisode } from "@/lib/fca-import";
 
 export const runtime = "nodejs";
 
-function secretsMatch(received: string, expected: string) {
-  const receivedBuffer = Buffer.from(received);
-  const expectedBuffer = Buffer.from(expected);
-  return receivedBuffer.length === expectedBuffer.length && timingSafeEqual(receivedBuffer, expectedBuffer);
-}
-
 export async function POST(request: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const importSecret = process.env.OWNERSHIP_IMPORT_SECRET;
-  if (!supabaseUrl || !serviceRoleKey || !importSecret) {
+  if (!supabaseUrl || !serviceRoleKey) {
     return NextResponse.json({ error: "Import FCA belum dikonfigurasi pada server." }, { status: 503 });
-  }
-  if (!secretsMatch(request.headers.get("x-admin-import-key") ?? "", importSecret)) {
-    return NextResponse.json({ error: "Kunci admin import tidak valid." }, { status: 401 });
   }
 
   let body: { sourceDate?: string; sourceFile?: string; rows?: FcaEpisode[] };

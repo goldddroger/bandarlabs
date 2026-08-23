@@ -30,7 +30,6 @@ export function OwnershipImportDialog({
   const [fileName, setFileName] = useState("");
   const [parsed, setParsed] = useState<ParsedOwnershipFile | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
-  const [secret, setSecret] = useState("");
   const [reading, setReading] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -85,15 +84,12 @@ export function OwnershipImportDialog({
   }
 
   async function importData() {
-    if (!parsed || !secret.trim()) return;
+    if (!parsed) return;
     setImporting(true);
     try {
       const response = await fetch("/api/ownership/import", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-ownership-import-key": secret,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           threshold: parsed.threshold,
           reportDate: parsed.reportDate,
@@ -108,7 +104,6 @@ export function OwnershipImportDialog({
       onImported({ threshold: parsed.threshold, firstTicker: parsed.rows[0].ticker });
       setFileName("");
       setParsed(null);
-      setSecret("");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Import gagal diproses.";
       toast.error(message);
@@ -197,25 +192,13 @@ export function OwnershipImportDialog({
                 </div>
               </div>
 
-              <label className="block text-sm font-semibold text-gray-800">
-                Kunci admin import
-                <input
-                  type="password"
-                  value={secret}
-                  onChange={(event) => setSecret(event.target.value)}
-                  autoComplete="off"
-                  placeholder="Masukkan OWNERSHIP_IMPORT_SECRET"
-                  className="mt-2 h-11 w-full rounded-md border border-gray-300 px-3 text-sm font-normal text-gray-950 placeholder:text-gray-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                />
-                <span className="mt-1.5 block text-xs font-normal leading-5 text-gray-500">Kunci ini hanya memvalidasi proses upload. Service role key tetap tersimpan di server.</span>
-              </label>
             </div>
           ) : null}
         </div>
 
         <footer className="flex items-center justify-end gap-2 border-t border-gray-200 bg-white px-4 py-4 sm:px-6">
           <Button type="button" variant="ghost" onClick={onClose} disabled={importing}>Batal</Button>
-          <Button type="button" onClick={importData} disabled={!parsed || !secret.trim() || importing}>
+          <Button type="button" onClick={importData} disabled={!parsed || importing}>
             {importing ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
             {importing ? "Mengimpor..." : "Import ke Supabase"}
           </Button>

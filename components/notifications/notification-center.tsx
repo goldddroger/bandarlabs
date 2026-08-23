@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { BellRing, CheckCircle2, ExternalLink, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   bestEntryChangeEventName,
   emitBestEntryChange,
@@ -52,6 +53,7 @@ function formatDate(value: string) {
 }
 
 export function NotificationCenter() {
+  const { confirm, confirmationDialog } = useConfirmDialog();
   const [quotes, setQuotes] = useState<QuoteMap>({});
   const snapshot = useSyncExternalStore(subscribeBestEntry, getBestEntrySnapshot, () => "[]");
   const fcaSnapshot = useSyncExternalStore(subscribeFcaWatch, getFcaWatchSnapshot, () => "[]");
@@ -108,7 +110,15 @@ export function NotificationCenter() {
     return () => window.clearTimeout(timeout);
   }, []);
 
-  function deleteEntry(ticker: string) {
+  async function deleteEntry(ticker: string) {
+    const entry = entries.find((item) => item.ticker === ticker);
+    const confirmed = await confirm({
+      title: "Hapus alert saham?",
+      description: "Best entry ini akan dihapus dari notifikasi dan detail saham.",
+      subject: `${ticker} · ${formatPrice(entry?.price ?? null)}`,
+      confirmLabel: "Hapus Alert",
+    });
+    if (!confirmed) return;
     window.localStorage.removeItem(getBestEntryStorageKey(ticker));
     window.localStorage.removeItem(getBestEntryLastFiredKey(ticker));
     emitBestEntryChange();
@@ -197,6 +207,7 @@ export function NotificationCenter() {
           </div> : null}
         </div>
       )}
+      {confirmationDialog}
     </section>
   );
 }

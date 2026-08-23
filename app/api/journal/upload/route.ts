@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { journalAccessKey, journalKeyMatches, journalServerConfig } from "@/lib/journal-server";
+import { journalServerConfig } from "@/lib/journal-server";
 
 export const runtime = "nodejs";
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -8,7 +8,6 @@ const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gi
 export async function POST(request: Request) {
   const config = journalServerConfig();
   if (!config) return NextResponse.json({ error: "Upload jurnal belum dikonfigurasi pada server." }, { status: 503 });
-  if (!journalKeyMatches(journalAccessKey(request), config.accessKey)) return NextResponse.json({ error: "Kunci akses jurnal tidak valid." }, { status: 401 });
 
   const form = await request.formData().catch(() => null);
   const entryId = String(form?.get("entryId") ?? "");

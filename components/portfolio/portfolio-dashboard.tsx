@@ -6,6 +6,8 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   BriefcaseBusiness,
+  Cloud,
+  Download,
   History,
   Pencil,
   Plus,
@@ -18,13 +20,17 @@ import {
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { idxListedStocks } from "@/lib/idx-listed-stocks";
 import {
   calculateRealizedGain,
+  downloadPortfolioSql,
   getJakartaDate,
+  portfolioSyncEventName,
   PortfolioHolding,
   RealizedTrade,
   savePortfolio,
+  syncPortfolioWithServer,
   usePortfolioData,
 } from "@/lib/portfolio-store";
 import { cn } from "@/lib/utils";
@@ -99,6 +105,7 @@ function getQuarterFromDate(value: string) {
 }
 
 export function PortfolioDashboard() {
+  const { confirm, confirmationDialog } = useConfirmDialog();
   const portfolio = usePortfolioData();
   const [quotes, setQuotes] = useState<Record<string, LiveQuote>>({});
   const [resolvedQuoteKey, setResolvedQuoteKey] = useState("");
@@ -115,6 +122,34 @@ export function PortfolioDashboard() {
     tradeId: "",
     requestId: 0,
   });
+  const [syncState, setSyncState] = useState<"syncing" | "synced" | "error">("syncing");
+
+  useEffect(() => {
+    const syncTimer = window.setTimeout(() => {
+      void syncPortfolioWithServer()
+        .then((result) => {
+          setSyncState("synced");
+          if (result === "uploaded") toast.success("Portfolio lokal berhasil dipindahkan ke Supabase.");
+        })
+        .catch((error: unknown) => {
+          setSyncState("error");
+          toast.error(error instanceof Error ? error.message : "Portfolio Supabase gagal disinkronkan.");
+        });
+    }, 0);
+    const handleSync = (event: Event) => {
+      const detail = (event as CustomEvent<{ status?: string; message?: string }>).detail;
+      if (detail?.status === "saved") setSyncState("synced");
+      if (detail?.status === "error") {
+        setSyncState("error");
+        toast.error(detail.message || "Perubahan tersimpan lokal, tetapi gagal dikirim ke Supabase.");
+      }
+    };
+    window.addEventListener(portfolioSyncEventName, handleSync);
+    return () => {
+      window.clearTimeout(syncTimer);
+      window.removeEventListener(portfolioSyncEventName, handleSync);
+    };
+  }, []);
 
   const tickerKey = useMemo(
     () => Array.from(new Set(portfolio.holdings.map((holding) => holding.ticker))).sort().join(","),
@@ -225,7 +260,15 @@ export function PortfolioDashboard() {
     toast.success("Posisi portfolio disimpan");
   }
 
-  function deleteHolding(id: string) {
+  async function deleteHolding(id: string) {
+    const holding = portfolio.holdings.find((item) => item.id === id);
+    const confirmed = await confirm({
+      title: "Hapus posisi portfolio?",
+      description: "Posisi aktif ini akan dikeluarkan dari valuasi dan perhitungan equity portfolio.",
+      subject: holding ? `${holding.ticker} · ${holding.lots} lot` : "Posisi portfolio",
+      confirmLabel: "Hapus Posisi",
+    });
+    if (!confirmed) return;
     savePortfolio({ ...portfolio, holdings: portfolio.holdings.filter((holding) => holding.id !== id) });
     toast.info("Posisi dihapus dari portfolio");
   }
@@ -306,9 +349,22 @@ export function PortfolioDashboard() {
     }
   }
 
-  function deleteTrade(id: string) {
+  async function deleteTrade(id: string) {
+    const trade = portfolio.trades.find((item) => item.id === id);
+    const confirmed = await confirm({
+      title: "Hapus riwayat trade?",
+      description: "Trade ini tidak akan lagi dihitung dalam realized profit/loss dan win ratio.",
+      subject: trade ? `${trade.ticker} · ${trade.lots} lot · ${formatDisplayDate(trade.soldAt)}` : "Riwayat trade",
+      confirmLabel: "Hapus Trade",
+    });
+    if (!confirmed) return;
     savePortfolio({ ...portfolio, trades: portfolio.trades.filter((trade) => trade.id !== id) });
     toast.info("Riwayat trade dihapus");
+  }
+
+  function exportPortfolioSql() {
+    downloadPortfolioSql(portfolio);
+    toast.success("SQL Portfolio berhasil diunduh.");
   }
 
   return (
@@ -320,8 +376,15 @@ export function PortfolioDashboard() {
           <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
             Nilai posisi aktif, unrealized profit/loss, serta performa trade yang sudah direalisasikan.
           </p>
+          <span className={cn("mt-2 inline-flex items-center gap-1.5 text-xs font-medium", syncState === "error" ? "text-red-700" : "text-gray-500")}>
+            <Cloud className="size-3.5" />
+            {syncState === "syncing" ? "Menyinkronkan Supabase..." : syncState === "synced" ? "Tersinkron dengan Supabase" : "Sinkronisasi Supabase perlu diperiksa"}
+          </span>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex">
+          <Button type="button" variant="ghost" className="col-span-2 px-3 sm:col-span-1" onClick={exportPortfolioSql}>
+            <Download className="size-4" /> Unduh SQL
+          </Button>
           <Button type="button" variant="outline" className="px-3" onClick={openAddTrade}>
             <History className="size-4" /> Catat trade
           </Button>
@@ -348,6 +411,7 @@ export function PortfolioDashboard() {
 
       {holdingModalOpen ? <HoldingModal draft={holdingDraft} onClose={() => setHoldingModalOpen(false)} onSave={saveHolding} /> : null}
       {tradeModalOpen ? <TradeModal draft={tradeDraft} onClose={() => setTradeModalOpen(false)} onSave={saveTrade} /> : null}
+      {confirmationDialog}
     </section>
   );
 }

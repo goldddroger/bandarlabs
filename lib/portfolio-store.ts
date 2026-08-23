@@ -36,7 +36,9 @@ export type PortfolioData = {
 
 const storageKey = "bandarlab.portfolio.v1";
 const changeEventName = "bandarlab-portfolio-change";
+export const portfolioSyncEventName = "bandarlab-portfolio-sync";
 const emptySnapshot = JSON.stringify({ holdings: [], trades: [], equityHistory: [] } satisfies PortfolioData);
+const adminOwnerId = "00000000-0000-4000-8000-000000000001";
 
 function parsePortfolio(snapshot: string): PortfolioData {
   try {
@@ -64,9 +66,85 @@ function getPortfolioSnapshot() {
   return window.localStorage.getItem(storageKey) ?? emptySnapshot;
 }
 
-export function savePortfolio(data: PortfolioData) {
+function applyPortfolioLocally(data: PortfolioData) {
   window.localStorage.setItem(storageKey, JSON.stringify(data));
   window.dispatchEvent(new Event(changeEventName));
+}
+
+function hasPortfolioData(data: PortfolioData) {
+  return data.holdings.length > 0 || data.trades.length > 0 || data.equityHistory.length > 0;
+}
+
+async function persistPortfolio(data: PortfolioData) {
+  const response = await fetch("/api/portfolio", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const result = await response.json().catch(() => ({})) as { error?: string };
+  if (!response.ok) throw new Error(result.error || "Portfolio gagal disinkronkan.");
+  window.dispatchEvent(new CustomEvent(portfolioSyncEventName, { detail: { status: "saved" } }));
+}
+
+export function savePortfolio(data: PortfolioData) {
+  applyPortfolioLocally(data);
+  void persistPortfolio(data).catch((error: unknown) => {
+    window.dispatchEvent(new CustomEvent(portfolioSyncEventName, {
+      detail: { status: "error", message: error instanceof Error ? error.message : "Portfolio gagal disinkronkan." },
+    }));
+  });
+}
+
+export async function syncPortfolioWithServer() {
+  const local = parsePortfolio(getPortfolioSnapshot());
+  const response = await fetch("/api/portfolio", { cache: "no-store" });
+  const result = await response.json().catch(() => ({})) as { portfolio?: PortfolioData; error?: string };
+  if (!response.ok || !result.portfolio) throw new Error(result.error || "Portfolio Supabase gagal dimuat.");
+
+  if (hasPortfolioData(result.portfolio)) {
+    applyPortfolioLocally(result.portfolio);
+    return "downloaded" as const;
+  }
+  if (hasPortfolioData(local)) {
+    await persistPortfolio(local);
+    return "uploaded" as const;
+  }
+  return "empty" as const;
+}
+
+function sqlText(value: unknown) {
+  return `'${String(value ?? "").replaceAll("'", "''")}'`;
+}
+
+export function downloadPortfolioSql(data: PortfolioData) {
+  const owner = sqlText(adminOwnerId);
+  const holdings = data.holdings.length > 0
+    ? `insert into public.portfolio_holdings (id, owner_id, ticker, lots, average_price, purchased_at, note) values\n${data.holdings.map((row) => `  (${sqlText(row.id)}, ${owner}, ${sqlText(row.ticker)}, ${row.lots}, ${row.averagePrice}, ${sqlText(row.purchasedAt)}, ${sqlText(row.note)})`).join(",\n")};`
+    : "";
+  const trades = data.trades.length > 0
+    ? `insert into public.portfolio_trades (id, owner_id, ticker, lots, buy_price, sell_price, buy_fee_percent, sell_fee_percent, sold_at, note) values\n${data.trades.map((row) => `  (${sqlText(row.id)}, ${owner}, ${sqlText(row.ticker)}, ${row.lots}, ${row.buyPrice}, ${row.sellPrice}, ${row.buyFeePercent}, ${row.sellFeePercent}, ${sqlText(row.soldAt)}, ${sqlText(row.note)})`).join(",\n")};`
+    : "";
+  const history = data.equityHistory.length > 0
+    ? `insert into public.portfolio_equity_history (owner_id, snapshot_date, equity) values\n${data.equityHistory.map((row) => `  (${owner}, ${sqlText(row.date)}, ${row.equity})`).join(",\n")};`
+    : "";
+  const sql = [
+    "-- BandarLab Portfolio export",
+    "-- Run 202608230001_admin_portfolio.sql before this file.",
+    "begin;",
+    `delete from public.portfolio_equity_history where owner_id = ${owner};`,
+    `delete from public.portfolio_trades where owner_id = ${owner};`,
+    `delete from public.portfolio_holdings where owner_id = ${owner};`,
+    holdings,
+    trades,
+    history,
+    "commit;",
+  ].filter(Boolean).join("\n\n");
+  const url = URL.createObjectURL(new Blob([sql], { type: "application/sql;charset=utf-8" }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `bandarlab-portfolio-${getJakartaDate()}.sql`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export function usePortfolioData() {

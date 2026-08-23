@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import type { OwnershipImportRow } from "@/lib/ownership-import";
@@ -12,27 +11,15 @@ type ImportRequest = {
   rows?: OwnershipImportRow[];
 };
 
-function secretsMatch(received: string, expected: string) {
-  const receivedBuffer = Buffer.from(received);
-  const expectedBuffer = Buffer.from(expected);
-  return receivedBuffer.length === expectedBuffer.length && timingSafeEqual(receivedBuffer, expectedBuffer);
-}
-
 export async function POST(request: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const importSecret = process.env.OWNERSHIP_IMPORT_SECRET;
 
-  if (!supabaseUrl || !serviceRoleKey || !importSecret) {
+  if (!supabaseUrl || !serviceRoleKey) {
     return NextResponse.json(
-      { error: "Import belum dikonfigurasi. Tambahkan service role key dan ownership import secret di server." },
+      { error: "Import belum dikonfigurasi. Tambahkan Supabase service role key di server." },
       { status: 503 },
     );
-  }
-
-  const suppliedSecret = request.headers.get("x-ownership-import-key") ?? "";
-  if (!secretsMatch(suppliedSecret, importSecret)) {
-    return NextResponse.json({ error: "Kunci admin import tidak valid." }, { status: 401 });
   }
 
   let body: ImportRequest;

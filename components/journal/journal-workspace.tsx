@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpenText, CalendarDays, Edit3, FileImage, ImagePlus, KeyRound, Loader2, LockKeyhole, NotebookPen, Pin, Plus, Search, Trash2, X } from "lucide-react";
+import { BookOpenText, CalendarDays, Edit3, FileImage, ImagePlus, Loader2, NotebookPen, Pin, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { journalCategories, type JournalCategory, type JournalEntry, type JournalPayload } from "@/lib/journal";
 import { cn } from "@/lib/utils";
 
-const sessionKey = "bandarlab.journal.access-key";
 const emptyPayload = (): JournalPayload => ({
   title: "",
   content: "",
@@ -36,12 +36,10 @@ function categoryClass(category: JournalCategory) {
 }
 
 export function JournalWorkspace() {
-  const [accessKey, setAccessKey] = useState("");
-  const [keyInput, setKeyInput] = useState("");
+  const { confirm, confirmationDialog } = useConfirmDialog();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [unlocking, setUnlocking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<"all" | JournalCategory>("all");
@@ -72,63 +70,31 @@ export function JournalWorkspace() {
     return () => { document.body.style.overflow = previous; };
   }, [editorOpen]);
 
-  async function api(path: string, key: string, options?: RequestInit) {
-    return fetch(path, { ...options, headers: { ...(options?.headers ?? {}), "x-journal-access-key": key } });
+  async function api(path: string, options?: RequestInit) {
+    return fetch(path, options);
   }
 
-  const loadEntries = useCallback(async (key: string, showLoading = true) => {
-    if (!key) return false;
+  const loadEntries = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     setError(null);
     try {
-      const response = await api("/api/journal", key);
+      const response = await api("/api/journal");
       const result = await response.json() as { entries?: JournalEntry[]; error?: string };
       if (!response.ok) throw new Error(result.error || "Jurnal gagal dimuat.");
       const nextEntries = result.entries ?? [];
       setEntries(nextEntries);
       setSelectedId((current) => current && nextEntries.some((entry) => entry.id === current) ? current : nextEntries[0]?.id ?? null);
-      return true;
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Jurnal gagal dimuat.");
-      return false;
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      const stored = window.sessionStorage.getItem(sessionKey) ?? "";
-      if (stored) {
-        setAccessKey(stored);
-        void loadEntries(stored, false);
-      }
-    }, 0);
+    const timeout = window.setTimeout(() => void loadEntries(false), 0);
     return () => window.clearTimeout(timeout);
   }, [loadEntries]);
-
-  async function unlock(event: FormEvent) {
-    event.preventDefault();
-    const key = keyInput.trim();
-    if (!key) return;
-    setUnlocking(true);
-    const success = await loadEntries(key);
-    if (success) {
-      window.sessionStorage.setItem(sessionKey, key);
-      setAccessKey(key);
-      setKeyInput("");
-      toast.success("Jurnal berhasil dibuka.");
-    }
-    setUnlocking(false);
-  }
-
-  function lockJournal() {
-    window.sessionStorage.removeItem(sessionKey);
-    setAccessKey("");
-    setEntries([]);
-    setSelectedId(null);
-    setError(null);
-  }
 
   function openEditor(entry?: JournalEntry) {
     if (entry) {
@@ -173,7 +139,7 @@ export function JournalWorkspace() {
       tags: Array.from(new Set(tagText.split(",").map((tag) => tag.trim()).filter(Boolean))),
     };
     try {
-      const response = await api("/api/journal", accessKey, {
+      const response = await api("/api/journal", {
         method: editingId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editingId ? { id: editingId, ...normalized } : normalized),
@@ -187,12 +153,12 @@ export function JournalWorkspace() {
         const form = new FormData();
         form.append("entryId", entryId);
         form.append("file", file);
-        const uploadResponse = await api("/api/journal/upload", accessKey, { method: "POST", body: form });
+        const uploadResponse = await api("/api/journal/upload", { method: "POST", body: form });
         const uploadResult = await uploadResponse.json() as { error?: string };
         if (!uploadResponse.ok) throw new Error(uploadResult.error || `Gambar ${file.name} gagal diunggah.`);
       }
 
-      await loadEntries(accessKey);
+      await loadEntries();
       setSelectedId(entryId);
       setEditorOpen(false);
       setFiles([]);
@@ -205,44 +171,44 @@ export function JournalWorkspace() {
   }
 
   async function deleteEntry(entry: JournalEntry) {
-    if (!window.confirm(`Hapus jurnal “${entry.title}” beserta seluruh gambarnya?`)) return;
-    const response = await api("/api/journal", accessKey, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: entry.id }) });
+    const confirmed = await confirm({
+      title: "Hapus jurnal?",
+      description: "Catatan dan seluruh gambar di dalamnya akan dihapus permanen dari Supabase.",
+      subject: entry.title,
+      confirmLabel: "Hapus Jurnal",
+    });
+    if (!confirmed) return;
+    const response = await api("/api/journal", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: entry.id }) });
     const result = await response.json() as { error?: string };
     if (!response.ok) return toast.error(result.error || "Jurnal gagal dihapus.");
-    await loadEntries(accessKey);
+    await loadEntries();
     toast.success("Jurnal berhasil dihapus.");
   }
 
   async function deleteAttachment(entry: JournalEntry, attachmentId: string) {
-    if (!window.confirm("Hapus gambar ini dari jurnal?")) return;
-    const response = await api("/api/journal", accessKey, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: entry.id, attachmentId }) });
+    const attachment = entry.journal_attachments.find((item) => item.id === attachmentId);
+    const confirmed = await confirm({
+      title: "Hapus gambar?",
+      description: "Gambar akan dihapus permanen dari lampiran jurnal dan Supabase Storage.",
+      subject: attachment?.file_name ?? "Lampiran gambar",
+      confirmLabel: "Hapus Gambar",
+    });
+    if (!confirmed) return;
+    const response = await api("/api/journal", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: entry.id, attachmentId }) });
     const result = await response.json() as { error?: string };
     if (!response.ok) return toast.error(result.error || "Gambar gagal dihapus.");
-    await loadEntries(accessKey);
+    await loadEntries();
     toast.success("Gambar dihapus.");
-  }
-
-  if (!accessKey) {
-    return (
-      <section className="mx-auto flex min-h-[calc(100vh-180px)] max-w-md items-center">
-        <form onSubmit={unlock} className="w-full rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <span className="flex size-11 items-center justify-center rounded-md bg-red-50 text-red-700"><LockKeyhole className="size-5" /></span>
-          <h1 className="mt-4 text-xl font-semibold text-gray-950">Buka Jurnal Riset</h1>
-          <p className="mt-2 text-sm leading-6 text-gray-600">Masukkan passphrase jurnal pribadi untuk membuka catatan dan lampiran.</p>
-          <label className="mt-5 block text-sm font-semibold text-gray-800">Passphrase<input type="password" value={keyInput} onChange={(event) => setKeyInput(event.target.value)} autoFocus placeholder="JOURNAL_ACCESS_KEY" className="mt-2 h-11 w-full rounded-md border border-gray-300 px-3 text-sm font-normal" /></label>
-          {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
-          <Button type="submit" className="mt-5 w-full" disabled={!keyInput.trim() || unlocking}>{unlocking ? <Loader2 className="size-4 animate-spin" /> : <KeyRound className="size-4" />}{unlocking ? "Membuka..." : "Buka Jurnal"}</Button>
-        </form>
-      </section>
-    );
   }
 
   return (
     <section className="mx-auto w-full max-w-7xl">
       <header className="flex flex-col gap-4 border-b border-gray-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div><p className="text-sm text-gray-500">BandarLab</p><h1 className="mt-1 text-2xl font-semibold text-gray-950">Jurnal Riset</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">Catatan pembelajaran, observasi pasar, thesis, dan diskusi mentor.</p></div>
-        <div className="flex gap-2"><Button type="button" variant="ghost" onClick={lockJournal}><LockKeyhole className="size-4" />Kunci</Button><Button type="button" onClick={() => openEditor()}><Plus className="size-4" />Tulis Jurnal</Button></div>
+        <Button type="button" onClick={() => openEditor()}><Plus className="size-4" />Tulis Jurnal</Button>
       </header>
+
+      {error ? <div className="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <div className="rounded-md border border-gray-200 p-4"><p className="text-xs font-semibold uppercase text-gray-500">Total Catatan</p><p className="mt-2 text-2xl font-semibold text-gray-950">{entries.length}</p></div>
@@ -304,6 +270,7 @@ export function JournalWorkspace() {
           </form>
         </div>
       ) : null}
+      {confirmationDialog}
     </section>
   );
 }
