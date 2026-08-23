@@ -1,8 +1,6 @@
 import {
-  BadgeCheck,
   Building2,
   Calculator,
-  CalendarDays,
   ChartNoAxesCombined,
   FileText,
   HelpCircle,
@@ -125,16 +123,8 @@ export const menuSections = [
     label: "TOOLS",
     items: [
       { label: "Stock Screener", href: "/stock-screener", icon: RefreshCw },
-      {
-        label: "Sector Rotation",
-        href: "https://neobdm.tech/rotation-chart/",
-        icon: BadgeCheck,
-        external: true,
-      },
       { label: "Group Konglo", href: "/group-konglo", icon: Building2 },
-      { label: "Calculator Gain", href: "/calculator-gain", icon: Calculator },
-      { label: "Calendar RUPS", href: "/calendar-rups", icon: CalendarDays },
-      { label: "Dividend Calendar", href: "/dividend-calendar", icon: CalendarDays },
+      { label: "Kalkulator Investasi", href: "/calculator-gain", icon: Calculator },
     ],
   },
   {

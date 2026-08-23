@@ -45,6 +45,14 @@ type StockSuggestion = {
 
 type SortMode = "percentage" | "shares" | "change" | "investor";
 type OwnershipScope = "all" | "L" | "A";
+type OwnershipMovement = "new" | "increased" | "stable" | "decreased" | "exited";
+
+type ComparisonRow = OwnershipRow & {
+  previous_shares: number | null;
+  previous_percentage: number | null;
+  percentage_change: number | null;
+  movement: OwnershipMovement;
+};
 
 const pageSize = 25;
 
@@ -81,6 +89,30 @@ function ownershipLabel(value: string | null) {
 function changeClass(value: number | null) {
   if (value === null || value === 0) return "bg-gray-100 text-gray-600";
   return value > 0 ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700";
+}
+
+function movementLabel(value: OwnershipMovement) {
+  return {
+    new: "Baru masuk",
+    increased: "Naik",
+    stable: "Stabil",
+    decreased: "Turun",
+    exited: "Keluar",
+  }[value];
+}
+
+function movementClass(value: OwnershipMovement) {
+  return {
+    new: "bg-blue-50 text-blue-700",
+    increased: "bg-green-50 text-green-700",
+    stable: "bg-gray-100 text-gray-600",
+    decreased: "bg-amber-50 text-amber-700",
+    exited: "bg-red-50 text-red-700",
+  }[value];
+}
+
+function ownershipKey(row: Pick<OwnershipRow, "investor_name" | "account_holder">) {
+  return `${row.investor_name.trim().toUpperCase()}|${row.account_holder?.trim().toUpperCase() ?? ""}`;
 }
 
 function SummaryItem({
@@ -126,9 +158,11 @@ export function OwnershipTracker() {
   const [investorSearch, setInvestorSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("percentage");
   const [page, setPage] = useState(1);
-  const [rows, setRows] = useState<OwnershipRow[]>([]);
+  const [comparisonRows, setComparisonRows] = useState<ComparisonRow[]>([]);
   const [summaryRows, setSummaryRows] = useState<OwnershipRow[]>([]);
-  const [totalRows, setTotalRows] = useState(0);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [currentDate, setCurrentDate] = useState("");
+  const [comparisonDate, setComparisonDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -166,80 +200,178 @@ export function OwnershipTracker() {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadOwnership() {
+    async function loadAvailableDates() {
       setLoading(true);
       setError(null);
+      const [dateResult, stockResult] = await Promise.all([
+        supabase
+          .from("shareholder_ownership")
+          .select("report_date")
+          .eq("ticker", selectedTicker)
+          .eq("disclosure_threshold", threshold)
+          .order("report_date", { ascending: false })
+          .limit(1000),
+        supabase.from("stocks").select("name").eq("ticker", selectedTicker).maybeSingle(),
+      ]);
+      if (cancelled) return;
+      if (dateResult.error) {
+        setAvailableDates([]);
+        setCurrentDate("");
+        setComparisonDate("");
+        setComparisonRows([]);
+        setSummaryRows([]);
+        setError(dateResult.error.message);
+        setLoading(false);
+        return;
+      }
 
-      const sortColumn = sortMode === "investor" ? "investor_name" : sortMode === "change" ? "share_change" : sortMode;
-      const ascending = sortMode === "investor";
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
+      const dates = Array.from(new Set((dateResult.data ?? []).map((row) => row.report_date))).sort().reverse();
+      setAvailableDates(dates);
+      setCurrentDate(dates[0] ?? "");
+      setComparisonDate(dates[1] ?? "");
+      if (stockResult.data?.name) setCompanyName(stockResult.data.name);
+      if (dates.length === 0) setLoading(false);
+    }
 
-      let dataQuery = supabase
-        .from("shareholder_ownership")
-        .select("*", { count: "exact" })
-        .eq("ticker", selectedTicker)
-        .eq("disclosure_threshold", threshold)
-        .order(sortColumn, { ascending, nullsFirst: false })
-        .range(from, to);
+    void loadAvailableDates();
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey, selectedTicker, supabase, threshold]);
 
-      let summaryQuery = supabase
+  useEffect(() => {
+    if (!currentDate) return;
+    let cancelled = false;
+
+    async function loadComparison() {
+      setLoading(true);
+      setError(null);
+      const currentQuery = supabase
         .from("shareholder_ownership")
         .select("*")
         .eq("ticker", selectedTicker)
         .eq("disclosure_threshold", threshold)
-        .order("percentage", { ascending: false, nullsFirst: false })
-        .limit(1000);
-
-      if (scope !== "all") {
-        const values = scope === "A" ? ["A", "F"] : ["L"];
-        dataQuery = dataQuery.in("local_foreign", values);
-        summaryQuery = summaryQuery.in("local_foreign", values);
-      }
-      if (investorSearch.trim()) {
-        dataQuery = dataQuery.ilike("investor_name", `%${investorSearch.trim()}%`);
-        summaryQuery = summaryQuery.ilike("investor_name", `%${investorSearch.trim()}%`);
-      }
-
-      const [dataResult, summaryResult, stockResult] = await Promise.all([
-        dataQuery,
-        summaryQuery,
-        supabase.from("stocks").select("name").eq("ticker", selectedTicker).maybeSingle(),
-      ]);
-
+        .eq("report_date", currentDate)
+        .limit(2000);
+      const previousQuery = comparisonDate
+        ? supabase
+            .from("shareholder_ownership")
+            .select("*")
+            .eq("ticker", selectedTicker)
+            .eq("disclosure_threshold", threshold)
+            .eq("report_date", comparisonDate)
+            .limit(2000)
+        : Promise.resolve({ data: [], error: null });
+      const [currentResult, previousResult] = await Promise.all([currentQuery, previousQuery]);
       if (cancelled) return;
-      if (dataResult.error || summaryResult.error) {
-        setRows([]);
+      if (currentResult.error || previousResult.error) {
+        setComparisonRows([]);
         setSummaryRows([]);
-        setTotalRows(0);
-        setError(dataResult.error?.message ?? summaryResult.error?.message ?? "Data ownership gagal dimuat.");
-      } else {
-        setRows((dataResult.data ?? []) as OwnershipRow[]);
-        setSummaryRows((summaryResult.data ?? []) as OwnershipRow[]);
-        setTotalRows(dataResult.count ?? 0);
-        if (stockResult.data?.name) setCompanyName(stockResult.data.name);
+        setError(currentResult.error?.message ?? previousResult.error?.message ?? "Data ownership gagal dimuat.");
+        setLoading(false);
+        return;
       }
+
+      const currentRows = (currentResult.data ?? []) as OwnershipRow[];
+      const previousRows = (previousResult.data ?? []) as OwnershipRow[];
+      const previousMap = new Map(previousRows.map((row) => [ownershipKey(row), row]));
+      const currentKeys = new Set<string>();
+      const merged: ComparisonRow[] = currentRows.map((row) => {
+        const key = ownershipKey(row);
+        currentKeys.add(key);
+        const previous = previousMap.get(key);
+        const shareChange = previous ? Number(row.shares) - Number(previous.shares) : null;
+        const percentageChange = previous ? Number(row.percentage || 0) - Number(previous.percentage || 0) : null;
+        const movement: OwnershipMovement = !previous
+          ? "new"
+          : shareChange === 0
+            ? "stable"
+            : Number(shareChange) > 0
+              ? "increased"
+              : "decreased";
+        return {
+          ...row,
+          share_change: shareChange,
+          previous_shares: previous ? Number(previous.shares) : null,
+          previous_percentage: previous ? Number(previous.percentage || 0) : null,
+          percentage_change: percentageChange,
+          movement,
+        };
+      });
+
+      previousRows.forEach((row) => {
+        if (currentKeys.has(ownershipKey(row))) return;
+        merged.push({
+          ...row,
+          id: -row.id,
+          shares: 0,
+          percentage: 0,
+          report_date: currentDate,
+          share_change: -Number(row.shares),
+          previous_shares: Number(row.shares),
+          previous_percentage: Number(row.percentage || 0),
+          percentage_change: -Number(row.percentage || 0),
+          movement: "exited",
+        });
+      });
+
+      setSummaryRows(currentRows);
+      setComparisonRows(merged);
       setLoading(false);
     }
 
-    void loadOwnership();
+    void loadComparison();
     return () => {
       cancelled = true;
     };
-  }, [investorSearch, page, reloadKey, scope, selectedTicker, sortMode, supabase, threshold]);
+  }, [comparisonDate, currentDate, selectedTicker, supabase, threshold]);
+
+  const filteredComparisonRows = useMemo(() => {
+    const normalizedSearch = investorSearch.trim().toLowerCase();
+    const filtered = comparisonRows.filter((row) => {
+      const scopeMatches = scope === "all"
+        || (scope === "A" ? ["A", "F"].includes(row.local_foreign ?? "") : row.local_foreign === "L");
+      const investorMatches = !normalizedSearch || row.investor_name.toLowerCase().includes(normalizedSearch);
+      return scopeMatches && investorMatches;
+    });
+
+    return [...filtered].sort((first, second) => {
+      if (sortMode === "investor") return first.investor_name.localeCompare(second.investor_name, "id");
+      if (sortMode === "change") return Number(second.share_change || 0) - Number(first.share_change || 0);
+      if (sortMode === "shares") return Number(second.shares || 0) - Number(first.shares || 0);
+      return Number(second.percentage || 0) - Number(first.percentage || 0);
+    });
+  }, [comparisonRows, investorSearch, scope, sortMode]);
+
+  const filteredSummaryRows = useMemo(() => {
+    const normalizedSearch = investorSearch.trim().toLowerCase();
+    return summaryRows.filter((row) => {
+      const scopeMatches = scope === "all"
+        || (scope === "A" ? ["A", "F"].includes(row.local_foreign ?? "") : row.local_foreign === "L");
+      return scopeMatches && (!normalizedSearch || row.investor_name.toLowerCase().includes(normalizedSearch));
+    });
+  }, [investorSearch, scope, summaryRows]);
 
   const summary = useMemo(() => {
-    const totalShares = summaryRows.reduce((total, row) => total + Number(row.shares || 0), 0);
-    const totalPercentage = summaryRows.reduce((total, row) => total + Number(row.percentage || 0), 0);
+    const totalShares = filteredSummaryRows.reduce((total, row) => total + Number(row.shares || 0), 0);
+    const totalPercentage = filteredSummaryRows.reduce((total, row) => total + Number(row.percentage || 0), 0);
+    const largest = [...filteredSummaryRows].sort((first, second) => Number(second.percentage || 0) - Number(first.percentage || 0))[0];
     return {
       totalShares,
       totalPercentage,
-      largest: summaryRows[0],
-      reportDate: summaryRows[0]?.report_date,
+      largest,
+      reportDate: currentDate,
     };
-  }, [summaryRows]);
+  }, [currentDate, filteredSummaryRows]);
 
+  const movementSummary = useMemo(() => comparisonRows.reduce(
+    (counts, row) => ({ ...counts, [row.movement]: counts[row.movement] + 1 }),
+    { new: 0, increased: 0, stable: 0, decreased: 0, exited: 0 } as Record<OwnershipMovement, number>,
+  ), [comparisonRows]);
+
+  const totalRows = filteredComparisonRows.length;
   const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+  const rows = filteredComparisonRows.slice((page - 1) * pageSize, page * pageSize);
 
   function selectTicker(stock: StockSuggestion) {
     setTickerInput(stock.ticker);
@@ -337,12 +469,16 @@ export function OwnershipTracker() {
             <p className="mt-1 truncate text-sm text-gray-600">{companyName}</p>
           </div>
           <p className="text-xs text-gray-500">
-            {summary.reportDate ? `Data per ${formatDate(summary.reportDate)}` : "Tanggal data belum tersedia"}
+            {summary.reportDate
+              ? comparisonDate
+                ? `${formatDate(comparisonDate)} dibandingkan ${formatDate(summary.reportDate)}`
+                : `Data per ${formatDate(summary.reportDate)}`
+              : "Tanggal data belum tersedia"}
           </p>
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryItem icon={Users} label="Pemegang saham" value={`${summaryRows.length}`} detail={`Threshold ${threshold}%+`} />
+          <SummaryItem icon={Users} label="Pemegang saham" value={`${filteredSummaryRows.length}`} detail={`Threshold ${threshold}%+ pada periode akhir`} />
           <SummaryItem icon={Layers3} label="Total saham" value={formatCompactShares(summary.totalShares)} detail={`${formatShares(summary.totalShares)} lembar`} />
           <SummaryItem icon={Percent} label="Total tercatat" value={formatPercent(summary.totalPercentage)} detail="Akumulasi persentase pada filter" />
           <SummaryItem icon={Building2} label="Pemilik terbesar" value={summary.largest ? formatPercent(Number(summary.largest.percentage || 0)) : "-"} detail={summary.largest?.investor_name ?? "Belum tersedia"} />
@@ -351,8 +487,8 @@ export function OwnershipTracker() {
 
       <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
         <div className="border-b border-gray-200 p-4 sm:p-5">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div>
+          <div className="grid gap-4 xl:grid-cols-[auto_minmax(0,1fr)] xl:items-end">
+            <div className="min-w-40">
               <p className="text-xs font-semibold uppercase text-gray-500">Batas kepemilikan</p>
               <div className="mt-2 inline-flex rounded-md border border-gray-200 bg-gray-50 p-1">
                 {([5, 1] as const).map((value) => (
@@ -368,7 +504,35 @@ export function OwnershipTracker() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3 xl:w-[690px]">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <label className="text-xs font-semibold text-gray-600">
+                Periode awal
+                <select
+                  value={comparisonDate}
+                  onChange={(event) => { setComparisonDate(event.target.value); setPage(1); }}
+                  disabled={availableDates.length < 2}
+                  className="mt-1.5 h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm font-normal text-gray-950 disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                  <option value="">Belum tersedia</option>
+                  {availableDates.filter((date) => date !== currentDate).map((date) => <option key={date} value={date}>{formatDate(date)}</option>)}
+                </select>
+              </label>
+              <label className="text-xs font-semibold text-gray-600">
+                Periode akhir
+                <select
+                  value={currentDate}
+                  onChange={(event) => {
+                    const nextDate = event.target.value;
+                    setCurrentDate(nextDate);
+                    if (comparisonDate === nextDate) setComparisonDate(availableDates.find((date) => date !== nextDate) ?? "");
+                    setPage(1);
+                  }}
+                  disabled={availableDates.length === 0}
+                  className="mt-1.5 h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm font-normal text-gray-950 disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                  {availableDates.map((date) => <option key={date} value={date}>{formatDate(date)}</option>)}
+                </select>
+              </label>
               <label className="text-xs font-semibold text-gray-600">
                 Cari investor
                 <input
@@ -408,6 +572,16 @@ export function OwnershipTracker() {
               </label>
             </div>
           </div>
+
+          {comparisonDate ? (
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
+              {(["new", "increased", "stable", "decreased", "exited"] as const).map((movement) => (
+                <span key={movement} className={cn("rounded px-2.5 py-1 text-xs font-semibold", movementClass(movement))}>
+                  {movementLabel(movement)} {movementSummary[movement]}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         {loading ? <LoadingRows /> : error ? (
@@ -424,10 +598,10 @@ export function OwnershipTracker() {
         ) : (
           <>
             <div className="hidden overflow-x-auto lg:block">
-              <table className="w-full min-w-[1100px] text-left text-sm">
+              <table className="w-full min-w-[1180px] text-left text-sm">
                 <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                   <tr>
-                    {["Investor", "Pemegang rekening", "Status", "Domisili", "Jumlah saham", "Persentase", "Perubahan"].map((heading) => (
+                    {["Investor", "Saham periode awal", "Saham periode akhir", "Perubahan saham", "% periode awal", "% periode akhir", "Perubahan %", "Pergerakan"].map((heading) => (
                       <th key={heading} className="px-4 py-3 font-semibold">{heading}</th>
                     ))}
                   </tr>
@@ -437,17 +611,24 @@ export function OwnershipTracker() {
                     <tr key={row.id} className="border-t border-gray-100 hover:bg-gray-50/70">
                       <td className="max-w-[290px] px-4 py-3 font-semibold text-gray-950">
                         <span className="line-clamp-2">{row.investor_name}</span>
-                        {row.classification ? <span className="mt-1 block text-xs font-normal text-gray-500">{row.classification}</span> : null}
+                        <span className="mt-1 block text-xs font-normal text-gray-500">
+                          {row.account_holder || row.classification || "Pemegang rekening tidak tercatat"} · {ownershipLabel(row.local_foreign)}
+                        </span>
                       </td>
-                      <td className="max-w-[260px] px-4 py-3 text-gray-600"><span className="line-clamp-2">{row.account_holder || "-"}</span></td>
-                      <td className="whitespace-nowrap px-4 py-3"><span className="rounded bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">{ownershipLabel(row.local_foreign)}</span></td>
-                      <td className="whitespace-nowrap px-4 py-3 text-gray-600">{row.domicile || row.nationality || "-"}</td>
-                      <td className="whitespace-nowrap px-4 py-3 font-medium text-gray-800">{formatShares(row.shares)}</td>
-                      <td className="whitespace-nowrap px-4 py-3 font-semibold text-gray-950">{formatPercent(Number(row.percentage || 0))}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-gray-600">{row.previous_shares === null ? "-" : formatShares(row.previous_shares)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 font-semibold text-gray-950">{row.movement === "exited" ? "-" : formatShares(row.shares)}</td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <span className={cn("rounded px-2 py-1 text-xs font-semibold", changeClass(row.share_change))}>
-                          {row.share_change === null ? "-" : `${row.share_change > 0 ? "+" : ""}${formatShares(row.share_change)}`}
+                          {row.share_change === null ? "Baru" : `${row.share_change > 0 ? "+" : ""}${formatShares(row.share_change)}`}
                         </span>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-gray-600">{row.previous_percentage === null ? "-" : formatPercent(row.previous_percentage)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 font-semibold text-gray-950">{row.movement === "exited" ? "-" : formatPercent(Number(row.percentage || 0))}</td>
+                      <td className="whitespace-nowrap px-4 py-3 font-medium text-gray-700">
+                        {row.percentage_change === null ? "Baru" : `${row.percentage_change > 0 ? "+" : ""}${row.percentage_change.toFixed(2)} pp`}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <span className={cn("rounded px-2 py-1 text-xs font-semibold", movementClass(row.movement))}>{movementLabel(row.movement)}</span>
                       </td>
                     </tr>
                   ))}
@@ -460,12 +641,13 @@ export function OwnershipTracker() {
                 <article key={row.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="min-w-0 text-sm font-semibold leading-5 text-gray-950">{row.investor_name}</h3>
-                    <span className="shrink-0 text-sm font-semibold text-gray-950">{formatPercent(Number(row.percentage || 0))}</span>
+                    <span className={cn("shrink-0 rounded px-2 py-1 text-xs font-semibold", movementClass(row.movement))}>{movementLabel(row.movement)}</span>
                   </div>
                   <p className="mt-1 text-xs leading-5 text-gray-500">{row.account_holder || row.classification || "Pemegang rekening tidak tercatat"}</p>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                    <div><span className="block text-gray-500">Jumlah saham</span><strong className="mt-1 block text-gray-800">{formatShares(row.shares)}</strong></div>
-                    <div><span className="block text-gray-500">Status</span><strong className="mt-1 block text-gray-800">{ownershipLabel(row.local_foreign)} · {row.domicile || "-"}</strong></div>
+                  <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
+                    <div><span className="block text-gray-500">Periode awal</span><strong className="mt-1 block text-gray-800">{row.previous_shares === null ? "-" : formatShares(row.previous_shares)}</strong></div>
+                    <div><span className="block text-gray-500">Periode akhir</span><strong className="mt-1 block text-gray-800">{row.movement === "exited" ? "-" : formatShares(row.shares)}</strong></div>
+                    <div><span className="block text-gray-500">Perubahan</span><strong className={cn("mt-1 block", row.share_change !== null && row.share_change < 0 ? "text-red-700" : "text-green-700")}>{row.share_change === null ? "Baru" : `${row.share_change > 0 ? "+" : ""}${formatShares(row.share_change)}`}</strong></div>
                   </div>
                 </article>
               ))}

@@ -5,10 +5,10 @@ import { cn } from "@/lib/utils";
 
 const tabs = [
   { id: "overview", label: "Overview" },
+  { id: "charting", label: "Charting" },
   { id: "accumulation", label: "Accumulation" },
   { id: "corporate-action", label: "Corporate Action" },
   { id: "ownership", label: "Ownership" },
-  { id: "timeline", label: "Timeline" },
   { id: "broker-summary", label: "Broker Summary" },
 ] as const;
 

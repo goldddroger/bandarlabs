@@ -10,6 +10,7 @@ import {
   type BestEntryRecord,
 } from "@/lib/best-entry-store";
 import { getFcaWatchSnapshot, parseFcaWatchSnapshot, subscribeFcaWatch } from "@/lib/fca-watch-store";
+import { stockCaResearchChangeEvent } from "@/lib/stock-ca-research";
 
 type QuoteMap = Record<
   string,
@@ -36,12 +37,29 @@ function countReachedEntries(entries: BestEntryRecord[], quotes: QuoteMap) {
 
 export function NotificationLink() {
   const [quotes, setQuotes] = useState<QuoteMap>({});
+  const [caReminderCount, setCaReminderCount] = useState(0);
   const snapshot = useSyncExternalStore(subscribeBestEntry, getBestEntrySnapshot, () => "[]");
   const fcaSnapshot = useSyncExternalStore(subscribeFcaWatch, getFcaWatchSnapshot, () => "[]");
   const entries = useMemo(() => parseBestEntrySnapshot(snapshot), [snapshot]);
   const fcaUnreadCount = useMemo(() => parseFcaWatchSnapshot(fcaSnapshot).filter((record) => record.alert?.unread).length, [fcaSnapshot]);
   const tickers = useMemo(() => entries.map((entry) => entry.ticker).join(","), [entries]);
-  const reachedCount = countReachedEntries(entries, quotes) + fcaUnreadCount;
+  const reachedCount = countReachedEntries(entries, quotes) + fcaUnreadCount + caReminderCount;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadReminders() {
+      try {
+        const response = await fetch("/api/stock-ca-research?due=1", { signal: controller.signal });
+        const payload = response.ok ? await response.json() as { notes?: unknown[] } : { notes: [] };
+        if (!controller.signal.aborted) setCaReminderCount(payload.notes?.length ?? 0);
+      } catch {
+        if (!controller.signal.aborted) setCaReminderCount(0);
+      }
+    }
+    void loadReminders();
+    window.addEventListener(stockCaResearchChangeEvent, loadReminders);
+    return () => { controller.abort(); window.removeEventListener(stockCaResearchChangeEvent, loadReminders); };
+  }, []);
 
   useEffect(() => {
     if (!tickers) return;

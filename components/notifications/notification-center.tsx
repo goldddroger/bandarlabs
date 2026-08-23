@@ -15,6 +15,7 @@ import {
 } from "@/lib/best-entry-store";
 import { getFcaWatchSnapshot, markFcaAlertsRead, parseFcaWatchSnapshot, subscribeFcaWatch } from "@/lib/fca-watch-store";
 import { idxListedStocks } from "@/lib/idx-listed-stocks";
+import { stockCaResearchChangeEvent, type StockCaResearchNote } from "@/lib/stock-ca-research";
 import { cn } from "@/lib/utils";
 
 type QuoteMap = Record<
@@ -55,6 +56,7 @@ function formatDate(value: string) {
 export function NotificationCenter() {
   const { confirm, confirmationDialog } = useConfirmDialog();
   const [quotes, setQuotes] = useState<QuoteMap>({});
+  const [caReminders, setCaReminders] = useState<StockCaResearchNote[]>([]);
   const snapshot = useSyncExternalStore(subscribeBestEntry, getBestEntrySnapshot, () => "[]");
   const fcaSnapshot = useSyncExternalStore(subscribeFcaWatch, getFcaWatchSnapshot, () => "[]");
   const entries = useMemo(() => parseBestEntrySnapshot(snapshot), [snapshot]);
@@ -106,6 +108,22 @@ export function NotificationCenter() {
   }, [tickers]);
 
   useEffect(() => {
+    const controller = new AbortController();
+    async function loadCaReminders() {
+      try {
+        const response = await fetch("/api/stock-ca-research?due=1", { signal: controller.signal });
+        const payload = response.ok ? await response.json() as { notes?: StockCaResearchNote[] } : { notes: [] };
+        if (!controller.signal.aborted) setCaReminders(payload.notes ?? []);
+      } catch {
+        if (!controller.signal.aborted) setCaReminders([]);
+      }
+    }
+    void loadCaReminders();
+    window.addEventListener(stockCaResearchChangeEvent, loadCaReminders);
+    return () => { controller.abort(); window.removeEventListener(stockCaResearchChangeEvent, loadCaReminders); };
+  }, []);
+
+  useEffect(() => {
     const timeout = window.setTimeout(markFcaAlertsRead, 800);
     return () => window.clearTimeout(timeout);
   }, []);
@@ -131,10 +149,10 @@ export function NotificationCenter() {
         <div>
           <h1 className="text-2xl font-semibold tracking-normal text-gray-950">Notifikasi</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-            Pusat notifikasi untuk best entry pribadi dan perubahan saham FCA yang kamu pantau.
+            Pusat notifikasi untuk best entry, perubahan FCA, dan reminder research corporate action.
           </p>
         </div>
-        <div className="grid grid-cols-3 gap-2 sm:flex">
+        <div className="grid grid-cols-2 gap-2 sm:flex">
           <div className="rounded-md border border-green-100 bg-green-50 px-3 py-2">
             <p className="text-xs font-medium text-green-700">Siap Dicek</p>
             <p className="mt-1 text-xl font-semibold text-green-800">{reachedRows.length}</p>
@@ -147,8 +165,28 @@ export function NotificationCenter() {
             <p className="text-xs font-medium text-amber-700">Alert FCA</p>
             <p className="mt-1 text-xl font-semibold text-amber-800">{fcaAlerts.length}</p>
           </div>
+          <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2">
+            <p className="text-xs font-medium text-blue-700">Reminder CA</p>
+            <p className="mt-1 text-xl font-semibold text-blue-800">{caReminders.length}</p>
+          </div>
         </div>
       </div>
+
+      {caReminders.length > 0 ? (
+        <div className="mb-6">
+          <h2 className="mb-3 text-base font-semibold text-gray-950">Research Corporate Action Perlu Dicek</h2>
+          <div className="grid gap-3">
+            {caReminders.map((reminder) => (
+              <Link key={reminder.id} href={`/stocks/${reminder.ticker}#corporate-action`} className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 hover:bg-blue-50">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div><div className="flex flex-wrap items-center gap-2"><span className="text-lg font-semibold text-gray-950">{reminder.ticker}</span><span className="rounded bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">{reminder.actionType}</span></div><p className="mt-1 text-sm font-medium text-gray-800">{reminder.title}</p><p className="mt-1 text-xs text-gray-500">Reminder {new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "Asia/Jakarta" }).format(new Date(`${reminder.reminderDate}T00:00:00+07:00`))}</p></div>
+                  <span className="text-xs font-semibold text-blue-700">Buka research</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {fcaAlerts.length > 0 ? (
         <div className="mb-6">
@@ -166,7 +204,7 @@ export function NotificationCenter() {
         </div>
       ) : null}
 
-      {entries.length === 0 && fcaAlerts.length === 0 ? (
+      {entries.length === 0 && fcaAlerts.length === 0 && caReminders.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center">
           <BellRing className="mx-auto size-9 text-gray-400" />
           <h2 className="mt-3 text-base font-semibold text-gray-950">Belum ada notifikasi aktif</h2>

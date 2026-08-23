@@ -3,10 +3,11 @@ import { ArrowUpRight, NotebookPen } from "lucide-react";
 import { BestEntryAlert } from "@/components/stocks/best-entry-alert";
 import { ShareholderOwnershipSection } from "@/components/stocks/shareholder-ownership-section";
 import { StockAccumulationSnapshot } from "@/components/stocks/stock-accumulation-snapshot";
+import { StockCaResearchNotes } from "@/components/stocks/stock-ca-research-notes";
+import { StockChart } from "@/components/stocks/stock-chart";
 import { StockHeader } from "@/components/stocks/stock-header";
 import { StockMetricCard } from "@/components/stocks/stock-metric-card";
 import { StockTabs } from "@/components/stocks/stock-tabs";
-import { StockTimeline } from "@/components/timeline/stock-timeline";
 import { dividendRows, getStockProfile, stockProfiles } from "@/lib/data";
 import { getIdxStockScreenerRow } from "@/lib/idx-stock-screener";
 import { getIdxListedStock, idxListedStocks } from "@/lib/idx-listed-stocks";
@@ -57,21 +58,6 @@ export default async function StockDetailPage({ params }: { params: Promise<{ ti
   const fivePercentRows = getShareholderFivePercentRows(ticker);
   const stockbitUrl = `https://stockbit.com/symbol/${stock.ticker}`;
   const corporateActions = dividendRows.filter((row) => row.subject.includes(`(${stock.ticker})`));
-  const detailTimeline = [
-    ...(quote?.updatedAt
-      ? [{ date: quote.updatedAt, title: "Harga pasar diperbarui", description: `Harga ${stock.ticker} diperbarui dari ${quote.source}.`, source: quote.source }]
-      : []),
-    { date: "17 Agustus 2026", title: "Snapshot IDX Screener", description: "Valuasi, profitabilitas, sektor, dan keanggotaan indeks diperbarui.", source: "IDX Screener" },
-    ...(fivePercentRows.length > 0
-      ? [{ date: "13 Agustus 2026", title: "Kepemilikan 5%+ diperbarui", description: `${fivePercentRows.length} pemegang saham tercatat untuk ${stock.ticker}.`, source: "KSEI" }]
-      : []),
-    ...(onePercentRows.length > 0
-      ? [{ date: "31 Juli 2026", title: "Kepemilikan 1%+ diperbarui", description: `${onePercentRows.length} investor tercatat untuk ${stock.ticker}.`, source: "KSEI" }]
-      : []),
-    ...(listedStock?.listingDate
-      ? [{ date: listedStock.listingDate, title: "Pencatatan saham", description: `${listedStock.name} tercatat di Bursa Efek Indonesia.`, source: "IDX" }]
-      : []),
-  ];
   const listingFacts = [
     ["Kode Saham", stock.ticker],
     ["Nama Perusahaan", listedStock?.name ?? stock.name],
@@ -190,6 +176,14 @@ export default async function StockDetailPage({ params }: { params: Promise<{ ti
       </section>
       </section>
 
+      <section id="charting" className="mb-6 scroll-mt-36">
+        <SectionHeading
+          title="Charting"
+          description={`Pergerakan harga dan volume harian ${stock.ticker} untuk membantu analisis langsung di BandarLab.`}
+        />
+        <StockChart ticker={stock.ticker} />
+      </section>
+
       <section id="accumulation" className="scroll-mt-36">
         <SectionHeading
           title="Accumulation"
@@ -239,18 +233,11 @@ export default async function StockDetailPage({ params }: { params: Promise<{ ti
             </div>
           )}
         </div>
+        <StockCaResearchNotes ticker={stock.ticker} />
       </section>
 
       <section id="ownership" className="scroll-mt-36">
         <ShareholderOwnershipSection onePercentRows={onePercentRows} fivePercentRows={fivePercentRows} />
-      </section>
-
-      <section id="timeline" className="mb-6 scroll-mt-36">
-        <SectionHeading
-          title="Timeline"
-          description={`Urutan pembaruan data yang benar-benar tersedia untuk ${stock.ticker}.`}
-        />
-        <StockTimeline events={detailTimeline} />
       </section>
 
       <section id="broker-summary" className="mb-6 scroll-mt-36">

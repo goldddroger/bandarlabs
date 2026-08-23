@@ -16,6 +16,8 @@ import {
   WalletCards,
 } from "lucide-react";
 import { DashboardAccumulationPreview } from "@/components/accumulation/dashboard-accumulation-preview";
+import { MarketMovers } from "@/components/dashboard/market-movers";
+import { SectorHeatmap } from "@/components/sector-rotation/sector-heatmap";
 import { useSelectedAccumulationRows } from "@/components/accumulation/accumulation-store";
 import {
   bestEntryChangeEventName,
@@ -223,6 +225,12 @@ export function DashboardWorkspace({ marketSummary }: { marketSummary: MarketSum
           </div>
         ))}
       </section>
+
+      <MarketMovers />
+
+      <div className="mb-5">
+        <SectorHeatmap />
+      </div>
 
       <div className="mb-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
         <div className="grid min-w-0 gap-5">

@@ -72,13 +72,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                 const itemKey = getMenuKey(section.label, item.label);
                 const active = activeMenuKey === itemKey;
                 const Icon = item.icon;
+                const external = "external" in item && item.external === true;
 
                 return (
                   <Link
                     key={itemKey}
                     href={item.href}
-                    target={item.external ? "_blank" : undefined}
-                    rel={item.external ? "noreferrer" : undefined}
+                    target={external ? "_blank" : undefined}
+                    rel={external ? "noreferrer" : undefined}
                     onClick={onNavigate}
                     className={cn(
                       "relative flex min-h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-gray-700 transition duration-150 hover:bg-gray-50 hover:text-gray-950",
@@ -88,7 +89,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                     {active ? <span className="absolute left-0 top-2 h-6 w-1 rounded-r bg-red-600" /> : null}
                     <Icon className={cn("size-5 text-gray-500", active && "text-red-600")} />
                     <span className="flex-1">{item.label}</span>
-                    {item.external ? (
+                    {external ? (
                       <ExternalLink className="size-3.5 text-gray-400" aria-hidden="true" />
                     ) : null}
                   </Link>
