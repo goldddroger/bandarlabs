@@ -60,8 +60,10 @@ export function SectorHeatmap() {
       const response = await fetch(`/api/stock-quotes?tickers=${encodeURIComponent(tickers)}`, { signal });
       const payload = await response.json() as { quotes?: QuoteMap; error?: string };
       if (!response.ok) throw new Error(payload.error || "Data sektor gagal dimuat.");
-      setQuotes(payload.quotes ?? {});
-      setLastUpdated(new Intl.DateTimeFormat("id-ID", { timeStyle: "medium", timeZone: "Asia/Jakarta" }).format(new Date()));
+      const nextQuotes = payload.quotes ?? {};
+      const sourceUpdate = Object.values(nextQuotes).find((quote) => quote.updatedAt)?.updatedAt;
+      setQuotes(nextQuotes);
+      setLastUpdated(sourceUpdate ?? new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date()));
       setError(null);
     } catch (fetchError) {
       if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
@@ -97,7 +99,7 @@ export function SectorHeatmap() {
           <div><h2 className="text-base font-semibold text-gray-950">Heatmap Sektor IDX</h2><p className="mt-1 text-xs leading-5 text-gray-500">Rata-rata perubahan harian saham perwakilan setiap sektor.</p></div>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <span className="text-xs text-gray-400">{lastUpdated ? `Update ${lastUpdated}` : "Menunggu data"} · otomatis 30 detik</span>
+          <span className="text-xs text-gray-400">{lastUpdated ? `Data ${lastUpdated}` : "Menunggu data"} · refresh 30 detik</span>
           <button type="button" onClick={() => void loadQuotes(undefined, true)} disabled={refreshing} className="inline-flex size-9 items-center justify-center self-end rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-60" aria-label="Perbarui heatmap" title="Perbarui heatmap"><RefreshCw className={cn("size-4", refreshing && "animate-spin")} /></button>
         </div>
       </div>

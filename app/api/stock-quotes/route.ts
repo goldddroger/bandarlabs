@@ -25,7 +25,8 @@ export async function GET(request: Request) {
     }),
   );
 
-  return Response.json({
-    quotes: Object.fromEntries(quoteEntries.filter((entry): entry is readonly [string, StockQuote] => Boolean(entry[1]))),
-  });
+  return Response.json(
+    { quotes: Object.fromEntries(quoteEntries.filter((entry): entry is readonly [string, StockQuote] => Boolean(entry[1]))) },
+    { headers: { "Cache-Control": "no-store, max-age=0" } },
+  );
 }

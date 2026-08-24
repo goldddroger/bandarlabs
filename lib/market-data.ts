@@ -24,6 +24,11 @@ type YahooChartResponse = {
         previousClose?: number;
         regularMarketTime?: number;
       };
+      indicators?: {
+        quote?: Array<{
+          close?: Array<number | null>;
+        }>;
+      };
     }>;
   };
 };
@@ -100,9 +105,14 @@ async function fetchYahooQuote(request: QuoteRequest): Promise<MarketSummaryCard
   if (!response.ok) return null;
 
   const payload = (await response.json()) as YahooChartResponse;
-  const meta = payload.chart?.result?.[0]?.meta;
+  const result = payload.chart?.result?.[0];
+  const meta = result?.meta;
   const price = meta?.regularMarketPrice;
-  const previousClose = meta?.previousClose ?? meta?.chartPreviousClose;
+  const closes = (result?.indicators?.quote?.[0]?.close ?? [])
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  const previousClose = closes.length >= 2
+    ? closes.at(-2)
+    : meta?.previousClose ?? meta?.chartPreviousClose;
 
   if (typeof price !== "number" || typeof previousClose !== "number" || previousClose === 0) {
     return null;
