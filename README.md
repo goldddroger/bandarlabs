@@ -42,6 +42,7 @@ ADMIN_USERNAME=YOUR_ADMIN_USERNAME
 ADMIN_PASSWORD_HASH=YOUR_PBKDF2_PASSWORD_HASH
 AUTH_SESSION_SECRET=YOUR_RANDOM_SESSION_SECRET
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
+AXENTRAZ_API_KEY=YOUR_AXENTRAZ_API_KEY
 ```
 
 Buat hash password dan secret session admin dengan:
@@ -95,7 +96,7 @@ npm run supabase:seed:generate    # Membuat ulang Supabase seed
 
 1. Import repository ini ke Vercel.
 2. Gunakan framework preset Next.js.
-3. Tambahkan seluruh variabel Supabase dari `.env.example`. `SUPABASE_SERVICE_ROLE_KEY` hanya boleh disimpan sebagai server-side Environment Variable.
+3. Tambahkan seluruh variabel dari `.env.example`. `SUPABASE_SERVICE_ROLE_KEY` dan `AXENTRAZ_API_KEY` hanya boleh disimpan sebagai server-side Environment Variable.
 4. Deploy lalu verifikasi `/dashboard`, `/accumulation`, `/portfolio`, `/stocks/BBCA`, dan `/settings`.
 
 ### Memindahkan Portfolio lokal ke Supabase
@@ -107,7 +108,7 @@ Portfolio memakai sesi admin BandarLab dan tidak membutuhkan Supabase Auth user.
 3. Buka `/portfolio` di Vercel untuk memuat data yang sama dari Supabase.
 4. Gunakan tombol **Unduh SQL** pada halaman Portfolio bila membutuhkan backup SQL manual.
 
-Pastikan `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, dan `SUPABASE_SERVICE_ROLE_KEY` tersedia di localhost dan Vercel. Service role key tidak boleh memakai prefix `NEXT_PUBLIC_`.
+Pastikan `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, dan `AXENTRAZ_API_KEY` tersedia di localhost dan Vercel. Secret server tidak boleh memakai prefix `NEXT_PUBLIC_`.
 
 Jangan commit `.env.local`, password database, atau service-role key.
 

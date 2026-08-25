@@ -124,7 +124,7 @@ export const menuSections = [
     items: [
       { label: "Stock Screener", href: "/stock-screener", icon: RefreshCw },
       { label: "Group Konglo", href: "/group-konglo", icon: Building2 },
-      { label: "Kalkulator Investasi", href: "/calculator-gain", icon: Calculator },
+      { label: "Kalkulator Saham", href: "/calculator-gain", icon: Calculator },
     ],
   },
   {

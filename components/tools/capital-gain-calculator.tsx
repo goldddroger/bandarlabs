@@ -14,11 +14,11 @@ const calculatorModes: Array<{ value: CalculatorMode; label: string; icon: typeo
   { value: "averageDown", label: "Average Down", icon: TrendingDown },
 ];
 
-type PurchaseRow = { id: number; price: string; shares: string };
+type PurchaseRow = { id: number; price: string; lots: string };
 
 const defaultPurchases: PurchaseRow[] = [
-  { id: 1, price: "", shares: "" },
-  { id: 2, price: "", shares: "" },
+  { id: 1, price: "", lots: "" },
+  { id: 2, price: "", lots: "" },
 ];
 
 const defaultValues = {
@@ -56,9 +56,9 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-function formatNumber(value: number) {
+function formatLots(value: number) {
   return new Intl.NumberFormat("id-ID", {
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(value);
 }
 
@@ -145,7 +145,7 @@ export function CapitalGainCalculator() {
   }, [mode, values]);
 
   const rightIssueResult = useMemo(() => {
-    const oldShares = parseNumber(values.oldShares);
+    const oldShares = parseNumber(values.oldShares) * 100;
     const marketPrice = parseNumber(values.marketPrice);
     const ratioOld = parseNumber(values.ratioOld);
     const ratioNew = parseNumber(values.ratioNew);
@@ -160,11 +160,11 @@ export function CapitalGainCalculator() {
   }, [values.exercisePrice, values.marketPrice, values.oldShares, values.ratioNew, values.ratioOld]);
 
   const privatePlacementResult = useMemo(() => {
-    const outstandingShares = parseNumber(values.outstandingShares);
-    const newShares = parseNumber(values.newPlacementShares);
+    const outstandingShares = parseNumber(values.outstandingShares) * 100;
+    const newShares = parseNumber(values.newPlacementShares) * 100;
     const marketPrice = parseNumber(values.placementMarketPrice);
     const placementPrice = parseNumber(values.placementPrice);
-    const ownedShares = parseNumber(values.ownedShares);
+    const ownedShares = parseNumber(values.ownedShares) * 100;
     const totalSharesAfter = outstandingShares + newShares;
     const capitalRaised = newShares * placementPrice;
     const dilutionPercent = totalSharesAfter > 0 ? (newShares / totalSharesAfter) * 100 : 0;
@@ -190,7 +190,7 @@ export function CapitalGainCalculator() {
   }, [values.newPlacementShares, values.outstandingShares, values.ownedShares, values.placementMarketPrice, values.placementPrice]);
 
   const averageDownResult = useMemo(() => {
-    const rows = purchases.map((purchase) => ({ price: parseNumber(purchase.price), shares: parseNumber(purchase.shares) }));
+    const rows = purchases.map((purchase) => ({ price: parseNumber(purchase.price), shares: parseNumber(purchase.lots) * 100 }));
     const totalShares = rows.reduce((total, row) => total + row.shares, 0);
     const totalCapital = rows.reduce((total, row) => total + (row.price * row.shares), 0);
     const averagePrice = totalShares > 0 ? totalCapital / totalShares : 0;
@@ -212,12 +212,12 @@ export function CapitalGainCalculator() {
     setMode("rightIssue");
   }
 
-  function updatePurchase(id: number, key: "price" | "shares", value: string) {
+  function updatePurchase(id: number, key: "price" | "lots", value: string) {
     setPurchases((current) => current.map((purchase) => purchase.id === id ? { ...purchase, [key]: value } : purchase));
   }
 
   function addPurchase() {
-    setPurchases((current) => [...current, { id: nextPurchaseId, price: "", shares: "" }]);
+    setPurchases((current) => [...current, { id: nextPurchaseId, price: "", lots: "" }]);
     setNextPurchaseId((current) => current + 1);
   }
 
@@ -231,7 +231,7 @@ export function CapitalGainCalculator() {
     <section className="mx-auto w-full max-w-7xl">
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-normal text-gray-950">Kalkulator Investasi</h1>
+          <h1 className="text-2xl font-semibold tracking-normal text-gray-950">Kalkulator Saham</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
             Hitung estimasi right issue, private placement, average down, capital gain, fee transaksi, serta dividen saham Indonesia.
           </p>
@@ -272,7 +272,7 @@ export function CapitalGainCalculator() {
           {mode === "rightIssue" ? (
             <div className="grid gap-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Jumlah saham lama" suffix="lembar" value={values.oldShares} placeholder="Contoh 1.000" onChange={(value) => updateValue("oldShares", value)} />
+                <Field label="Jumlah saham lama" suffix="lot" value={values.oldShares} placeholder="Contoh 10" onChange={(value) => updateValue("oldShares", value)} />
                 <Field label="Harga pasar saat ini" prefix="Rp" value={values.marketPrice} placeholder="Contoh 1.000" onChange={(value) => updateValue("marketPrice", value)} />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
@@ -285,14 +285,14 @@ export function CapitalGainCalculator() {
           ) : mode === "privatePlacement" ? (
             <div className="grid gap-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Saham beredar sebelum placement" suffix="lembar" value={values.outstandingShares} placeholder="Contoh 1.000.000.000" onChange={(value) => updateValue("outstandingShares", value)} />
-                <Field label="Saham baru diterbitkan" suffix="lembar" value={values.newPlacementShares} placeholder="Contoh 100.000.000" onChange={(value) => updateValue("newPlacementShares", value)} />
+                <Field label="Saham beredar sebelum placement" suffix="lot" value={values.outstandingShares} placeholder="Contoh 10.000.000" onChange={(value) => updateValue("outstandingShares", value)} />
+                <Field label="Saham baru diterbitkan" suffix="lot" value={values.newPlacementShares} placeholder="Contoh 1.000.000" onChange={(value) => updateValue("newPlacementShares", value)} />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label="Harga pasar sebelum placement" prefix="Rp" value={values.placementMarketPrice} placeholder="Contoh 1.000" onChange={(value) => updateValue("placementMarketPrice", value)} />
                 <Field label="Harga pelaksanaan placement" prefix="Rp" value={values.placementPrice} placeholder="Contoh 850" onChange={(value) => updateValue("placementPrice", value)} />
               </div>
-              <Field label="Saham yang kamu miliki (opsional)" suffix="lembar" value={values.ownedShares} placeholder="Contoh 10.000" onChange={(value) => updateValue("ownedShares", value)} />
+              <Field label="Saham yang kamu miliki (opsional)" suffix="lot" value={values.ownedShares} placeholder="Contoh 100" onChange={(value) => updateValue("ownedShares", value)} />
               <p className="text-xs leading-5 text-gray-500">Private placement menambah saham beredar tanpa memberikan hak pembelian kepada seluruh pemegang saham lama.</p>
             </div>
           ) : mode === "averageDown" ? (
@@ -301,7 +301,7 @@ export function CapitalGainCalculator() {
                 {purchases.map((purchase, index) => (
                   <div key={purchase.id} className="grid gap-3 rounded-md border border-gray-100 bg-gray-50 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px] sm:items-end">
                     <Field label={`Harga beli #${index + 1}`} prefix="Rp" value={purchase.price} placeholder="Contoh 1.000" onChange={(value) => updatePurchase(purchase.id, "price", value)} />
-                    <Field label="Jumlah saham" suffix="lembar" value={purchase.shares} placeholder="Contoh 1.000" onChange={(value) => updatePurchase(purchase.id, "shares", value)} />
+                    <Field label="Jumlah pembelian" suffix="lot" value={purchase.lots} placeholder="Contoh 10" onChange={(value) => updatePurchase(purchase.id, "lots", value)} />
                     <button type="button" onClick={() => removePurchase(purchase.id)} disabled={purchases.length === 1} className="inline-flex size-10 items-center justify-center justify-self-end rounded-md border border-gray-200 bg-white text-gray-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40" aria-label={`Hapus pembelian ${index + 1}`}><Trash2 className="size-4" /></button>
                   </div>
                 ))}
@@ -312,14 +312,14 @@ export function CapitalGainCalculator() {
           ) : <div className="grid gap-4">
             <div className="grid gap-4 md:grid-cols-2">
               <Field
-                label="Harga beli / lembar"
+                label="Harga beli per saham"
                 prefix="Rp"
                 value={values.buyPrice}
                 placeholder="Contoh 1.250"
                 onChange={(value) => updateValue("buyPrice", value)}
               />
               <Field
-                label="Harga jual / lembar"
+                label="Harga jual per saham"
                 prefix="Rp"
                 value={values.sellPrice}
                 placeholder="Contoh 1.400"
@@ -334,7 +334,7 @@ export function CapitalGainCalculator() {
             {mode === "dividend" ? (
               <div className="grid gap-4 md:grid-cols-2">
                 <Field
-                  label="Dividen / lembar"
+                  label="Dividen per saham"
                   prefix="Rp"
                   value={values.dividendPerShare}
                   placeholder="Contoh 25"
@@ -357,8 +357,8 @@ export function CapitalGainCalculator() {
                 : mode === "privatePlacement"
                   ? "Harga teoretis = [(Saham Lama x Harga Pasar) + (Saham Baru x Harga Placement)] / Total Saham Baru. Dilusi = Saham Baru / Total Saham Setelah Placement."
                 : mode === "averageDown"
-                  ? "Harga rata-rata = Total nilai seluruh pembelian / Total jumlah saham. Estimasi P/L target = (Target Jual x Total Saham) - Total Modal."
-                : <>P/L = [(Harga Jual x Lot x 100) - Fee Jual] - [(Harga Beli x Lot x 100) + Fee Beli]{mode === "dividend" ? " + [(Dividen per Lembar x Lot x 100) - Pajak Dividen]." : "."}</>}
+                  ? "Setiap input lot dikonversi menjadi 100 saham. Harga rata-rata = Total nilai seluruh pembelian / Total jumlah saham. Estimasi P/L target = (Target Jual x Total Saham) - Total Modal."
+                : <>P/L = [(Harga Jual x Lot x 100) - Fee Jual] - [(Harga Beli x Lot x 100) + Fee Beli]{mode === "dividend" ? " + [(Dividen per Saham x Lot x 100) - Pajak Dividen]." : "."}</>}
             </p>
           </div>
         </div>
@@ -376,8 +376,8 @@ export function CapitalGainCalculator() {
 
           {mode === "rightIssue" ? (
             <div className="grid gap-3 sm:grid-cols-2">
-              <Metric label="Saham baru diperoleh" value={`${formatNumber(rightIssueResult.newShares)} lembar`} />
-              <Metric label="Total saham setelah tebus" value={`${formatNumber(rightIssueResult.totalShares)} lembar`} />
+              <Metric label="Saham baru diperoleh" value={`${formatLots(rightIssueResult.newShares / 100)} lot`} />
+              <Metric label="Total saham setelah tebus" value={`${formatLots(rightIssueResult.totalShares / 100)} lot`} />
               <Metric label="Tambahan modal" value={formatCurrency(rightIssueResult.additionalCapital)} />
               <Metric label="Nilai teoretis portfolio" value={formatCurrency(rightIssueResult.theoreticalPortfolioValue)} />
               <Metric label="Nilai HMETD / hak" value={formatCurrency(rightIssueResult.rightValue)} tone="green" />
@@ -385,7 +385,7 @@ export function CapitalGainCalculator() {
             </div>
           ) : mode === "privatePlacement" ? (
             <div className="grid gap-3 sm:grid-cols-2">
-              <Metric label="Total saham setelah placement" value={`${formatNumber(privatePlacementResult.totalSharesAfter)} lembar`} />
+              <Metric label="Total saham setelah placement" value={`${formatLots(privatePlacementResult.totalSharesAfter / 100)} lot`} />
               <Metric label="Dana yang dihimpun" value={formatCurrency(privatePlacementResult.capitalRaised)} />
               <Metric label="Dilusi pemegang saham lama" value={formatPercent(-privatePlacementResult.dilutionPercent)} tone="red" />
               <Metric label="Harga teoretis setelah placement" value={formatCurrency(privatePlacementResult.theoreticalPrice)} tone="green" />
@@ -404,14 +404,14 @@ export function CapitalGainCalculator() {
             </div>
           ) : mode === "averageDown" ? (
             <div className="grid gap-3 sm:grid-cols-2">
-              <Metric label="Total lembar" value={`${formatNumber(averageDownResult.totalShares)} lembar`} />
+              <Metric label="Total lot" value={`${formatLots(averageDownResult.totalShares / 100)} lot`} />
               <Metric label="Total modal" value={formatCurrency(averageDownResult.totalCapital)} />
               <Metric label="Harga rata-rata baru" value={formatCurrency(averageDownResult.averagePrice)} tone="green" />
               {averageDownResult.targetSellPrice > 0 ? <Metric label="Nilai pada target" value={formatCurrency(averageDownResult.targetValue)} /> : null}
               {averageDownResult.targetSellPrice > 0 ? <Metric label="Estimasi P/L target" value={`${formatCurrency(averageDownResult.targetProfitLoss)} · ${formatPercent(averageDownResult.targetProfitLossPercent)}`} tone={averageDownResult.targetProfitLoss >= 0 ? "green" : "red"} /> : null}
             </div>
           ) : <div className="grid gap-3 sm:grid-cols-2">
-            <Metric label="Jumlah lembar" value={`${formatNumber(result.shares)} lembar`} />
+            <Metric label="Jumlah lot" value={`${formatLots(parseNumber(values.lots))} lot`} />
             <Metric label="Nilai beli bruto" value={formatCurrency(result.grossBuy)} />
             <Metric label="Fee beli" value={formatCurrency(result.buyFee)} />
             <Metric label="Total modal beli" value={formatCurrency(result.totalBuy)} />

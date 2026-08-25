@@ -5,7 +5,7 @@ export default function BrokerSummaryPage() {
   return (
     <PlaceholderPage
       title="Broker Summary"
-      description="Buka halaman emiten di Stockbit untuk melihat broker summary dan informasi transaksi terkini."
+      description="Analisis aktivitas net buy dan net sell broker, atau lanjutkan pemeriksaan emiten melalui Stockbit."
     >
       <BrokerSummaryLookup />
     </PlaceholderPage>
