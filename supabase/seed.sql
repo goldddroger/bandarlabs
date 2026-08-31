@@ -11588,14 +11588,6 @@ insert into public.broker_activities (ticker, broker_code, net_buy, average_pric
   ('BRPT', 'AK', 4200000000, 159, 26, null, 65, '3M', '2026-08-12')
 on conflict (ticker, broker_code, period, activity_date) do update set net_buy = excluded.net_buy, average_price = excluded.average_price, buy_days = excluded.buy_days, sell_days = excluded.sell_days, consistency = excluded.consistency;
 
-insert into public.corporate_action_events (id, ticker, action_type, event_date, state, topic, announcement_price, document_label) values
-  ('tosk-rupslb-2026', 'TOSK', 'RUPSLB', '2026-08-22', 'Mendatang', 'Perubahan susunan pengurus dan persetujuan rencana pengembangan usaha.', 168, 'Pemanggilan RUPSLB'),
-  ('bren-rupst-2026', 'BREN', 'RUPST', '2026-08-27', 'Mendatang', 'Persetujuan laporan tahunan, penggunaan laba, dan arahan ekspansi.', 8050, 'Agenda RUPST'),
-  ('lapd-pubex-2026', 'LAPD', 'Public Expose', '2026-08-19', 'Mendatang', 'Paparan kinerja dan perkembangan kegiatan operasional perseroan.', 98, 'Materi Public Expose'),
-  ('ammn-rupst-2026', 'AMMN', 'RUPST', '2026-08-15', 'Selesai', 'Persetujuan laporan tahunan dan pembaruan rencana belanja modal.', 9150, 'Ringkasan Risalah RUPST'),
-  ('adro-rupslb-2026', 'ADRO', 'RUPSLB', '2026-08-08', 'Selesai', 'Persetujuan transaksi material dan perubahan penggunaan dana.', 2380, 'Ringkasan Risalah RUPSLB')
-on conflict (id) do update set ticker = excluded.ticker, action_type = excluded.action_type, event_date = excluded.event_date, state = excluded.state, topic = excluded.topic, announcement_price = excluded.announcement_price, document_label = excluded.document_label;
-
 insert into public.corporate_action_events (id, ticker, action_type, event_date, state, topic, announcement_price, document_label, document_number) values
   ('dividend-ksei-20885-jku-0826', 'INPP', 'Dividen Tunai', '2026-08-12', 'Selesai', 'Jadwal Pelaksanaan Pembagian Dividen Interim atas Efek INDONESIAN PARADISE PROPERTY Tbk (INPP).', null, 'Dokumen KSEI', 'KSEI-20885/JKU/0826'),
   ('dividend-ksei-20685-jku-0826', 'HUMI', 'Dividen Tunai', '2026-08-10', 'Selesai', 'Informasi Tambahan Dividen Tunai HUMPUSS MARITIM INTERNASIONAL Tbk (HUMI).', null, 'Dokumen KSEI', 'KSEI-20685/JKU/0826'),

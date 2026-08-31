@@ -43,6 +43,7 @@ export function JournalWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<"all" | JournalCategory>("all");
+  const [readingMode, setReadingMode] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [payload, setPayload] = useState<JournalPayload>(emptyPayload);
@@ -64,11 +65,18 @@ export function JournalWorkspace() {
   const sources = new Set(entries.map((entry) => entry.source_name).filter(Boolean)).size;
 
   useEffect(() => {
-    if (!editorOpen) return;
+    if (!editorOpen && !readingMode) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = previous; };
-  }, [editorOpen]);
+    function closeReadingMode(event: KeyboardEvent) {
+      if (event.key === "Escape" && readingMode) setReadingMode(false);
+    }
+    document.addEventListener("keydown", closeReadingMode);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener("keydown", closeReadingMode);
+    };
+  }, [editorOpen, readingMode]);
 
   async function api(path: string, options?: RequestInit) {
     return fetch(path, options);
@@ -239,7 +247,7 @@ export function JournalWorkspace() {
             <article>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className={cn("rounded px-2 py-1 text-xs font-semibold", categoryClass(selected.category))}>{selected.category}</span>{selected.pinned ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-700"><Pin className="size-3.5" />Disematkan</span> : null}</div><h2 className="mt-3 text-xl font-semibold leading-7 text-gray-950">{selected.title}</h2><div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500"><span className="inline-flex items-center gap-1"><CalendarDays className="size-3.5" />{formatDate(selected.journal_date)}</span>{selected.source_name ? <span>Sumber: {selected.source_name}</span> : null}</div></div>
-                <div className="flex shrink-0 gap-1"><button type="button" onClick={() => openEditor(selected)} title="Edit jurnal" className="flex size-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100"><Edit3 className="size-4" /></button><button type="button" onClick={() => deleteEntry(selected)} title="Hapus jurnal" className="flex size-9 items-center justify-center rounded-md text-gray-500 hover:bg-red-50 hover:text-red-700"><Trash2 className="size-4" /></button></div>
+                <div className="flex shrink-0 items-center gap-1"><Button type="button" variant="outline" className="h-9 px-3 text-xs" onClick={() => setReadingMode(true)}><BookOpenText className="size-4" />Mode baca</Button><button type="button" onClick={() => openEditor(selected)} title="Edit jurnal" className="flex size-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100"><Edit3 className="size-4" /></button><button type="button" onClick={() => deleteEntry(selected)} title="Hapus jurnal" className="flex size-9 items-center justify-center rounded-md text-gray-500 hover:bg-red-50 hover:text-red-700"><Trash2 className="size-4" /></button></div>
               </div>
               {selected.ticker_symbols.length > 0 || selected.tags.length > 0 ? <div className="mt-5 flex flex-wrap gap-2">{selected.ticker_symbols.map((ticker) => <Link key={ticker} href={`/stocks/${ticker}`} className="rounded bg-gray-950 px-2 py-1 text-xs font-semibold text-white">{ticker}</Link>)}{selected.tags.map((tag) => <span key={tag} className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">#{tag}</span>)}</div> : null}
               <div className="mt-6 whitespace-pre-wrap text-sm leading-7 text-gray-700">{selected.content || <span className="italic text-gray-400">Belum ada isi catatan.</span>}</div>
@@ -270,7 +278,39 @@ export function JournalWorkspace() {
           </form>
         </div>
       ) : null}
+      {readingMode && selected ? <ReadingMode entry={selected} onClose={() => setReadingMode(false)} /> : null}
       {confirmationDialog}
     </section>
+  );
+}
+
+function ReadingMode({ entry, onClose }: { entry: JournalEntry; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-white/80 backdrop-blur-xl" role="dialog" aria-modal="true" aria-labelledby="reading-mode-title">
+      <div className="sticky top-0 z-10 border-b border-gray-200/80 bg-white/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
+          <span className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700"><BookOpenText className="size-4 text-red-600" />Mode baca</span>
+          <button type="button" onClick={onClose} autoFocus className="inline-flex size-10 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 shadow-sm hover:bg-gray-50 hover:text-gray-950" aria-label="Tutup mode baca" title="Tutup mode baca (Esc)"><X className="size-5" /></button>
+        </div>
+      </div>
+
+      <article className="mx-auto w-full max-w-3xl px-5 pb-20 pt-10 sm:px-8 sm:pb-24 sm:pt-14">
+        <header className="text-center">
+          <div className="flex flex-wrap items-center justify-center gap-2"><span className={cn("rounded px-2 py-1 text-xs font-semibold", categoryClass(entry.category))}>{entry.category}</span>{entry.pinned ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-700"><Pin className="size-3.5" />Disematkan</span> : null}</div>
+          <h2 id="reading-mode-title" className="mx-auto mt-5 max-w-2xl text-2xl font-semibold leading-9 text-gray-950 sm:text-3xl sm:leading-10">{entry.title}</h2>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-gray-500"><span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5" />{formatDate(entry.journal_date)}</span>{entry.source_name ? <span>Sumber: {entry.source_name}</span> : null}</div>
+          {entry.ticker_symbols.length > 0 || entry.tags.length > 0 ? <div className="mt-5 flex flex-wrap justify-center gap-2">{entry.ticker_symbols.map((ticker) => <Link key={ticker} href={`/stocks/${ticker}`} className="rounded bg-gray-950 px-2 py-1 text-xs font-semibold text-white">{ticker}</Link>)}{entry.tags.map((tag) => <span key={tag} className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">#{tag}</span>)}</div> : null}
+        </header>
+
+        <div className="mx-auto mt-10 max-w-[68ch] whitespace-pre-wrap text-base leading-8 text-gray-800 sm:text-lg sm:leading-9">{entry.content || <span className="italic text-gray-400">Belum ada isi catatan.</span>}</div>
+
+        {entry.journal_attachments.length > 0 ? (
+          <div className="mt-12 border-t border-gray-200 pt-8">
+            <h3 className="text-sm font-semibold text-gray-950">Lampiran</h3>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">{entry.journal_attachments.map((attachment) => <figure key={attachment.id} className="overflow-hidden rounded-md border border-gray-200 bg-white"><a href={attachment.signed_url ?? undefined} target="_blank" rel="noreferrer" className="block aspect-video">{attachment.signed_url ? <span role="img" aria-label={attachment.file_name} style={{ backgroundImage: `url(${attachment.signed_url})` }} className="block size-full bg-cover bg-center" /> : <span className="flex size-full items-center justify-center text-gray-400"><FileImage className="size-7" /></span>}</a><figcaption className="truncate border-t border-gray-200 px-3 py-2 text-xs text-gray-600">{attachment.file_name}</figcaption></figure>)}</div>
+          </div>
+        ) : null}
+      </article>
+    </div>
   );
 }

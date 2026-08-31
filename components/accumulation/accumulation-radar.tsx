@@ -1,21 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { CalendarDays, History, Pencil, Plus, Search, Trash2, TrendingDown, TrendingUp, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { CalendarDays, Cloud, History, Loader2, Pencil, Plus, Search, Trash2, TrendingDown, TrendingUp, X } from "lucide-react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   accumulationDataUpdatedAt,
+  accumulationStorageKey,
   addSelectedStocks,
   formatChangePercent,
   formatStockPrice,
   getPriceChangePercent,
+  getStoredSelectedAccumulationEntries,
   hydrateFallbackEntryPrices,
   removeSelectedStock,
   resetSelectedStocks,
   RadarSignalType,
+  replaceSelectedAccumulationEntries,
+  type SelectedAccumulationEntry,
   signalLabel,
   stockUniverse,
   trendLabel,
@@ -67,84 +72,13 @@ type HistoryPriceRow = {
   close: number;
   volume: number | null;
 };
-
-const mentorRecommendations: RecommendationRow[] = [
-  {
-    id: "mentor-bbca",
-    stock: "BBCA",
-    name: "PT Bank Central Asia Tbk",
-    source: "Pak Frans",
-    status: "hold",
-    trend: "Sideways",
-    monitoredAt: "12 Agustus 2026",
-    entryPrice: 0,
-    entryPriceSource: "fallback",
-    note: "Menunggu area demand dan konfirmasi volume.",
-  },
-  {
-    id: "mentor-adro",
-    stock: "ADRO",
-    name: "PT Alamtri Resources Indonesia Tbk",
-    source: "Pak Frans",
-    status: "watchlist",
-    trend: "Uptrend",
-    monitoredAt: "09 Agustus 2026",
-    entryPrice: 0,
-    entryPriceSource: "fallback",
-    note: "Pantau reaksi harga di area konsolidasi.",
-  },
-  {
-    id: "mentor-brpt",
-    stock: "BRPT",
-    name: "PT Barito Pacific Tbk",
-    source: "Pak Frans",
-    status: "watchlist",
-    trend: "Sideways",
-    monitoredAt: "06 Agustus 2026",
-    entryPrice: 0,
-    entryPriceSource: "fallback",
-    note: "Masuk daftar pantau karena mulai ada rotasi sektor.",
-  },
-];
-
-const bandarTrailRecommendations: RecommendationRow[] = [
-  {
-    id: "bandar-tosk",
-    stock: "TOSK",
-    name: "PT Topindo Solusi Komunika Tbk",
-    source: "Jejak Bandar / Pak Dhani",
-    status: "accumulation",
-    trend: "Uptrend",
-    monitoredAt: "14 Agustus 2026",
-    entryPrice: 0,
-    entryPriceSource: "fallback",
-    note: "Akumulasi terdeteksi dari konsistensi broker dominan.",
-  },
-  {
-    id: "bandar-lapd",
-    stock: "LAPD",
-    name: "PT Leyand International Tbk",
-    source: "Jejak Bandar / Pak Dhani",
-    status: "hold",
-    trend: "Downtrend",
-    monitoredAt: "13 Agustus 2026",
-    entryPrice: 0,
-    entryPriceSource: "fallback",
-    note: "Hold pemantauan karena harga masih volatile.",
-  },
-  {
-    id: "bandar-ammn",
-    stock: "AMMN",
-    name: "PT Amman Mineral Internasional Tbk",
-    source: "Jejak Bandar / Pak Dhani",
-    status: "accumulation",
-    trend: "Sideways",
-    monitoredAt: "10 Agustus 2026",
-    entryPrice: 0,
-    entryPriceSource: "fallback",
-    note: "Pantau lanjutan setelah volume bertahan di atas rata-rata.",
-  },
-];
+type CloudWorkspace = {
+  initialized?: boolean;
+  entries?: SelectedAccumulationEntry[];
+  recommendations?: RecommendationRow[];
+  error?: string;
+};
+type CloudSyncState = "loading" | "synced" | "syncing" | "error";
 
 const externalRecommendationStorageKey = "bandarlab.accumulation.externalRecommendations";
 const externalRecommendationEventName = "bandarlab-external-recommendations-changed";
@@ -157,11 +91,7 @@ function getFallbackStockPrice(ticker: string) {
   return getStockFromUniverse(ticker)?.currentPrice ?? 0;
 }
 
-const defaultExternalRecommendations = [...mentorRecommendations, ...bandarTrailRecommendations].map((row) => ({
-  ...row,
-  entryPrice: getFallbackStockPrice(row.stock),
-}));
-const defaultExternalRecommendationSnapshot = JSON.stringify(defaultExternalRecommendations);
+const emptyExternalRecommendationSnapshot = "[]";
 
 async function fetchStockQuotes(tickers: string[], signal?: AbortSignal) {
   if (tickers.length === 0) return {};
@@ -214,7 +144,7 @@ function createBlankRecommendationForm(): RecommendationForm {
 function parseExternalRecommendations(snapshot: string): RecommendationRow[] {
   try {
     const parsedRows = JSON.parse(snapshot) as unknown;
-    if (!Array.isArray(parsedRows)) return defaultExternalRecommendations;
+    if (!Array.isArray(parsedRows)) return [];
 
     const rows = parsedRows
       .map((row) => {
@@ -261,7 +191,7 @@ function parseExternalRecommendations(snapshot: string): RecommendationRow[] {
 
     return rows;
   } catch {
-    return defaultExternalRecommendations;
+    return [];
   }
 }
 
@@ -276,16 +206,35 @@ function subscribeToExternalRecommendations(onStoreChange: () => void) {
 }
 
 function getExternalRecommendationSnapshot() {
-  return window.localStorage.getItem(externalRecommendationStorageKey) ?? defaultExternalRecommendationSnapshot;
+  return window.localStorage.getItem(externalRecommendationStorageKey) ?? emptyExternalRecommendationSnapshot;
 }
 
 function getServerExternalRecommendationSnapshot() {
-  return defaultExternalRecommendationSnapshot;
+  return emptyExternalRecommendationSnapshot;
 }
 
 function saveExternalRecommendations(rows: RecommendationRow[]) {
   window.localStorage.setItem(externalRecommendationStorageKey, JSON.stringify(rows));
   window.dispatchEvent(new Event(externalRecommendationEventName));
+}
+
+function getStoredExternalRecommendations() {
+  return parseExternalRecommendations(window.localStorage.getItem(externalRecommendationStorageKey) ?? emptyExternalRecommendationSnapshot);
+}
+
+function accumulationPayload(entries: SelectedAccumulationEntry[], recommendations: RecommendationRow[]) {
+  return { entries, recommendations };
+}
+
+async function saveAccumulationWorkspace(entries: SelectedAccumulationEntry[], recommendations: RecommendationRow[]) {
+  const response = await fetch("/api/accumulation", {
+    method: "PUT",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(accumulationPayload(entries, recommendations)),
+  });
+  const payload = await response.json() as { error?: string };
+  if (!response.ok) throw new Error(payload.error || "Accumulation gagal disimpan ke database.");
 }
 
 const indonesianMonths: Record<string, string> = {
@@ -739,6 +688,11 @@ export function AccumulationRadar() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [liveQuotes, setLiveQuotes] = useState<Record<string, LiveStockQuote>>({});
   const [quoteLoading, setQuoteLoading] = useState(false);
+  const [cloudReady, setCloudReady] = useState(false);
+  const [cloudState, setCloudState] = useState<CloudSyncState>("loading");
+  const [cloudError, setCloudError] = useState<string | null>(null);
+  const lastSyncedPayloadRef = useRef("");
+  const syncQueueRef = useRef<Promise<void>>(Promise.resolve());
   const selectedStocksKey = selectedStocks.join(",");
   const externalStocksKey = externalRecommendations.map((row) => row.stock).join(",");
 
@@ -776,6 +730,83 @@ export function AccumulationRadar() {
     statusFilter === "all"
       ? selectedRowsWithLivePrices
       : selectedRowsWithLivePrices.filter((row) => row.signalType === statusFilter);
+
+  const entriesForSync = useMemo<SelectedAccumulationEntry[]>(
+    () => selectedRows.map((row) => ({
+      ticker: row.ticker,
+      signalType: row.signalType,
+      addedAt: row.addedAt,
+      entryPrice: row.entryPrice,
+      entryPriceSource: row.entryPriceSource,
+    })),
+    [selectedRows],
+  );
+  const serializedWorkspace = useMemo(
+    () => JSON.stringify(accumulationPayload(entriesForSync, externalRecommendations)),
+    [entriesForSync, externalRecommendations],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function initializeCloudWorkspace() {
+      try {
+        const localEntries = window.localStorage.getItem(accumulationStorageKey) === null
+          ? []
+          : getStoredSelectedAccumulationEntries();
+        const localRecommendations = window.localStorage.getItem(externalRecommendationStorageKey) === null
+          ? []
+          : getStoredExternalRecommendations();
+        const response = await fetch("/api/accumulation", { cache: "no-store", signal: controller.signal });
+        const payload = await response.json() as CloudWorkspace;
+        if (!response.ok) throw new Error(payload.error || "Accumulation gagal dimuat dari database.");
+
+        const nextEntries = payload.initialized ? payload.entries ?? [] : localEntries;
+        const nextRecommendations = payload.initialized ? payload.recommendations ?? [] : localRecommendations;
+        if (!payload.initialized) await saveAccumulationWorkspace(nextEntries, nextRecommendations);
+        if (controller.signal.aborted) return;
+
+        replaceSelectedAccumulationEntries(nextEntries);
+        saveExternalRecommendations(nextRecommendations);
+        lastSyncedPayloadRef.current = JSON.stringify(accumulationPayload(nextEntries, nextRecommendations));
+        setCloudState("synced");
+      } catch (loadError) {
+        if (loadError instanceof DOMException && loadError.name === "AbortError") return;
+        const message = loadError instanceof Error ? loadError.message : "Accumulation gagal terhubung ke database.";
+        setCloudError(message);
+        setCloudState("error");
+        toast.error(message);
+      } finally {
+        if (!controller.signal.aborted) setCloudReady(true);
+      }
+    }
+
+    void initializeCloudWorkspace();
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!cloudReady || serializedWorkspace === lastSyncedPayloadRef.current) return;
+    const timeout = window.setTimeout(() => {
+      const payload = JSON.parse(serializedWorkspace) as { entries: SelectedAccumulationEntry[]; recommendations: RecommendationRow[] };
+      setCloudState("syncing");
+      setCloudError(null);
+      syncQueueRef.current = syncQueueRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          await saveAccumulationWorkspace(payload.entries, payload.recommendations);
+          lastSyncedPayloadRef.current = serializedWorkspace;
+          setCloudState("synced");
+        })
+        .catch((syncError: unknown) => {
+          const message = syncError instanceof Error ? syncError.message : "Perubahan gagal disimpan ke database.";
+          setCloudError(message);
+          setCloudState("error");
+          toast.error(message);
+        });
+    }, 450);
+    return () => window.clearTimeout(timeout);
+  }, [cloudReady, serializedWorkspace]);
 
   useEffect(() => {
     if (!modalOpen) return;
@@ -893,7 +924,7 @@ export function AccumulationRadar() {
   async function removeStock(ticker: string) {
     const confirmed = await confirm({
       title: "Hapus saham dari radar?",
-      description: "Harga masuk, status, dan riwayat pemantauan lokal untuk saham ini akan dihapus.",
+      description: "Harga masuk, status, dan riwayat pemantauan saham ini akan dihapus dari database.",
       subject: ticker,
       confirmLabel: "Hapus dari Radar",
     });
@@ -1007,8 +1038,13 @@ export function AccumulationRadar() {
     setEditingRecommendationId(null);
   }
 
+  if (!cloudReady) {
+    return <div className="flex min-h-[45vh] items-center justify-center text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-red-600" />Menyinkronkan watchlist dari Supabase...</div>;
+  }
+
   return (
     <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
+      {cloudError ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><strong>Sinkronisasi database bermasalah.</strong> {cloudError}</div> : null}
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
@@ -1017,7 +1053,9 @@ export function AccumulationRadar() {
               Kelola saham yang kamu pilih sendiri, lihat harga saat masuk watchlist, lalu bandingkan dengan harga market saat ini. Status membantu membedakan saham siap pantau, accumulation, dan hold.
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 text-center sm:min-w-80">
+          <div className="space-y-2 sm:min-w-80">
+            <div className={cn("flex items-center justify-end gap-1.5 text-xs font-medium", cloudState === "error" ? "text-red-700" : cloudState === "syncing" ? "text-amber-700" : "text-emerald-700")}><Cloud className="size-3.5" />{cloudState === "syncing" ? "Menyimpan ke Supabase..." : cloudState === "error" ? "Belum tersimpan" : "Tersimpan di Supabase"}</div>
+            <div className="grid grid-cols-3 gap-2 text-center">
             <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
               <p className="text-lg font-semibold text-gray-950">{selectedRows.length}</p>
               <p className="text-xs text-gray-500">Dipantau</p>
@@ -1033,6 +1071,7 @@ export function AccumulationRadar() {
                 {selectedRows.filter((row) => row.signalType === "hold").length}
               </p>
               <p className="text-xs text-blue-700">Hold</p>
+            </div>
             </div>
           </div>
         </div>

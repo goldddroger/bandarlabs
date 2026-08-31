@@ -31,3 +31,9 @@ export type CorporateActionNote = {
 };
 
 export type CorporateActionNotePayload = Omit<CorporateActionNote, "id" | "createdAt" | "updatedAt">;
+
+export type CorporateActionQuoteMap = Record<string, {
+  price: number;
+  source?: string;
+  updatedAt?: string;
+}>;

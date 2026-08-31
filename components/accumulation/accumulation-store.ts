@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { accumulationRows, stockProfiles } from "@/lib/data";
 import { indonesiaStocks } from "@/lib/indonesia-stocks";
 
@@ -30,7 +30,7 @@ export type SelectedAccumulationEntry = {
 export type SelectedAccumulationRow = AccumulationRow & SelectedAccumulationEntry;
 export type StockPriceMap = Record<string, number>;
 
-const storageKey = "bandarlab.accumulation.selectedStocks";
+export const accumulationStorageKey = "bandarlab.accumulation.selectedStocks";
 const storageEventName = "bandarlab-accumulation-stocks-changed";
 
 export const accumulationDataUpdatedAt = "30 Juni 2026";
@@ -95,8 +95,6 @@ export const stockUniverse: AccumulationRow[] = Array.from(tickerUniverse.values
   })
   .sort((first, second) => first.stock.localeCompare(second.stock));
 
-export const defaultSelectedStocks = accumulationRows.map((row) => row.stock);
-
 function getSignalType(score: number): RadarSignalType {
   return score >= 75 ? "accumulation" : "watchlist";
 }
@@ -119,16 +117,7 @@ function createEntry(
   };
 }
 
-function getDefaultSelectedEntries() {
-  return defaultSelectedStocks
-    .map((ticker) => {
-      const row = stockUniverse.find((stock) => stock.stock === ticker);
-      return row ? createEntry(ticker, accumulationDataUpdatedAt, row.currentPrice, "fallback") : null;
-    })
-    .filter(Boolean) as SelectedAccumulationEntry[];
-}
-
-const defaultSelectedStocksSnapshot = JSON.stringify(getDefaultSelectedEntries());
+const emptySelectedStocksSnapshot = "[]";
 
 export function scoreLabel(score: number) {
   if (score >= 90) return "Extreme Accumulation";
@@ -181,7 +170,7 @@ function getSelectedEntriesFromSnapshot(snapshot: string): SelectedAccumulationE
   try {
     const parsedEntries = JSON.parse(snapshot) as unknown;
     if (!Array.isArray(parsedEntries)) {
-      return getDefaultSelectedEntries();
+      return [];
     }
 
     const migratedEntries = parsedEntries
@@ -231,7 +220,7 @@ function getSelectedEntriesFromSnapshot(snapshot: string): SelectedAccumulationE
 
     return Array.from(uniqueEntries.values());
   } catch {
-    return getDefaultSelectedEntries();
+    return [];
   }
 }
 
@@ -264,16 +253,24 @@ function subscribeToSelectedStocks(onStoreChange: () => void) {
 }
 
 function getSelectedStocksSnapshot() {
-  return window.localStorage.getItem(storageKey) ?? defaultSelectedStocksSnapshot;
+  return window.localStorage.getItem(accumulationStorageKey) ?? emptySelectedStocksSnapshot;
 }
 
 function getServerSelectedStocksSnapshot() {
-  return defaultSelectedStocksSnapshot;
+  return emptySelectedStocksSnapshot;
 }
 
 function saveSelectedEntries(entries: SelectedAccumulationEntry[]) {
-  window.localStorage.setItem(storageKey, JSON.stringify(entries));
+  window.localStorage.setItem(accumulationStorageKey, JSON.stringify(entries));
   window.dispatchEvent(new Event(storageEventName));
+}
+
+export function getStoredSelectedAccumulationEntries() {
+  return getSelectedEntriesFromSnapshot(window.localStorage.getItem(accumulationStorageKey) ?? emptySelectedStocksSnapshot);
+}
+
+export function replaceSelectedAccumulationEntries(entries: SelectedAccumulationEntry[]) {
+  saveSelectedEntries(entries);
 }
 
 function getClientSelectedEntries() {
@@ -327,10 +324,27 @@ export function updateSelectedStockSignal(ticker: string, signalType: RadarSigna
 }
 
 export function resetSelectedStocks() {
-  saveSelectedEntries(getDefaultSelectedEntries());
+  saveSelectedEntries([]);
+}
+
+let cloudEntriesRequest: Promise<void> | null = null;
+
+function loadSelectedEntriesFromDatabase() {
+  if (cloudEntriesRequest) return cloudEntriesRequest;
+  cloudEntriesRequest = fetch("/api/accumulation", { cache: "no-store" })
+    .then(async (response) => {
+      if (!response.ok) return;
+      const payload = await response.json() as { initialized?: boolean; entries?: SelectedAccumulationEntry[] };
+      if (payload.initialized) replaceSelectedAccumulationEntries(payload.entries ?? []);
+    })
+    .catch(() => undefined);
+  return cloudEntriesRequest;
 }
 
 export function useSelectedAccumulationEntries() {
+  useEffect(() => {
+    void loadSelectedEntriesFromDatabase();
+  }, []);
   const selectedStocksSnapshot = useSyncExternalStore(
     subscribeToSelectedStocks,
     getSelectedStocksSnapshot,
@@ -345,6 +359,9 @@ export function useSelectedAccumulationStocks() {
 }
 
 export function useSelectedAccumulationRows() {
+  useEffect(() => {
+    void loadSelectedEntriesFromDatabase();
+  }, []);
   const selectedStocksSnapshot = useSyncExternalStore(
     subscribeToSelectedStocks,
     getSelectedStocksSnapshot,

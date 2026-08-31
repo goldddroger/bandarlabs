@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import {
   BellRing, CalendarDays, CheckCircle2, ChevronRight, Clock3, ExternalLink,
   FileText, History, Loader2, NotebookPen, Pencil, Plus, RefreshCw, Trash2,
@@ -15,12 +15,12 @@ import {
   type CorporateActionEvent,
   type CorporateActionNote,
   type CorporateActionNotePayload,
+  type CorporateActionQuoteMap,
   type FollowUpStatus,
 } from "@/lib/corporate-action";
 import { cn } from "@/lib/utils";
 
 type JournalTab = "agenda" | "timeline" | "notes" | "documents";
-type QuoteMap = Record<string, { price: number; source?: string; updatedAt?: string }>;
 type WorkspacePayload = { events?: CorporateActionEvent[]; notes?: CorporateActionNote[]; error?: string };
 
 const tabs: Array<{ id: JournalTab; label: string; icon: typeof CalendarDays }> = [
@@ -46,7 +46,7 @@ function formatCurrency(value: number | null) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 }
 
-function movementPercent(event: CorporateActionEvent, quote?: QuoteMap[string]) {
+function movementPercent(event: CorporateActionEvent, quote?: CorporateActionQuoteMap[string]) {
   if (!event.announcementPrice || !quote?.price) return null;
   return ((quote.price - event.announcementPrice) / event.announcementPrice) * 100;
 }
@@ -58,63 +58,58 @@ function noteStatusClass(status: FollowUpStatus) {
   return "bg-gray-100 text-gray-700";
 }
 
-export function CorporateActionJournal() {
+export function CorporateActionJournal({
+  initialEvents,
+  initialNotes,
+  initialQuotes,
+  initialError = null,
+}: {
+  initialEvents: CorporateActionEvent[];
+  initialNotes: CorporateActionNote[];
+  initialQuotes: CorporateActionQuoteMap;
+  initialError?: string | null;
+}) {
   const { confirm, confirmationDialog } = useConfirmDialog();
   const [activeTab, setActiveTab] = useState<JournalTab>("agenda");
-  const [events, setEvents] = useState<CorporateActionEvent[]>([]);
-  const [notes, setNotes] = useState<CorporateActionNote[]>([]);
-  const [quotes, setQuotes] = useState<QuoteMap>({});
-  const [selectedEventId, setSelectedEventId] = useState("");
+  const [events, setEvents] = useState<CorporateActionEvent[]>(initialEvents);
+  const [notes, setNotes] = useState<CorporateActionNote[]>(initialNotes);
+  const [quotes, setQuotes] = useState<CorporateActionQuoteMap>(initialQuotes);
+  const [selectedEventId, setSelectedEventId] = useState(initialEvents[0]?.id ?? "");
   const [editingNote, setEditingNote] = useState<CorporateActionNote | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/corporate-actions", { signal: controller.signal })
-      .then(async (response) => {
-        const payload = await response.json() as WorkspacePayload;
-        if (!response.ok) throw new Error(payload.error || "Corporate action gagal dimuat.");
-        const nextEvents = payload.events ?? [];
-        setEvents(nextEvents);
-        setNotes(payload.notes ?? []);
-        setSelectedEventId((current) => current && nextEvents.some((item) => item.id === current) ? current : nextEvents[0]?.id ?? "");
-        setError(null);
-      })
-      .catch((fetchError: unknown) => {
-        if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
-        setError(fetchError instanceof Error ? fetchError.message : "Corporate action gagal dimuat.");
-      })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
-  }, [reloadKey]);
-
-  const quoteTickers = useMemo(
-    () => Array.from(new Set(events.map((event) => event.ticker))).filter(Boolean).join(","),
-    [events],
-  );
-
-  useEffect(() => {
-    if (!quoteTickers) return;
-    const controller = new AbortController();
-    fetch(`/api/stock-quotes?tickers=${encodeURIComponent(quoteTickers)}`, { signal: controller.signal })
-      .then((response) => response.ok ? response.json() : { quotes: {} })
-      .then((payload: { quotes?: QuoteMap }) => { if (!controller.signal.aborted) setQuotes(payload.quotes ?? {}); })
-      .catch(() => { if (!controller.signal.aborted) setQuotes({}); });
-    return () => controller.abort();
-  }, [quoteTickers]);
+  const [error, setError] = useState<string | null>(initialError);
 
   const pendingCount = events.filter((event) => event.state === "Mendatang").length;
   const monitorCount = notes.filter((note) => note.status === "Perlu dipantau" || note.status === "Berdampak besar").length;
   const lastUpdated = [...events.map((event) => event.updatedAt), ...notes.map((note) => note.updatedAt)].filter(Boolean).sort().at(-1) ?? null;
 
-  function reload() {
+  async function reload() {
     setLoading(true);
     setError(null);
-    setReloadKey((value) => value + 1);
+    try {
+      const response = await fetch("/api/corporate-actions", { cache: "no-store" });
+      const payload = await response.json() as WorkspacePayload;
+      if (!response.ok) throw new Error(payload.error || "Corporate action gagal dimuat.");
+      const nextEvents = payload.events ?? [];
+      const quoteTickers = Array.from(new Set(nextEvents.map((event) => event.ticker))).filter(Boolean).join(",");
+      const quoteResponse = quoteTickers
+        ? await fetch(`/api/stock-quotes?tickers=${encodeURIComponent(quoteTickers)}`, { cache: "no-store" })
+        : null;
+      const quotePayload = quoteResponse?.ok
+        ? await quoteResponse.json() as { quotes?: CorporateActionQuoteMap }
+        : { quotes: {} };
+
+      setEvents(nextEvents);
+      setNotes(payload.notes ?? []);
+      setQuotes(quotePayload.quotes ?? {});
+      setSelectedEventId((current) => current && nextEvents.some((item) => item.id === current) ? current : nextEvents[0]?.id ?? "");
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : "Corporate action gagal dimuat.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function openNewNote(eventId?: string) {
@@ -177,6 +172,37 @@ export function CorporateActionJournal() {
     }
   }
 
+  async function deleteEvent(event: CorporateActionEvent) {
+    const relatedNotes = notes.filter((note) => note.eventId === event.id).length;
+    const confirmed = await confirm({
+      title: "Hapus agenda corporate action?",
+      description: relatedNotes > 0
+        ? `Agenda dan ${relatedNotes} catatan terkait akan dihapus permanen dari database.`
+        : "Agenda ini akan dihapus permanen dari database.",
+      subject: `${event.ticker} · ${event.actionType} · ${formatDate(event.eventDate)}`,
+      confirmLabel: "Hapus Agenda",
+    });
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch("/api/corporate-actions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: event.id, resource: "event" }),
+      });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Agenda gagal dihapus.");
+
+      const nextEvents = events.filter((item) => item.id !== event.id);
+      setEvents(nextEvents);
+      setNotes((current) => current.filter((note) => note.eventId !== event.id));
+      setSelectedEventId((current) => current === event.id ? nextEvents[0]?.id ?? "" : current);
+      toast.success(`Agenda ${event.ticker} berhasil dihapus.`);
+    } catch (deleteError) {
+      toast.error(deleteError instanceof Error ? deleteError.message : "Agenda gagal dihapus.");
+    }
+  }
+
   if (loading) {
     return <div className="flex min-h-[55vh] items-center justify-center text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-red-600" />Menyinkronkan corporate action...</div>;
   }
@@ -222,7 +248,7 @@ export function CorporateActionJournal() {
         </div>
       </div>
 
-      {activeTab === "agenda" ? <AgendaView events={events} quotes={quotes} onAddNote={openNewNote} /> : null}
+      {activeTab === "agenda" ? <AgendaView events={events} quotes={quotes} onAddNote={openNewNote} onDeleteEvent={deleteEvent} /> : null}
       {activeTab === "timeline" ? <TimelineView events={events} selectedEventId={selectedEventId} onEventChange={setSelectedEventId} /> : null}
       {activeTab === "notes" ? <NotesView events={events} notes={notes} onAdd={() => openNewNote()} onEdit={(note) => { setEditingNote(note); setModalOpen(true); }} onDelete={deleteNote} /> : null}
       {activeTab === "documents" ? <DocumentsView events={events} /> : null}
@@ -242,7 +268,7 @@ function SummaryMetric({ label, value, detail, icon: Icon }: { label: string; va
   );
 }
 
-function AgendaView({ events, quotes, onAddNote }: { events: CorporateActionEvent[]; quotes: QuoteMap; onAddNote: (eventId: string) => void }) {
+function AgendaView({ events, quotes, onAddNote, onDeleteEvent }: { events: CorporateActionEvent[]; quotes: CorporateActionQuoteMap; onAddNote: (eventId: string) => void; onDeleteEvent: (event: CorporateActionEvent) => void }) {
   const [statusFilter, setStatusFilter] = useState("Semua");
   const [query, setQuery] = useState("");
   const visibleEvents = events.filter((event) =>
@@ -262,15 +288,15 @@ function AgendaView({ events, quotes, onAddNote }: { events: CorporateActionEven
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[920px] text-left text-sm">
           <thead className="bg-gray-50 text-xs font-semibold uppercase text-gray-500"><tr><th className="px-4 py-3">Emiten</th><th className="px-4 py-3">Agenda</th><th className="px-4 py-3">Tanggal</th><th className="px-4 py-3">Movement</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Aksi</th></tr></thead>
-          <tbody className="divide-y divide-gray-100">{visibleEvents.map((event) => <AgendaRow key={event.id} event={event} quote={quotes[event.ticker]} onAddNote={onAddNote} />)}</tbody>
+          <tbody className="divide-y divide-gray-100">{visibleEvents.map((event) => <AgendaRow key={event.id} event={event} quote={quotes[event.ticker]} onAddNote={onAddNote} onDeleteEvent={onDeleteEvent} />)}</tbody>
         </table>
       </div>
-      <div className="divide-y divide-gray-200 md:hidden">{visibleEvents.map((event) => <AgendaCard key={event.id} event={event} quote={quotes[event.ticker]} onAddNote={onAddNote} />)}</div>
+      <div className="divide-y divide-gray-200 md:hidden">{visibleEvents.map((event) => <AgendaCard key={event.id} event={event} quote={quotes[event.ticker]} onAddNote={onAddNote} onDeleteEvent={onDeleteEvent} />)}</div>
     </div>
   );
 }
 
-function AgendaRow({ event, quote, onAddNote }: { event: CorporateActionEvent; quote?: QuoteMap[string]; onAddNote: (eventId: string) => void }) {
+function AgendaRow({ event, quote, onAddNote, onDeleteEvent }: { event: CorporateActionEvent; quote?: CorporateActionQuoteMap[string]; onAddNote: (eventId: string) => void; onDeleteEvent: (event: CorporateActionEvent) => void }) {
   return (
     <tr className="align-top hover:bg-gray-50">
       <td className="px-4 py-4"><Link href={`/stocks/${event.ticker}`} className="font-semibold text-red-700 hover:underline">{event.ticker}</Link><p className="mt-1 max-w-48 text-xs leading-5 text-gray-500">{event.company}</p></td>
@@ -278,18 +304,18 @@ function AgendaRow({ event, quote, onAddNote }: { event: CorporateActionEvent; q
       <td className="whitespace-nowrap px-4 py-4 text-gray-700">{formatDate(event.eventDate)}</td>
       <td className="px-4 py-4"><MovementValue movement={movementPercent(event, quote)} /><p className="mt-1 whitespace-nowrap text-xs text-gray-500">{formatCurrency(event.announcementPrice)} → {formatCurrency(quote?.price ?? null)}</p><p className="mt-0.5 text-[11px] text-gray-400">{quote?.source ?? "Menunggu quote"}</p></td>
       <td className="px-4 py-4"><StateBadge state={event.state} /></td>
-      <td className="px-4 py-4 text-right"><button type="button" onClick={() => onAddNote(event.id)} className="text-xs font-semibold text-red-700 hover:underline">Tambah catatan</button></td>
+      <td className="px-4 py-4"><div className="flex items-center justify-end gap-1"><button type="button" onClick={() => onAddNote(event.id)} className="h-8 rounded-md px-2 text-xs font-semibold text-red-700 hover:bg-red-50">Tambah catatan</button><button type="button" onClick={() => onDeleteEvent(event)} className="flex size-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-700" aria-label={`Hapus agenda ${event.ticker}`} title="Hapus agenda"><Trash2 className="size-4" /></button></div></td>
     </tr>
   );
 }
 
-function AgendaCard({ event, quote, onAddNote }: { event: CorporateActionEvent; quote?: QuoteMap[string]; onAddNote: (eventId: string) => void }) {
+function AgendaCard({ event, quote, onAddNote, onDeleteEvent }: { event: CorporateActionEvent; quote?: CorporateActionQuoteMap[string]; onAddNote: (eventId: string) => void; onDeleteEvent: (event: CorporateActionEvent) => void }) {
   return (
     <article className="p-4">
       <div className="flex items-start justify-between gap-3"><div><Link href={`/stocks/${event.ticker}`} className="font-semibold text-red-700 hover:underline">{event.ticker}</Link><p className="mt-1 text-xs text-gray-500">{event.company}</p></div><StateBadge state={event.state} /></div>
       <p className="mt-3 text-sm font-semibold text-gray-900">{event.actionType} · {formatDate(event.eventDate)}</p>
       <p className="mt-1 text-sm leading-6 text-gray-600">{event.topic}</p>
-      <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-100 pt-3"><MovementValue movement={movementPercent(event, quote)} /><button type="button" onClick={() => onAddNote(event.id)} className="text-xs font-semibold text-red-700">Tambah catatan</button></div>
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-100 pt-3"><MovementValue movement={movementPercent(event, quote)} /><div className="flex items-center gap-1"><button type="button" onClick={() => onAddNote(event.id)} className="h-8 rounded-md px-2 text-xs font-semibold text-red-700 hover:bg-red-50">Tambah catatan</button><button type="button" onClick={() => onDeleteEvent(event)} className="flex size-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-700" aria-label={`Hapus agenda ${event.ticker}`}><Trash2 className="size-4" /></button></div></div>
     </article>
   );
 }
