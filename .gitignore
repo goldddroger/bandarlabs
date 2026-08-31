@@ -8,3 +8,4 @@ dist
 work/npm-cache
 work
 outputs
+*.tsbuildinfo
