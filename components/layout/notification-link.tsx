@@ -5,17 +5,21 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 import {
   bestEntryChangeEventName,
+  emitBestEntryChange,
+  getBestEntryLastFiredKey,
   getBestEntrySnapshot,
   parseBestEntrySnapshot,
   type BestEntryRecord,
 } from "@/lib/best-entry-store";
 import { getFcaWatchSnapshot, parseFcaWatchSnapshot, subscribeFcaWatch } from "@/lib/fca-watch-store";
 import { stockCaResearchChangeEvent } from "@/lib/stock-ca-research";
+import { useNotificationDatabaseSync } from "@/lib/notification-cloud-sync";
 
 type QuoteMap = Record<
   string,
   {
     price: number;
+    updatedAt?: string;
   }
 >;
 
@@ -36,6 +40,7 @@ function countReachedEntries(entries: BestEntryRecord[], quotes: QuoteMap) {
 }
 
 export function NotificationLink() {
+  useNotificationDatabaseSync();
   const [quotes, setQuotes] = useState<QuoteMap>({});
   const [caReminderCount, setCaReminderCount] = useState(0);
   const snapshot = useSyncExternalStore(subscribeBestEntry, getBestEntrySnapshot, () => "[]");
@@ -84,6 +89,23 @@ export function NotificationLink() {
     void loadQuotes();
     return () => controller.abort();
   }, [tickers]);
+
+  useEffect(() => {
+    entries.forEach((entry) => {
+      const quote = quotes[entry.ticker];
+      if (!quote || quote.price > entry.price) return;
+      const firedValue = `${entry.price}:${quote.price}:${quote.updatedAt ?? "live"}`;
+      const firedKey = getBestEntryLastFiredKey(entry.ticker);
+      if (window.localStorage.getItem(firedKey) === firedValue) return;
+      window.localStorage.setItem(firedKey, firedValue);
+      emitBestEntryChange();
+      if ("Notification" in window && window.Notification.permission === "granted") {
+        new window.Notification(`${entry.ticker} masuk area entry`, {
+          body: `Harga ${entry.ticker} sudah ${quote.price}, best entry kamu ${entry.price}.`,
+        });
+      }
+    });
+  }, [entries, quotes]);
 
   return (
     <Link

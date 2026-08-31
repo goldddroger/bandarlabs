@@ -76,6 +76,7 @@ export function BestEntryAlert({
     if (window.localStorage.getItem(notificationKey) === notificationValue) return;
 
     window.localStorage.setItem(notificationKey, notificationValue);
+    emitBestEntryChange();
     const message = `${ticker} sudah di ${formatPrice(currentPrice)}, entry kamu ${formatPrice(entry.price)}.`;
     toast.success("Best entry tersentuh", {
       description: message,

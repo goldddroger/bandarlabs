@@ -126,7 +126,7 @@ export function NotificationCenter() {
   useEffect(() => {
     const timeout = window.setTimeout(markFcaAlertsRead, 800);
     return () => window.clearTimeout(timeout);
-  }, []);
+  }, [fcaSnapshot]);
 
   async function deleteEntry(ticker: string) {
     const entry = entries.find((item) => item.ticker === ticker);
