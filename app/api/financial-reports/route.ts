@@ -5,8 +5,10 @@ import type {
   FinancialInsight,
   FinancialReportFact,
   FinancialReportKpis,
+  FinancialSupportingDocument,
   ParsedFinancialReport,
 } from "@/lib/financial-report";
+import { mergePdfInsights, parseFinancialPdf } from "@/lib/financial-pdf-parser";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +16,9 @@ export const dynamic = "force-dynamic";
 const adminOwnerId = "00000000-0000-4000-8000-000000000001";
 const workbookMime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const maxFileSize = 10 * 1024 * 1024;
-const reportColumns = "id,ticker,entity_name,industry_family,sector,subsector,taxonomy_family,period_label,period_start,period_end,prior_period_start,prior_period_end,currency,unit_label,unit_multiplier,report_type,auditor,source_file,storage_path,headline,executive_summary,kpis,insights,breakdowns,analyst_note,created_at,updated_at";
+const maxSupportingFiles = 3;
+const maxSupportingTotalSize = 20 * 1024 * 1024;
+const reportColumns = "id,ticker,entity_name,industry_family,sector,subsector,taxonomy_family,period_label,period_start,period_end,prior_period_start,prior_period_end,currency,unit_label,unit_multiplier,report_type,auditor,source_file,storage_path,supporting_documents,headline,executive_summary,kpis,insights,breakdowns,analyst_note,created_at,updated_at";
 
 function adminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -61,6 +65,20 @@ function validReport(value: unknown): value is ParsedFinancialReport {
 }
 
 function mapReport(row: Record<string, unknown>) {
+  const supportingDocuments: FinancialSupportingDocument[] = Array.isArray(row.supporting_documents)
+    ? row.supporting_documents.flatMap((value) => {
+      if (!value || typeof value !== "object") return [];
+      const document = value as Partial<FinancialSupportingDocument>;
+      if (!document.name || !document.storagePath) return [];
+      return [{
+        name: String(document.name),
+        kind: document.kind === "financial_statements" || document.kind === "movement_disclosure" || document.kind === "material_information" ? document.kind : "supporting_document",
+        pageCount: Number(document.pageCount) || 0,
+        storagePath: String(document.storagePath),
+        downloadUrl: null,
+      } satisfies FinancialSupportingDocument];
+    })
+    : [];
   return {
     id: String(row.id),
     ticker: String(row.ticker),
@@ -81,6 +99,7 @@ function mapReport(row: Record<string, unknown>) {
     auditor: String(row.auditor ?? ""),
     sourceFile: String(row.source_file ?? ""),
     storagePath: row.storage_path ? String(row.storage_path) : null,
+    supportingDocuments,
     headline: String(row.headline),
     executiveSummary: String(row.executive_summary),
     kpis: (row.kpis ?? {}) as FinancialReportKpis,
@@ -107,6 +126,9 @@ function mapFact(row: Record<string, unknown>): FinancialReportFact {
 }
 
 function databaseError(error: { code?: string; message?: string } | null, fallback: string) {
+  if (/supporting_documents/i.test(error?.message ?? "")) {
+    return "Database PDF pendamping belum siap. Jalankan migration 202609010001_financial_report_pdf_sources.sql di Supabase.";
+  }
   if (["42P01", "PGRST202", "PGRST205"].includes(error?.code ?? "")) {
     return "Database riset laporan belum siap. Jalankan migration 202608310002_financial_report_research.sql di Supabase.";
   }
@@ -141,6 +163,10 @@ export async function GET(request: Request) {
     const { data } = await supabase.storage.from("financial-reports").createSignedUrl(report.storagePath, 900);
     downloadUrl = data?.signedUrl ?? null;
   }
+  report.supportingDocuments = await Promise.all(report.supportingDocuments.map(async (document) => {
+    const { data } = await supabase.storage.from("financial-reports").createSignedUrl(document.storagePath, 900);
+    return { ...document, downloadUrl: data?.signedUrl ?? null };
+  }));
   return noStore({ report, facts: (factsResult.data ?? []).map((row) => mapFact(row as Record<string, unknown>)), downloadUrl });
 }
 
@@ -150,6 +176,7 @@ export async function POST(request: Request) {
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
   const payloadText = form?.get("payload");
+  const supportingUploadsText = form?.get("supportingUploads");
   if (!(file instanceof File) || typeof payloadText !== "string") return noStore({ error: "File dan hasil pembacaan workbook wajib dikirim." }, { status: 400 });
   if (!file.name.toLowerCase().endsWith(".xlsx") || file.size < 1 || file.size > maxFileSize) return noStore({ error: "Gunakan file .xlsx dengan ukuran maksimal 10 MB." }, { status: 400 });
 
@@ -161,12 +188,59 @@ export async function POST(request: Request) {
   }
   if (!validReport(report)) return noStore({ error: "Struktur laporan hasil ekstraksi tidak valid." }, { status: 400 });
 
+  type SupportingUpload = { name: string; size: number; path: string };
+  let supportingUploads: SupportingUpload[] = [];
+  try {
+    const candidate = typeof supportingUploadsText === "string" ? JSON.parse(supportingUploadsText) as unknown : [];
+    if (!Array.isArray(candidate)) throw new Error("Metadata PDF tidak valid.");
+    supportingUploads = candidate.map((value) => {
+      if (!value || typeof value !== "object") throw new Error("Metadata PDF tidak valid.");
+      const upload = value as Partial<SupportingUpload>;
+      return { name: cleanText(upload.name, 160), size: Number(upload.size), path: cleanText(upload.path, 500) };
+    });
+  } catch (error) {
+    return noStore({ error: error instanceof Error ? error.message : "Metadata PDF tidak valid." }, { status: 400 });
+  }
+  const expectedPrefix = `admin/${report.ticker}/${report.periodEnd}/supporting/`;
+  if (supportingUploads.length > maxSupportingFiles || supportingUploads.some((document) => !document.name.toLowerCase().endsWith(".pdf") || document.size < 1 || document.size > maxFileSize || !document.path.startsWith(expectedPrefix)) || supportingUploads.reduce((total, document) => total + document.size, 0) > maxSupportingTotalSize) return noStore({ error: "Metadata PDF pendamping tidak valid." }, { status: 400 });
+
+  let parsedDocuments: Awaited<ReturnType<typeof parseFinancialPdf>>[] = [];
+  try {
+    parsedDocuments = await Promise.all(supportingUploads.map(async (document) => {
+      const { data, error } = await supabase.storage.from("financial-reports").download(document.path);
+      if (error || !data) throw new Error(`${document.name}: ${error?.message || "file tidak ditemukan"}`);
+      if (data.size > maxFileSize) throw new Error(`${document.name}: ukuran melebihi 10 MB`);
+      return parseFinancialPdf(new Uint8Array(await data.arrayBuffer()), document.name, report);
+    }));
+  } catch (error) {
+    const paths = supportingUploads.map((document) => document.path);
+    if (paths.length) await supabase.storage.from("financial-reports").remove(paths);
+    return noStore({ error: error instanceof Error ? `PDF pendamping gagal dibaca: ${error.message}` : "PDF pendamping gagal dibaca." }, { status: 400 });
+  }
+
   const safeFileName = file.name.replace(/[^A-Za-z0-9._-]/g, "-").slice(-160);
   const storagePath = `admin/${report.ticker}/${report.periodEnd}/${crypto.randomUUID()}-${safeFileName}`;
+  const uploadedPaths: string[] = supportingUploads.map((document) => document.path);
   const { error: uploadError } = await supabase.storage.from("financial-reports").upload(storagePath, Buffer.from(await file.arrayBuffer()), { contentType: workbookMime, upsert: false });
-  if (uploadError) return noStore({ error: databaseError(uploadError, "File sumber gagal disimpan") }, { status: 500 });
+  if (uploadError) {
+    if (uploadedPaths.length) await supabase.storage.from("financial-reports").remove(uploadedPaths);
+    return noStore({ error: databaseError(uploadError, "File sumber gagal disimpan") }, { status: 500 });
+  }
+  uploadedPaths.push(storagePath);
 
-  const { data: existing } = await supabase.from("financial_reports").select("storage_path").eq("owner_id", adminOwnerId).eq("ticker", report.ticker).eq("period_end", report.periodEnd).maybeSingle();
+  const supportingDocuments: FinancialSupportingDocument[] = [];
+  for (let index = 0; index < supportingUploads.length; index += 1) {
+    const document = supportingUploads[index];
+    const parsed = parsedDocuments[index];
+    supportingDocuments.push({ name: document.name, kind: parsed.kind, pageCount: parsed.pageCount, storagePath: document.path });
+  }
+
+  const { data: existing, error: existingError } = await supabase.from("financial_reports").select("storage_path,supporting_documents").eq("owner_id", adminOwnerId).eq("ticker", report.ticker).eq("period_end", report.periodEnd).maybeSingle();
+  if (existingError) {
+    await supabase.storage.from("financial-reports").remove(uploadedPaths);
+    return noStore({ error: databaseError(existingError, "Database PDF pendamping belum siap") }, { status: 500 });
+  }
+  const enhancedInsights = mergePdfInsights(report.insights, parsedDocuments);
   const reportPayload = {
     ticker: report.ticker,
     entity_name: cleanText(report.entityName, 240),
@@ -189,7 +263,7 @@ export async function POST(request: Request) {
     headline: cleanText(report.headline, 500),
     executive_summary: cleanText(report.executiveSummary, 12_000),
     kpis: report.kpis,
-    insights: report.insights,
+    insights: enhancedInsights,
     breakdowns: report.breakdowns,
   };
   const factsPayload = report.facts.map((fact) => ({
@@ -208,11 +282,19 @@ export async function POST(request: Request) {
   if (stockSync.error) console.warn("Financial report stock sync failed", stockSync.error.message);
   const { data: reportId, error } = await supabase.rpc("replace_admin_financial_report", { p_report: reportPayload, p_facts: factsPayload });
   if (error || !reportId) {
-    await supabase.storage.from("financial-reports").remove([storagePath]);
+    await supabase.storage.from("financial-reports").remove(uploadedPaths);
     return noStore({ error: databaseError(error, "Laporan gagal disimpan") }, { status: 500 });
   }
+  const documentUpdate = await supabase.from("financial_reports").update({ supporting_documents: supportingDocuments }).eq("id", reportId).eq("owner_id", adminOwnerId);
+  if (documentUpdate.error) {
+    await supabase.storage.from("financial-reports").remove(uploadedPaths);
+    return noStore({ error: databaseError(documentUpdate.error, "Metadata PDF gagal disimpan") }, { status: 500 });
+  }
   const previousStoragePath = existing?.storage_path ? String(existing.storage_path) : null;
-  if (previousStoragePath && previousStoragePath !== storagePath) await supabase.storage.from("financial-reports").remove([previousStoragePath]);
+  const previousDocuments = Array.isArray(existing?.supporting_documents) ? existing.supporting_documents : [];
+  const previousPaths = previousDocuments.flatMap((value) => value && typeof value === "object" && "storagePath" in value ? [String(value.storagePath)] : []);
+  const obsoletePaths = [previousStoragePath, ...previousPaths].filter((path): path is string => Boolean(path && !uploadedPaths.includes(path)));
+  if (obsoletePaths.length) await supabase.storage.from("financial-reports").remove(obsoletePaths);
   return noStore({ id: String(reportId), ticker: report.ticker, periodEnd: report.periodEnd }, { status: 201 });
 }
 
@@ -234,9 +316,11 @@ export async function DELETE(request: Request) {
   const body = await request.json().catch(() => null) as { id?: string } | null;
   const id = cleanText(body?.id, 100);
   if (!id) return noStore({ error: "ID laporan tidak valid." }, { status: 400 });
-  const { data: report } = await supabase.from("financial_reports").select("storage_path").eq("id", id).eq("owner_id", adminOwnerId).maybeSingle();
+  const { data: report } = await supabase.from("financial_reports").select("storage_path,supporting_documents").eq("id", id).eq("owner_id", adminOwnerId).maybeSingle();
   const { data, error } = await supabase.from("financial_reports").delete().eq("id", id).eq("owner_id", adminOwnerId).select("id").maybeSingle();
   if (error || !data) return noStore({ error: databaseError(error, "Laporan gagal dihapus") }, { status: 500 });
-  if (report?.storage_path) await supabase.storage.from("financial-reports").remove([String(report.storage_path)]);
+  const supportingPaths = Array.isArray(report?.supporting_documents) ? report.supporting_documents.flatMap((value) => value && typeof value === "object" && "storagePath" in value ? [String(value.storagePath)] : []) : [];
+  const paths = [report?.storage_path ? String(report.storage_path) : null, ...supportingPaths].filter((path): path is string => Boolean(path));
+  if (paths.length) await supabase.storage.from("financial-reports").remove(paths);
   return noStore({ success: true });
 }

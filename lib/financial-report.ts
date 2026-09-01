@@ -25,6 +25,17 @@ export type FinancialEvidence = {
   rowNumber: number;
   currentValue: number | null;
   priorValue: number | null;
+  sourceType?: "xlsx" | "pdf";
+  sourceFile?: string;
+  pageNumber?: number;
+};
+
+export type FinancialSupportingDocument = {
+  name: string;
+  kind: "financial_statements" | "movement_disclosure" | "material_information" | "supporting_document";
+  pageCount: number;
+  storagePath: string;
+  downloadUrl?: string | null;
 };
 
 export type FinancialInsight = {
@@ -66,6 +77,14 @@ export type FinancialReportKpis = {
   interestBearingDebt: FinancialMetric;
   inventory: FinancialMetric;
   receivables: FinancialMetric;
+  currentRatio?: FinancialMetric;
+  debtToEquity?: FinancialMetric;
+  netDebt?: FinancialMetric;
+  interestCoverage?: FinancialMetric;
+  netMargin?: FinancialMetric;
+  annualizedRoa?: FinancialMetric;
+  annualizedRoe?: FinancialMetric;
+  freeCashFlow?: FinancialMetric;
 };
 
 export type ParsedFinancialReport = {
@@ -98,6 +117,7 @@ export type FinancialReportRecord = Omit<ParsedFinancialReport, "facts"> & {
   id: string;
   analystNote: string;
   storagePath: string | null;
+  supportingDocuments: FinancialSupportingDocument[];
   createdAt: string;
   updatedAt: string;
 };

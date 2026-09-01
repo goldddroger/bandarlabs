@@ -22,6 +22,7 @@ const conceptAliases: Array<[string, string[]]> = [
   ["sellingExpense", ["beban penjualan", "selling expenses"]],
   ["generalAdminExpense", ["beban umum dan administrasi", "general and administrative expenses"]],
   ["financeIncome", ["pendapatan keuangan", "finance income"]],
+  ["investmentIncome", ["pendapatan investasi", "investment income"]],
   ["financeCost", ["beban bunga dan keuangan", "interest and finance costs"]],
   ["interestIncome", ["pendapatan bunga", "interest income"]],
   ["interestExpense", ["beban bunga", "interest expenses"]],
@@ -44,6 +45,7 @@ const conceptAliases: Array<[string, string[]]> = [
   ["tradeReceivablesThird", ["piutang usaha pihak ketiga", "trade receivables third parties"]],
   ["tradeReceivablesRelated", ["piutang usaha pihak berelasi", "trade receivables related parties"]],
   ["inventory", ["persediaan lancar", "current inventories"]],
+  ["advances", ["uang muka lancar lainnya", "other current advances"]],
   ["ppe", ["aset tetap", "property plant and equipment"]],
   ["associateInvestment", ["investasi pada entitas asosiasi", "investments in associates"]],
   ["jointVentureInvestment", ["investasi pada entitas ventura bersama", "investments in joint ventures"]],
@@ -55,12 +57,14 @@ const conceptAliases: Array<[string, string[]]> = [
   ["otherBorrowings", ["pinjaman yang diterima pihak ketiga", "borrowings third parties"]],
   ["tradePayablesThird", ["utang usaha pihak ketiga", "trade payables third parties"]],
   ["tradePayablesRelated", ["utang usaha pihak berelasi", "trade payables related parties"]],
+  ["accruedExpenses", ["biaya yang masih harus dibayar", "accrued expenses"]],
   ["dividendPayable", ["utang dividen", "dividends payable"]],
   ["taxPayable", ["utang pajak", "taxes payable"]],
   ["currentLiabilities", ["jumlah liabilitas jangka pendek", "total current liabilities"]],
   ["nonCurrentLiabilities", ["jumlah liabilitas jangka panjang", "total non current liabilities"]],
   ["liabilities", ["jumlah liabilitas", "total liabilities"]],
   ["equity", ["jumlah ekuitas", "total equity"]],
+  ["equityParent", ["jumlah ekuitas yang diatribusikan kepada pemilik entitas induk", "total equity attributable to owners of parent entity"]],
   ["operatingCashFlow", ["jumlah arus kas bersih yang diperoleh dari digunakan untuk aktivitas operasi", "total net cash flows received from used in operating activities"]],
   ["investingCashFlow", ["jumlah arus kas bersih yang diperoleh dari digunakan untuk aktivitas investasi", "total net cash flows received from used in investing activities"]],
   ["financingCashFlow", ["jumlah arus kas bersih yang diperoleh dari digunakan untuk aktivitas pendanaan", "total net cash flows received from used in financing activities"]],
@@ -249,6 +253,54 @@ function marginMetric(numerator: FinancialMetric, denominator: FinancialMetric) 
   return financialMetric(current, prior);
 }
 
+function ratioMetric(numerator: FinancialMetric, denominator: FinancialMetric) {
+  const current = numerator.current !== null && denominator.current ? numerator.current / denominator.current : null;
+  const prior = numerator.prior !== null && denominator.prior ? numerator.prior / denominator.prior : null;
+  return financialMetric(current, prior);
+}
+
+function annualizationFactor(periodStart: string, periodEnd: string) {
+  const start = Date.parse(`${periodStart}T00:00:00Z`);
+  const end = Date.parse(`${periodEnd}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return 1;
+  const days = Math.max(1, Math.round((end - start) / 86_400_000) + 1);
+  return 365 / days;
+}
+
+function annualizedReturnMetric(profit: FinancialMetric, balance: FinancialMetric, factor: number) {
+  const averageBalance = balance.current !== null && balance.prior !== null ? (balance.current + balance.prior) / 2 : balance.current;
+  const current = profit.current !== null && averageBalance ? (profit.current * factor / averageBalance) * 100 : null;
+  return financialMetric(current, null);
+}
+
+function subtractMetric(minuend: FinancialMetric, subtrahend: FinancialMetric) {
+  const current = minuend.current !== null && subtrahend.current !== null ? minuend.current - subtrahend.current : null;
+  const prior = minuend.prior !== null && subtrahend.prior !== null ? minuend.prior - subtrahend.prior : null;
+  return financialMetric(current, prior);
+}
+
+function magnitudeMetric(value: FinancialMetric) {
+  return financialMetric(
+    value.current === null ? null : Math.abs(value.current),
+    value.prior === null ? null : Math.abs(value.prior),
+  );
+}
+
+function interestCoverageMetric(index: FactIndex) {
+  const pretax = metric(index, "pretaxProfit");
+  const financeCost = metric(index, index.has("financeCost") ? "financeCost" : "interestExpense");
+  const financeIncome = metric(index, index.has("financeIncome") ? "financeIncome" : "interestIncome");
+  const coverage = (period: "current" | "prior") => {
+    const profit = pretax[period];
+    const cost = financeCost[period];
+    if (profit === null || cost === null || cost === 0) return null;
+    const income = financeIncome[period] ?? 0;
+    const ebitProxy = profit - income + Math.abs(cost);
+    return ebitProxy / Math.abs(cost);
+  };
+  return financialMetric(coverage("current"), coverage("prior"));
+}
+
 function evidence(fact: FinancialReportFact | undefined): FinancialEvidence[] {
   if (!fact) return [];
   return [{ label: fact.label, sheetCode: fact.sheetCode, rowNumber: fact.rowNumber, currentValue: fact.currentValue, priorValue: fact.priorValue }];
@@ -267,7 +319,7 @@ function amount(report: Pick<ParsedFinancialReport, "currency" | "unitMultiplier
   return formatFinancialAmount(value, report.currency, report.unitMultiplier, { absolute });
 }
 
-function buildBreakdowns(noteSheets: WorkbookSheet[], facts: FinancialReportFact[], revenue: FinancialMetric) {
+function buildBreakdowns(noteSheets: WorkbookSheet[], facts: FinancialReportFact[], denominators: Record<string, number | null>) {
   const groups: FinancialBreakdown[] = [];
   for (const [code, label] of Object.entries(breakdownSheetLabels)) {
     if (!noteSheets.some((sheet) => sheetCode(sheet) === code)) continue;
@@ -277,8 +329,9 @@ function buildBreakdowns(noteSheets: WorkbookSheet[], facts: FinancialReportFact
         const labelValue = normalize(fact.label);
         const aggregateLabels = new Set([
           "pendapatan domestik", "pendapatan ekspor", "pendapatan dari produk", "pendapatan dari jasa",
-          "pihak berelasi", "pihak ketiga", "persediaan kotor", "persediaan lancar",
-          "harga pokok produksi", "beban pokok penjualan dan pendapatan",
+          "tipe pihak", "pihak berelasi", "pihak ketiga", "pihak dengan pendapatan lebih dari 10", "persediaan", "persediaan kotor", "persediaan lancar",
+          "aset real estat", "aset real estat kotor", "aset real estat lancar", "aset real estat tidak lancar",
+          "bahan baku yang digunakan", "jumlah biaya produksi", "harga pokok produksi", "beban pokok penjualan dan pendapatan",
         ]);
         return !labelValue.startsWith("jumlah ")
           && !labelValue.includes("saldo akhir")
@@ -286,14 +339,16 @@ function buildBreakdowns(noteSheets: WorkbookSheet[], facts: FinancialReportFact
           && !labelValue.includes("sumber pendapatan")
           && !aggregateLabels.has(labelValue);
       })
-      .map((fact) => ({
+      .map((fact) => {
+        const denominator = denominators[code];
+        return {
         label: fact.label.replace(/^[^·]+·\s*/, ""),
         value: fact.currentValue!,
         priorValue: fact.priorValue,
-        sharePercent: revenue.current && fact.currentValue! <= revenue.current * 1.05 ? (fact.currentValue! / revenue.current) * 100 : null,
+        sharePercent: denominator && fact.currentValue! <= denominator * 1.05 ? (fact.currentValue! / denominator) * 100 : null,
         sheetCode: fact.sheetCode,
         rowNumber: fact.rowNumber,
-      }))
+      }; })
       .sort((first, second) => second.value - first.value)
       .slice(0, 8);
     if (items.length >= 2) groups.push({ id: code, label, items });
@@ -327,24 +382,82 @@ function buildInsights(report: ParsedFinancialReport, index: FactIndex) {
     evidence: evidenceMany([index.get("netIncomeParent") ?? index.get("netIncome"), index.get("revenue")]),
   });
 
+  const totalNet = metric(index, "netIncome");
+  const parentNet = metric(index, "netIncomeParent");
+  if (totalNet.current !== null && parentNet.current !== null && totalNet.changePercent !== null && parentNet.changePercent !== null && Math.abs(totalNet.changePercent - parentNet.changePercent) >= 10) {
+    add({
+      category: "profit",
+      tone: "neutral",
+      title: "Persentase laba bergantung pada scope",
+      summary: `Laba konsolidasian naik ${formatFinancialPercent(totalNet.changePercent, false)} menjadi ${amount(report, totalNet.current, true)}, sedangkan laba yang diatribusikan kepada pemilik induk naik ${formatFinancialPercent(parentNet.changePercent, false)} menjadi ${amount(report, parentNet.current, true)}. Gunakan scope yang sama saat membandingkan angka dari berita atau komentar pasar.`,
+      basis: "calculated",
+      confidence: "high",
+      evidence: evidenceMany([index.get("netIncome"), index.get("netIncomeParent")]),
+    });
+  }
+
+  const priorNetMargin = net.prior !== null && kpis.revenue.prior ? (net.prior / Math.abs(kpis.revenue.prior)) * 100 : null;
+  if ((net.changePercent ?? 0) >= 100 && net.prior !== null && net.prior > 0 && priorNetMargin !== null && priorNetMargin < 1) {
+    add({
+      category: "risk",
+      tone: "warning",
+      title: "Lonjakan laba ditopang basis pembanding rendah",
+      summary: `Laba pembanding hanya ${amount(report, net.prior, true)} dengan margin sekitar ${formatFinancialPercent(priorNetMargin, false)}. Karena titik awalnya sangat kecil, kenaikan ${formatFinancialPercent(net.changePercent, false)} perlu dibaca bersama laba absolut, margin, dan imbal hasil modal.`,
+      basis: "calculated",
+      confidence: "high",
+      evidence: evidenceMany([index.get("netIncomeParent") ?? index.get("netIncome"), index.get("revenue")]),
+    });
+  }
+
+  if (kpis.annualizedRoa?.current !== null && kpis.annualizedRoa?.current !== undefined && kpis.annualizedRoe?.current !== null && kpis.annualizedRoe?.current !== undefined && (kpis.annualizedRoa.current < 2 || kpis.annualizedRoe.current < 3)) {
+    add({
+      category: "profit",
+      tone: "warning",
+      title: "Imbal hasil aset dan modal masih rendah",
+      summary: `Annualized ROA tersirat sekitar ${formatFinancialPercent(kpis.annualizedRoa.current, false)} dan annualized ROE sekitar ${formatFinancialPercent(kpis.annualizedRoe.current, false)}, dengan net margin ${formatFinancialPercent(kpis.netMargin?.current ?? null, false)}. Persentase pertumbuhan laba yang tinggi belum otomatis menunjukkan produktivitas aset dan modal yang tinggi.`,
+      basis: "calculated",
+      confidence: "medium",
+      evidence: evidenceMany([index.get("netIncomeParent") ?? index.get("netIncome"), index.get("assets"), index.get("equityParent") ?? index.get("equity"), index.get("revenue")]),
+    });
+  }
+
   if (kpis.revenue.current !== null && kpis.grossProfit.current !== null) {
     const marginDirection = (kpis.grossMargin.changeAmount ?? 0) >= 0 ? "membaik" : "menyempit";
+    const costBurden = magnitudeMetric(metric(index, "costOfRevenue"));
     add({
       category: "profit",
       tone: marginDirection === "membaik" ? "positive" : "warning",
       title: `Margin bruto ${marginDirection}`,
-      summary: `Pendapatan ${movementWord(kpis.revenue.changePercent)} ${formatFinancialPercent(Math.abs(kpis.revenue.changePercent ?? 0), false)}, sementara beban pokok ${movementWord(metric(index, "costOfRevenue").changePercent)} ${formatFinancialPercent(Math.abs(metric(index, "costOfRevenue").changePercent ?? 0), false)}. Margin bruto bergerak dari ${formatFinancialPercent(kpis.grossMargin.prior, false)} menjadi ${formatFinancialPercent(kpis.grossMargin.current, false)}.`,
+      summary: `Pendapatan ${movementWord(kpis.revenue.changePercent)} ${formatFinancialPercent(Math.abs(kpis.revenue.changePercent ?? 0), false)}, sementara beban pokok ${movementWord(costBurden.changePercent)} ${formatFinancialPercent(Math.abs(costBurden.changePercent ?? 0), false)}. Margin bruto bergerak dari ${formatFinancialPercent(kpis.grossMargin.prior, false)} menjadi ${formatFinancialPercent(kpis.grossMargin.current, false)}.`,
       basis: "calculated",
       confidence: "high",
       evidence: evidenceMany([index.get("revenue"), index.get("costOfRevenue"), index.get("grossProfit")]),
     });
   }
 
-  const profitDriverConcepts = ["grossProfit", "sellingExpense", "generalAdminExpense", "financeIncome", "financeCost", "interestIncome", "interestExpense", "fairValueGainLoss", "foreignExchange", "associateProfit", "jointVentureProfit", "dividendIncome", "otherIncome", "otherExpense"];
+  if (kpis.revenue.current !== null && kpis.revenue.prior !== null && kpis.revenue.prior > 0 && kpis.revenue.current / kpis.revenue.prior >= 6) {
+    add({
+      category: "risk",
+      tone: "warning",
+      title: "Pertumbuhan tinggi berasal dari basis pembanding rendah",
+      summary: `Pendapatan periode pembanding hanya ${amount(report, kpis.revenue.prior, true)}, sekitar ${formatFinancialPercent((kpis.revenue.prior / kpis.revenue.current) * 100, false)} dari pendapatan saat ini. Persentase pertumbuhan perlu dibaca bersama perubahan model bisnis, volume, dan margin, bukan sebagai pertumbuhan normal tahunan.`,
+      basis: "calculated",
+      confidence: "high",
+      evidence: evidence(index.get("revenue")),
+    });
+  }
+
+  const profitDriverConcepts = ["grossProfit", "sellingExpense", "generalAdminExpense", "financeIncome", "investmentIncome", "financeCost", "interestIncome", "interestExpense", "fairValueGainLoss", "foreignExchange", "associateProfit", "jointVentureProfit", "dividendIncome", "otherIncome", "otherExpense"];
+  const expenseConcepts = new Set(["sellingExpense", "generalAdminExpense", "financeCost", "interestExpense", "otherExpense"]);
   const profitDrivers = profitDriverConcepts
-    .map((concept) => index.get(concept))
-    .filter((fact): fact is FinancialReportFact => Boolean(fact && fact.currentValue !== null && fact.priorValue !== null))
-    .map((fact) => ({ fact, contribution: fact.currentValue! - fact.priorValue! }))
+    .map((concept) => ({ concept, fact: index.get(concept) }))
+    .filter((row): row is { concept: string; fact: FinancialReportFact } => Boolean(row.fact && row.fact.currentValue !== null && row.fact.priorValue !== null))
+    .map(({ concept, fact }) => ({
+      fact,
+      contribution: expenseConcepts.has(concept)
+        ? Math.abs(fact.priorValue!) - Math.abs(fact.currentValue!)
+        : fact.currentValue! - fact.priorValue!,
+    }))
     .filter((row) => Math.abs(row.contribution) > 0)
     .sort((first, second) => Math.abs(second.contribution) - Math.abs(first.contribution))
     .slice(0, 4);
@@ -379,6 +492,20 @@ function buildInsights(report: ParsedFinancialReport, index: FactIndex) {
     });
   }
 
+
+  if (kpis.receivables.current !== null && kpis.assets.current && kpis.receivables.current / kpis.assets.current >= 0.4) {
+    const share = (kpis.receivables.current / kpis.assets.current) * 100;
+    add({
+      category: "risk",
+      tone: "warning",
+      title: "Aset terkonsentrasi pada piutang usaha",
+      summary: `Piutang usaha mencapai ${formatFinancialPercent(share, false)} dari total aset dan ${movementWord(kpis.receivables.changePercent)} ${formatFinancialPercent(Math.abs(kpis.receivables.changePercent ?? 0), false)} dari periode pembanding. Kualitas debitur, umur piutang, dan pencadangan kerugian kredit perlu diperiksa.`,
+      basis: "calculated",
+      confidence: "high",
+      evidence: evidenceMany([index.get("tradeReceivablesThird"), index.get("tradeReceivablesRelated"), index.get("assets")]),
+    });
+  }
+
   const debtComponents = ["shortBankLoans", "currentBankMaturity", "longBankLoans", "currentLease", "longLease", "otherBorrowings"]
     .map((concept) => index.get(concept))
     .filter((fact): fact is FinancialReportFact => Boolean(fact && (fact.currentValue !== null || fact.priorValue !== null)));
@@ -407,16 +534,87 @@ function buildInsights(report: ParsedFinancialReport, index: FactIndex) {
     const netCurrent = kpis.netIncome.current;
     const qualityRatio = netCurrent && netCurrent > 0 ? kpis.operatingCashFlow.current / netCurrent : null;
     const cashWarning = netCurrent !== null && netCurrent > 0 && kpis.operatingCashFlow.current < 0;
+    const unusuallyHighCashConversion = qualityRatio !== null && qualityRatio >= 3;
     add({
       category: "cash_flow",
-      tone: cashWarning ? "negative" : qualityRatio !== null && qualityRatio < 0.6 ? "warning" : "positive",
-      title: cashWarning ? "Laba belum berubah menjadi kas" : "Kualitas arus kas operasi",
+      tone: cashWarning ? "negative" : qualityRatio !== null && qualityRatio < 0.6 ? "warning" : unusuallyHighCashConversion ? "neutral" : "positive",
+      title: cashWarning ? "Laba belum berubah menjadi kas" : unusuallyHighCashConversion ? "Arus kas operasi jauh di atas laba" : "Kualitas arus kas operasi",
       summary: cashWarning
         ? `Perusahaan membukukan laba ${amount(report, netCurrent, true)}, tetapi arus kas operasi negatif ${amount(report, kpis.operatingCashFlow.current, true)}. Perubahan modal kerja, pembayaran pemasok, dan pajak perlu ditelusuri.`
-        : `Arus kas operasi tercatat ${amount(report, kpis.operatingCashFlow.current)} dibandingkan ${amount(report, kpis.operatingCashFlow.prior)}. ${qualityRatio !== null ? `Rasionya terhadap laba bersih sekitar ${formatFinancialPercent(qualityRatio * 100, false)}.` : ""}`,
+        : `Arus kas operasi tercatat ${amount(report, kpis.operatingCashFlow.current)} dibandingkan ${amount(report, kpis.operatingCashFlow.prior)}. ${qualityRatio !== null ? `Rasionya terhadap laba bersih sekitar ${formatFinancialPercent(qualityRatio * 100, false)}.` : ""}${unusuallyHighCashConversion ? " Selisih yang sangat besar dapat berasal dari pelepasan modal kerja atau pos nonkas dan perlu diperiksa sebelum dianggap berulang." : ""}`,
       basis: cashWarning ? "inference" : "calculated",
       confidence: cashWarning ? "medium" : "high",
       evidence: evidenceMany([index.get("operatingCashFlow"), index.get("netIncomeParent") ?? index.get("netIncome"), index.get("customerReceipts"), index.get("supplierPayments"), index.get("incomeTaxPayments")]),
+    });
+  }
+
+  const nonOperatingFacts = ["financeIncome", "investmentIncome", "interestIncome", "dividendIncome", "fairValueGainLoss", "foreignExchange", "associateProfit", "jointVentureProfit"]
+    .map((concept) => index.get(concept))
+    .filter((fact): fact is FinancialReportFact => Boolean(fact && (fact.currentValue ?? 0) > 0));
+  const nonOperatingPositive = nonOperatingFacts.reduce((sum, fact) => sum + (fact.currentValue ?? 0), 0);
+  if (net.current !== null && net.current > 0 && nonOperatingPositive > Math.abs(net.current) * 0.5 && nonOperatingPositive > Math.abs(kpis.revenue.current ?? 0) * 0.05) {
+    add({
+      category: "risk",
+      tone: "warning",
+      title: "Laba sensitif terhadap pos non-operasional",
+      summary: `Pos non-operasional positif mencapai sekitar ${amount(report, nonOperatingPositive, true)}, setara ${(nonOperatingPositive / Math.abs(net.current)).toLocaleString("id-ID", { maximumFractionDigits: 1 })}x laba bersih. Angka ini tidak otomatis bersifat sekali jalan, tetapi keberlanjutan laba perlu diuji dari catatan manajemen.`,
+      basis: "inference",
+      confidence: "medium",
+      evidence: evidenceMany([index.get("netIncomeParent") ?? index.get("netIncome"), ...nonOperatingFacts]),
+    });
+  }
+
+  const customerReceipts = index.get("customerReceipts");
+  const supplierPayments = index.get("supplierPayments");
+  if (customerReceipts?.currentValue !== null && customerReceipts?.currentValue !== undefined && supplierPayments?.currentValue !== null && supplierPayments?.currentValue !== undefined) {
+    const supplierGap = customerReceipts.currentValue - Math.abs(supplierPayments.currentValue);
+    if (supplierGap < 0) {
+      add({
+        category: "cash_flow",
+        tone: "warning",
+        title: "Pembayaran pemasok melampaui penerimaan pelanggan",
+        summary: `Pembayaran kepada pemasok lebih besar sekitar ${amount(report, supplierGap, true)} daripada penerimaan pelanggan. Selisih ini membantu menjelaskan tekanan arus kas, meski bukan satu-satunya komponen arus kas operasi.`,
+        basis: "calculated",
+        confidence: "high",
+        evidence: evidenceMany([customerReceipts, supplierPayments, index.get("operatingCashFlow")]),
+      });
+    }
+  }
+
+  if (kpis.currentRatio?.current !== null && kpis.currentRatio?.current !== undefined && kpis.currentRatio.current < 1) {
+    add({
+      category: "risk",
+      tone: "warning",
+      title: "Aset lancar belum menutup liabilitas lancar",
+      summary: `Current ratio berada di ${kpis.currentRatio.current.toLocaleString("id-ID", { maximumFractionDigits: 2 })}x. Artinya, secara angka laporan, setiap 1x kewajiban jangka pendek hanya ditopang ${kpis.currentRatio.current.toLocaleString("id-ID", { maximumFractionDigits: 2 })}x aset lancar.`,
+      basis: "calculated",
+      confidence: "high",
+      evidence: evidenceMany([index.get("currentAssets"), index.get("currentLiabilities")]),
+    });
+  }
+
+  if (kpis.debtToEquity?.current !== null && kpis.debtToEquity?.current !== undefined && kpis.debtToEquity.current > 1) {
+    add({
+      category: "debt",
+      tone: "warning",
+      title: "Leverage utang berbunga tergolong tinggi",
+      summary: `Debt-to-equity tercatat ${kpis.debtToEquity.current.toLocaleString("id-ID", { maximumFractionDigits: 2 })}x dengan net debt ${amount(report, kpis.netDebt?.current ?? null, true)}. Ruang refinancing, biaya bunga, dan jadwal jatuh tempo perlu menjadi fokus riset lanjutan.`,
+      basis: "calculated",
+      confidence: "high",
+      evidence: evidenceMany([...debtComponents, index.get("cash"), index.get("equity")]),
+    });
+  }
+
+
+  if (kpis.interestCoverage?.current !== null && kpis.interestCoverage?.current !== undefined && kpis.interestCoverage.current < 1.5) {
+    add({
+      category: "debt",
+      tone: "warning",
+      title: "Kemampuan menutup beban bunga terbatas",
+      summary: `Interest coverage proksi berada di ${kpis.interestCoverage.current.toLocaleString("id-ID", { maximumFractionDigits: 2 })}x. Nilai di bawah 1,5x menunjukkan laba operasi memiliki bantalan terbatas terhadap beban bunga; angka ini perlu dikonfirmasi dengan rincian restrukturisasi dan jatuh tempo utang.`,
+      basis: "calculated",
+      confidence: "medium",
+      evidence: evidenceMany([index.get("pretaxProfit"), index.get("financeCost") ?? index.get("interestExpense"), index.get("financeIncome") ?? index.get("interestIncome")]),
     });
   }
 
@@ -515,6 +713,15 @@ export function parseFinancialReportWorkbook(workbook: readonly WorkbookSheet[],
     inventory: metric(index, "inventory"),
     receivables,
   };
+  kpis.currentRatio = ratioMetric(metric(index, "currentAssets"), metric(index, "currentLiabilities"));
+  kpis.debtToEquity = ratioMetric(kpis.interestBearingDebt, kpis.equity);
+  kpis.netDebt = subtractMetric(kpis.interestBearingDebt, kpis.cash);
+  kpis.interestCoverage = interestCoverageMetric(index);
+  kpis.netMargin = marginMetric(kpis.netIncome, kpis.revenue);
+  const annualFactor = annualizationFactor(periodStart, periodEnd);
+  kpis.annualizedRoa = annualizedReturnMetric(metric(index, "netIncome"), kpis.assets, annualFactor);
+  kpis.annualizedRoe = annualizedReturnMetric(kpis.netIncome, index.has("equityParent") ? metric(index, "equityParent") : kpis.equity, annualFactor);
+  kpis.freeCashFlow = subtractMetric(kpis.operatingCashFlow, magnitudeMetric(metric(index, "capex")));
   const report: ParsedFinancialReport = {
     ticker,
     entityName,
@@ -536,7 +743,14 @@ export function parseFinancialReportWorkbook(workbook: readonly WorkbookSheet[],
     executiveSummary: "",
     kpis,
     insights: [],
-    breakdowns: buildBreakdowns(noteSheets, facts, revenue),
+    breakdowns: buildBreakdowns(noteSheets, facts, {
+      "1616000": revenue.current,
+      "1617000": revenue.current,
+      "1618000": revenue.current,
+      "1619000": revenue.current,
+      "1630000": kpis.inventory.current,
+      "1670000": Math.abs(metric(index, "costOfRevenue").current ?? 0) || null,
+    }),
     facts,
     sourceFile,
   };

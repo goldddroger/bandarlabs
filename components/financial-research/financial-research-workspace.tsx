@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -16,6 +17,7 @@ import {
   RefreshCw,
   Save,
   Search,
+  ShieldAlert,
   ShieldCheck,
   Trash2,
 } from "lucide-react";
@@ -34,6 +36,8 @@ import {
   type FinancialStatementKind,
 } from "@/lib/financial-report";
 import { cn } from "@/lib/utils";
+import { fcaCriteria } from "@/lib/fca-criteria";
+import type { FcaEpisode } from "@/lib/fca-import";
 
 type WorkspaceTab = "summary" | "income_statement" | "balance_sheet" | "cash_flow" | "source";
 type DetailPayload = { report?: FinancialReportRecord; facts?: FinancialReportFact[]; downloadUrl?: string | null; error?: string };
@@ -277,6 +281,12 @@ function SummaryView({ report }: { report: FinancialReportRecord }) {
         {metrics.map(([label, metric, kind]) => <KpiCard key={label} label={label} metric={metric} report={report} kind={kind} />)}
       </div>
 
+      <FinancialHealth report={report} />
+
+      <ProfitabilityQuality report={report} />
+
+      <FcaAssessment report={report} />
+
       <section className={cn("overflow-hidden rounded-lg border", report.kpis.netIncome.current !== null && report.kpis.netIncome.current < 0 ? "border-red-200" : "border-emerald-200")}>
         <div className={cn("border-l-4 px-5 py-4", report.kpis.netIncome.current !== null && report.kpis.netIncome.current < 0 ? "border-red-600 bg-red-50" : "border-emerald-600 bg-emerald-50")}>
           <p className="text-xs font-semibold uppercase text-gray-500">Executive Summary</p>
@@ -297,6 +307,78 @@ function SummaryView({ report }: { report: FinancialReportRecord }) {
   );
 }
 
+function FcaAssessment({ report }: { report: FinancialReportRecord }) {
+  type FcaPayload = { active: FcaEpisode | null; latest: FcaEpisode | null; historyCount: number };
+  const [response, setResponse] = useState<{ ticker: string; payload: FcaPayload } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/fca-status?ticker=${encodeURIComponent(report.ticker)}`, { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((result: FcaPayload | null) => { if (!cancelled) setResponse({ ticker: report.ticker, payload: result ?? { active: null, latest: null, historyCount: 0 } }); })
+      .catch(() => { if (!cancelled) setResponse({ ticker: report.ticker, payload: { active: null, latest: null, historyCount: 0 } }); });
+    return () => { cancelled = true; };
+  }, [report.ticker]);
+
+  const payload = response?.ticker === report.ticker ? response.payload : null;
+
+  const auditContext = `${report.reportType} ${report.auditor} ${report.insights.map((insight) => `${insight.title} ${insight.summary}`).join(" ")}`;
+  const hasDisclaimer = /disclaimer|tidak menyatakan pendapat/i.test(auditContext);
+  const isUnaudited = /tidak diaudit|unaudit/i.test(auditContext);
+  const checks = [
+    { number: 2, status: hasDisclaimer ? "risk" : "unknown", result: hasDisclaimer ? "Terindikasi dari opini laporan" : isUnaudited ? "Tidak dapat diuji dari laporan yang belum diaudit" : "Perlu laporan tahunan auditan" },
+    { number: 3, status: report.kpis.revenue.current !== null && report.kpis.revenue.current > 0 && report.kpis.revenue.changeAmount !== 0 ? "clear" : "risk", result: report.kpis.revenue.current !== null && report.kpis.revenue.current > 0 && report.kpis.revenue.changeAmount !== 0 ? "Tidak terindikasi pada periode ini" : "Perlu perhatian" },
+    { number: 5, status: report.kpis.equity.current !== null && report.kpis.equity.current >= 0 ? "clear" : "risk", result: report.kpis.equity.current !== null && report.kpis.equity.current >= 0 ? "Ekuitas masih positif" : "Ekuitas negatif" },
+  ] as const;
+  const active = payload?.active;
+  return (
+    <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-gray-100 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
+        <div className="flex gap-3"><span className={cn("flex size-10 shrink-0 items-center justify-center rounded-md", active ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-500")}><ShieldAlert className="size-5" /></span><div><h3 className="text-sm font-semibold text-gray-950">Pemeriksaan FCA</h3><p className="mt-1 text-xs leading-5 text-gray-500">Status IDX dipisahkan dari indikasi yang dapat diuji melalui laporan keuangan.</p></div></div>
+        {payload === null ? <span className="inline-flex items-center gap-2 text-xs text-gray-400"><Loader2 className="size-3.5 animate-spin" />Memeriksa FCA</span> : active ? <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">Aktif sejak {formatDate(active.entered_at)}</span> : <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Tidak aktif di daftar terbaru</span>}
+      </div>
+      {active ? <div className="border-b border-gray-100 bg-red-50/50 px-4 py-3 sm:px-5"><div className="flex flex-wrap items-center gap-2"><span className="text-xs font-semibold text-red-800">Kriteria aktif IDX:</span>{active.criteria.map((criterion) => <span key={criterion} title={fcaCriteria[criterion]} className="inline-flex size-7 items-center justify-center rounded-md border border-red-200 bg-white text-xs font-bold text-red-700">{criterion}</span>)}</div><p className="mt-2 text-xs leading-5 text-red-800">{active.criteria.map((criterion) => `${criterion}. ${fcaCriteria[criterion]}`).join(" ")}</p></div> : null}
+      <div className="grid sm:grid-cols-3">{checks.map((check) => <div key={check.number} className="border-b border-gray-100 p-4 sm:border-r sm:last:border-r-0"><div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold text-gray-500">Kriteria {check.number}</span><span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", check.status === "clear" ? "bg-emerald-50 text-emerald-700" : check.status === "risk" ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600")}>{check.status === "clear" ? "Tidak terindikasi" : check.status === "risk" ? "Terindikasi" : "Belum dapat diuji"}</span></div><p className="mt-2 text-sm font-medium text-gray-900">{check.result}</p><p className="mt-1 text-xs leading-5 text-gray-400">{fcaCriteria[check.number]}</p></div>)}</div>
+      <div className="flex flex-col gap-2 bg-gray-50 px-4 py-3 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between sm:px-5"><span>Kriteria perdagangan, free float, PKPU, suspensi, dan keputusan Bursa tidak dapat disimpulkan dari Excel laporan keuangan.</span><Link href="/fca" className="shrink-0 font-semibold text-red-700 hover:text-red-800">Buka FCA Tracker <ChevronRight className="inline size-3.5" /></Link></div>
+    </section>
+  );
+}
+
+function FinancialHealth({ report }: { report: FinancialReportRecord }) {
+  const ratios = [
+    ["Current ratio", report.kpis.currentRatio, "Kemampuan aset lancar menutup kewajiban jangka pendek"],
+    ["Debt / equity", report.kpis.debtToEquity, "Utang berbunga dibandingkan total ekuitas"],
+    ["Interest coverage", report.kpis.interestCoverage, "EBIT proksi dibandingkan beban bunga dan keuangan"],
+  ] as const;
+  if (!ratios.some(([, metric]) => metric?.current !== null && metric?.current !== undefined) && report.kpis.netDebt?.current == null) return null;
+  return (
+    <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="border-b border-gray-100 px-4 py-3 sm:px-5"><h3 className="text-sm font-semibold text-gray-950">Kesehatan Finansial</h3><p className="mt-1 text-xs text-gray-500">Rasio otomatis untuk membaca likuiditas, leverage, dan kemampuan membayar bunga.</p></div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4">
+        {ratios.map(([label, metric, detail]) => <div key={label} className="border-b border-gray-100 p-4 sm:border-r lg:border-b-0"><p className="text-xs text-gray-500">{label}</p><p className="mt-1.5 text-lg font-semibold text-gray-950">{metric?.current == null ? "-" : `${metric.current.toLocaleString("id-ID", { maximumFractionDigits: 2 })}x`}</p><p className="mt-1 text-xs leading-5 text-gray-400">{detail}</p></div>)}
+        <div className="p-4"><p className="text-xs text-gray-500">Net debt</p><p className="mt-1.5 text-lg font-semibold text-gray-950">{formatFinancialAmount(report.kpis.netDebt?.current ?? null, report.currency, report.unitMultiplier)}</p><p className="mt-1 text-xs leading-5 text-gray-400">Utang berbunga setelah dikurangi kas dan setara kas</p></div>
+      </div>
+    </section>
+  );
+}
+
+function ProfitabilityQuality({ report }: { report: FinancialReportRecord }) {
+  const metrics = [
+    ["Annualized ROA", report.kpis.annualizedRoa, "Laba periode berjalan disetahunkan terhadap rata-rata aset"],
+    ["Annualized ROE", report.kpis.annualizedRoe, "Laba periode berjalan disetahunkan terhadap rata-rata ekuitas"],
+    ["Net margin", report.kpis.netMargin, "Laba pemilik induk dibandingkan pendapatan"],
+  ] as const;
+  if (!metrics.some(([, metric]) => metric?.current !== null && metric?.current !== undefined) && report.kpis.freeCashFlow?.current == null) return null;
+  return (
+    <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="border-b border-gray-100 px-4 py-3 sm:px-5"><h3 className="text-sm font-semibold text-gray-950">Kualitas Profitabilitas</h3><p className="mt-1 text-xs text-gray-500">Menguji angka pertumbuhan terhadap produktivitas aset, modal, margin, dan kas bebas.</p></div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4">
+        {metrics.map(([label, metric, detail]) => <div key={label} className="border-b border-gray-100 p-4 sm:border-r lg:border-b-0"><p className="text-xs text-gray-500">{label}</p><p className="mt-1.5 text-lg font-semibold text-gray-950">{formatFinancialPercent(metric?.current ?? null, false)}</p><p className="mt-1 text-xs leading-5 text-gray-400">{detail}</p></div>)}
+        <div className="p-4"><p className="text-xs text-gray-500">Free cash flow</p><p className="mt-1.5 text-lg font-semibold text-gray-950">{formatFinancialAmount(report.kpis.freeCashFlow?.current ?? null, report.currency, report.unitMultiplier)}</p><p className="mt-1 text-xs leading-5 text-gray-400">Arus kas operasi setelah belanja aset tetap</p></div>
+      </div>
+    </section>
+  );
+}
+
 function KpiCard({ label, metric, report, kind }: { label: string; metric: FinancialMetric; report: FinancialReportRecord; kind: "normal" | "margin" }) {
   const value = kind === "margin" ? formatFinancialPercent(metric.current, false) : formatFinancialAmount(metric.current, report.currency, report.unitMultiplier);
   const positive = (metric.changeAmount ?? 0) >= 0;
@@ -311,7 +393,7 @@ function InsightRow({ insight, index, report }: { insight: FinancialInsight; ind
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2"><h4 className="font-semibold text-gray-950">{insight.title}</h4><BasisBadge basis={insight.basis} confidence={insight.confidence} /></div>
         <p className="mt-2 text-sm leading-7 text-gray-700">{insight.summary}</p>
-        {insight.evidence.length ? <div className="mt-3 flex flex-wrap gap-2">{insight.evidence.slice(0, 4).map((item) => <span key={`${item.sheetCode}-${item.rowNumber}-${item.label}`} title={`${item.label}: ${formatFinancialAmount(item.currentValue, report.currency, report.unitMultiplier)}`} className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-500">Sheet {item.sheetCode} · baris {item.rowNumber}</span>)}</div> : null}
+        {insight.evidence.length ? <div className="mt-3 flex flex-wrap gap-2">{insight.evidence.slice(0, 4).map((item) => <span key={`${item.sheetCode}-${item.rowNumber}-${item.label}`} title={`${item.label}: ${formatFinancialAmount(item.currentValue, report.currency, report.unitMultiplier)}`} className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-500">{item.sourceType === "pdf" ? `${item.sourceFile || "PDF"} · halaman ${item.pageNumber || item.rowNumber}` : `Sheet ${item.sheetCode} · baris ${item.rowNumber}`}</span>)}</div> : null}
       </div>
     </article>
   );
@@ -333,7 +415,7 @@ function StatementView({ title, description, statement, report, facts }: { title
 
 function SourceView({ report, facts, downloadUrl, note, setNote, saving, onSave }: { report: FinancialReportRecord; facts: FinancialReportFact[]; downloadUrl: string | null; note: string; setNote: (value: string) => void; saving: boolean; onSave: () => void }) {
   const sheetCount = new Set(facts.map((fact) => fact.sheetCode)).size;
-  return <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]"><section className="rounded-lg border border-gray-200 bg-white p-4 sm:p-5"><div className="flex items-start gap-3"><BookOpenCheck className="mt-0.5 size-5 text-red-600" /><div><h3 className="font-semibold text-gray-950">Catatan analisis pribadi</h3><p className="mt-1 text-sm leading-6 text-gray-500">Tambahkan thesis, pertanyaan lanjutan, atau konteks dari public expose dan PDF.</p></div></div><textarea value={note} onChange={(event) => setNote(event.target.value)} rows={12} placeholder="Contoh: cek penyebab kenaikan persediaan dan konfirmasi rencana penggunaannya pada public expose..." className="mt-4 w-full resize-y rounded-md border border-gray-200 px-3 py-3 text-sm leading-6 text-gray-800 focus:border-red-500 focus:ring-2 focus:ring-red-100" /><div className="mt-3 flex justify-end"><Button type="button" onClick={onSave} disabled={saving || note === report.analystNote}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}{saving ? "Menyimpan..." : "Simpan Catatan"}</Button></div></section><aside className="space-y-4"><div className="rounded-lg border border-gray-200 bg-white p-4"><h3 className="text-sm font-semibold text-gray-950">Audit sumber</h3><dl className="mt-4 space-y-3 text-sm"><AuditRow label="File" value={report.sourceFile || "-"} /><AuditRow label="Fakta angka" value={facts.length.toLocaleString("id-ID")} /><AuditRow label="Sheet aktif" value={String(sheetCount)} /><AuditRow label="Auditor" value={report.auditor || "-"} /><AuditRow label="Diperbarui" value={formatDateTime(report.updatedAt)} /></dl>{downloadUrl ? <a href={downloadUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"><Download className="size-4" />Buka file sumber</a> : null}</div><div className="rounded-lg border border-amber-200 bg-amber-50 p-4"><div className="flex gap-3"><ShieldCheck className="mt-0.5 size-5 shrink-0 text-amber-700" /><p className="text-xs leading-6 text-amber-900">Kesimpulan berbasis hubungan angka XBRL. Penjelasan operasional seperti volume, harga jual, dan tujuan pinjaman tetap perlu diverifikasi dengan PDF atau keterangan manajemen.</p></div></div></aside></div>;
+  return <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]"><section className="rounded-lg border border-gray-200 bg-white p-4 sm:p-5"><div className="flex items-start gap-3"><BookOpenCheck className="mt-0.5 size-5 text-red-600" /><div><h3 className="font-semibold text-gray-950">Catatan analisis pribadi</h3><p className="mt-1 text-sm leading-6 text-gray-500">Tambahkan thesis, pertanyaan lanjutan, atau konteks dari public expose dan PDF.</p></div></div><textarea value={note} onChange={(event) => setNote(event.target.value)} rows={12} placeholder="Contoh: cek penyebab kenaikan persediaan dan konfirmasi rencana penggunaannya pada public expose..." className="mt-4 w-full resize-y rounded-md border border-gray-200 px-3 py-3 text-sm leading-6 text-gray-800 focus:border-red-500 focus:ring-2 focus:ring-red-100" /><div className="mt-3 flex justify-end"><Button type="button" onClick={onSave} disabled={saving || note === report.analystNote}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}{saving ? "Menyimpan..." : "Simpan Catatan"}</Button></div></section><aside className="space-y-4"><div className="rounded-lg border border-gray-200 bg-white p-4"><h3 className="text-sm font-semibold text-gray-950">Audit sumber</h3><dl className="mt-4 space-y-3 text-sm"><AuditRow label="File" value={report.sourceFile || "-"} /><AuditRow label="Fakta angka" value={facts.length.toLocaleString("id-ID")} /><AuditRow label="Sheet aktif" value={String(sheetCount)} /><AuditRow label="PDF pendamping" value={String(report.supportingDocuments.length)} /><AuditRow label="Auditor" value={report.auditor || "-"} /><AuditRow label="Diperbarui" value={formatDateTime(report.updatedAt)} /></dl>{downloadUrl ? <a href={downloadUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"><Download className="size-4" />Buka file Excel</a> : null}{report.supportingDocuments.length ? <div className="mt-3 space-y-2 border-t border-gray-100 pt-3">{report.supportingDocuments.map((document) => document.downloadUrl ? <a key={document.storagePath} href={document.downloadUrl} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-3 rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600 hover:bg-red-50 hover:text-red-700"><span className="min-w-0 truncate">{document.name}</span><span className="shrink-0">{document.pageCount} hal.</span></a> : null)}</div> : null}</div><div className="rounded-lg border border-amber-200 bg-amber-50 p-4"><div className="flex gap-3"><ShieldCheck className="mt-0.5 size-5 shrink-0 text-amber-700" /><p className="text-xs leading-6 text-amber-900">Insight berlabel Diungkapkan berasal dari PDF emiten. Hubungan angka yang belum dijelaskan manajemen tetap ditandai sebagai perhitungan atau inferensi.</p></div></div></aside></div>;
 }
 
 function HeaderMetric({ label, value, detail, icon: Icon }: { label: string; value: string; detail: string; icon: typeof FileSpreadsheet }) { return <div className="flex items-center gap-3 border-b border-gray-200 p-4 last:border-0 sm:border-b-0 sm:border-r sm:last:border-r-0"><span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-red-50 text-red-700"><Icon className="size-5" /></span><div className="min-w-0"><p className="text-xs text-gray-500">{label}</p><p className="mt-0.5 truncate font-semibold text-gray-950">{value}</p><p className="mt-0.5 truncate text-xs text-gray-400">{detail}</p></div></div>; }
