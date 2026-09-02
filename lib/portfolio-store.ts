@@ -37,6 +37,7 @@ export type PortfolioData = {
 type PortfolioDeletion = {
   holdingIds?: string[];
   tradeIds?: string[];
+  equityDates?: string[];
 };
 
 const storageKey = "bandarlab.portfolio.v1";

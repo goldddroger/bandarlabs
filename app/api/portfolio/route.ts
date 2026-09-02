@@ -13,6 +13,7 @@ type PortfolioPayload = {
   deleted?: {
     holdingIds?: unknown[];
     tradeIds?: unknown[];
+    equityDates?: unknown[];
   };
 };
 
@@ -72,10 +73,14 @@ function normalizePayload(value: unknown) {
   const invalidHistory = equityHistory.some((row) => row.equity === null || !datePattern.test(row.snapshot_date));
   const deletedHoldingIds = Array.isArray(body.deleted?.holdingIds) ? body.deleted.holdingIds.map((id) => cleanText(id, 120)).filter(Boolean) : [];
   const deletedTradeIds = Array.isArray(body.deleted?.tradeIds) ? body.deleted.tradeIds.map((id) => cleanText(id, 120)).filter(Boolean) : [];
-  const invalidDeletion = deletedHoldingIds.length > 100 || deletedTradeIds.length > 100;
+  const deletedEquityDates = Array.isArray(body.deleted?.equityDates) ? body.deleted.equityDates.map((date) => cleanText(date, 10)).filter(Boolean) : [];
+  const invalidDeletion = deletedHoldingIds.length > 100
+    || deletedTradeIds.length > 100
+    || deletedEquityDates.length > 5000
+    || deletedEquityDates.some((date) => !datePattern.test(date));
   return invalidHolding || invalidTrade || invalidHistory || invalidDeletion
     ? null
-    : { holdings, trades, equityHistory, deletedHoldingIds, deletedTradeIds };
+    : { holdings, trades, equityHistory, deletedHoldingIds, deletedTradeIds, deletedEquityDates };
 }
 
 export async function GET() {
@@ -114,6 +119,7 @@ export async function PUT(request: Request) {
     historyRows.length ? supabase.from("portfolio_equity_history").upsert(historyRows, { onConflict: "owner_id,snapshot_date" }) : Promise.resolve({ error: null }),
     payload.deletedHoldingIds.length ? supabase.from("portfolio_holdings").delete().eq("owner_id", adminOwnerId).in("id", payload.deletedHoldingIds) : Promise.resolve({ error: null }),
     payload.deletedTradeIds.length ? supabase.from("portfolio_trades").delete().eq("owner_id", adminOwnerId).in("id", payload.deletedTradeIds) : Promise.resolve({ error: null }),
+    payload.deletedEquityDates.length ? supabase.from("portfolio_equity_history").delete().eq("owner_id", adminOwnerId).in("snapshot_date", payload.deletedEquityDates) : Promise.resolve({ error: null }),
   ];
   const results = await Promise.all(operations);
   const error = results.find((result) => result.error)?.error;

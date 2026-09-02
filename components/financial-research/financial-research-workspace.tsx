@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { FinancialReportImportDialog } from "@/components/financial-research/financial-report-import-dialog";
+import { FinancialPeriodComparison } from "@/components/financial-research/financial-period-comparison";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -39,12 +40,13 @@ import { cn } from "@/lib/utils";
 import { fcaCriteria } from "@/lib/fca-criteria";
 import type { FcaEpisode } from "@/lib/fca-import";
 
-type WorkspaceTab = "summary" | "income_statement" | "balance_sheet" | "cash_flow" | "source";
+type WorkspaceTab = "summary" | "comparison" | "income_statement" | "balance_sheet" | "cash_flow" | "source";
 type DetailPayload = { report?: FinancialReportRecord; facts?: FinancialReportFact[]; downloadUrl?: string | null; error?: string };
 type ListPayload = { reports?: FinancialReportRecord[]; error?: string };
 
 const tabs: Array<{ id: WorkspaceTab; label: string }> = [
   { id: "summary", label: "Ringkasan" },
+  { id: "comparison", label: "Tren & Komparasi" },
   { id: "income_statement", label: "Laba Rugi" },
   { id: "balance_sheet", label: "Neraca" },
   { id: "cash_flow", label: "Arus Kas" },
@@ -234,6 +236,7 @@ export function FinancialResearchWorkspace() {
                 </div>
 
                 {activeTab === "summary" ? <SummaryView report={selected} /> : null}
+                {activeTab === "comparison" ? <FinancialPeriodComparison reports={reports} selected={selected} /> : null}
                 {activeTab === "income_statement" ? <StatementView title="Laporan Laba Rugi" description="Perubahan pendapatan, beban, laba, dan komponen pendorongnya." statement="income_statement" report={selected} facts={facts} /> : null}
                 {activeTab === "balance_sheet" ? <StatementView title="Neraca" description="Posisi aset, liabilitas, utang berbunga, dan ekuitas pada akhir periode." statement="balance_sheet" report={selected} facts={facts} /> : null}
                 {activeTab === "cash_flow" ? <StatementView title="Arus Kas" description="Hubungan laba dengan kas operasi, investasi, pendanaan, dan pembayaran penting." statement="cash_flow" report={selected} facts={facts} /> : null}

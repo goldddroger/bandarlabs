@@ -362,6 +362,20 @@ export function PortfolioDashboard() {
     toast.info("Riwayat trade dihapus");
   }
 
+  async function clearEquityHistory() {
+    if (!portfolio.equityHistory.length) return;
+    const confirmed = await confirm({
+      title: "Reset riwayat equity?",
+      description: "Semua snapshot valuasi harian akan dihapus dari grafik. Posisi aktif dan history realized trade tidak ikut terhapus.",
+      subject: `${portfolio.equityHistory.length} snapshot equity`,
+      confirmLabel: "Reset Grafik",
+    });
+    if (!confirmed) return;
+    const equityDates = portfolio.equityHistory.map((snapshot) => snapshot.date);
+    savePortfolio({ ...portfolio, equityHistory: [] }, { equityDates });
+    toast.info("Riwayat equity direset");
+  }
+
   function exportPortfolioSql() {
     downloadPortfolioSql(portfolio);
     toast.success("SQL Portfolio berhasil diunduh.");
@@ -402,7 +416,7 @@ export function PortfolioDashboard() {
       </div>
 
       <div className="mb-5 grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.5fr)]">
-        <PortfolioHistoryChart history={portfolio.equityHistory} trades={portfolio.trades} />
+        <PortfolioHistoryChart history={portfolio.equityHistory} trades={portfolio.trades} hasActivePositions={portfolio.holdings.length > 0} onClearEquity={clearEquityHistory} />
         <MonthlyPerformance tradeCount={monthlyTrades.length} wins={winningTrades} winRate={winRate} realized={monthlyRealized} />
       </div>
 
@@ -433,7 +447,7 @@ function PortfolioMetric({ icon: Icon, label, value, detail, tone }: { icon: typ
 
 type PortfolioChartRow = { date: string; value: number; label: string };
 
-function PortfolioHistoryChart({ history, trades }: { history: Array<{ date: string; equity: number }>; trades: RealizedTrade[] }) {
+function PortfolioHistoryChart({ history, trades, hasActivePositions, onClearEquity }: { history: Array<{ date: string; equity: number }>; trades: RealizedTrade[]; hasActivePositions: boolean; onClearEquity: () => void }) {
   const [mode, setMode] = useState<"equity" | "trade">("equity");
   const equityData: PortfolioChartRow[] = history.slice(-31).map((snapshot) => ({ date: snapshot.date, value: snapshot.equity, label: snapshot.date.slice(5).replace("-", "/") }));
   const tradeData = useMemo<PortfolioChartRow[]>(() => {
@@ -461,12 +475,15 @@ function PortfolioHistoryChart({ history, trades }: { history: Array<{ date: str
         <div>
           <h2 className="text-sm font-semibold text-gray-950">Riwayat Performa</h2>
           <p className="mt-1 text-xs text-gray-500">
-            {mode === "equity" ? "Valuasi harian posisi aktif." : "Akumulasi realized P/L berdasarkan trade selesai."}
+            {mode === "equity" ? hasActivePositions ? "Valuasi harian posisi aktif." : "Snapshot historis sebelum posisi aktif dihapus atau ditutup." : "Akumulasi realized P/L berdasarkan trade selesai."}
           </p>
         </div>
-        <div className="inline-grid grid-cols-2 rounded-md border border-gray-200 bg-gray-50 p-0.5" aria-label="Pilih grafik portfolio">
-          <button type="button" onClick={() => setMode("equity")} className={cn("h-8 rounded px-3 text-xs font-semibold transition", mode === "equity" ? "bg-white text-gray-950 shadow-sm" : "text-gray-500 hover:text-gray-900")}>Equity Harian</button>
-          <button type="button" onClick={() => setMode("trade")} className={cn("h-8 rounded px-3 text-xs font-semibold transition", mode === "trade" ? "bg-white text-gray-950 shadow-sm" : "text-gray-500 hover:text-gray-900")}>Realized Trade</button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-grid grid-cols-2 rounded-md border border-gray-200 bg-gray-50 p-0.5" aria-label="Pilih grafik portfolio">
+            <button type="button" onClick={() => setMode("equity")} className={cn("h-8 rounded px-3 text-xs font-semibold transition", mode === "equity" ? "bg-white text-gray-950 shadow-sm" : "text-gray-500 hover:text-gray-900")}>Equity Harian</button>
+            <button type="button" onClick={() => setMode("trade")} className={cn("h-8 rounded px-3 text-xs font-semibold transition", mode === "trade" ? "bg-white text-gray-950 shadow-sm" : "text-gray-500 hover:text-gray-900")}>Realized Trade</button>
+          </div>
+          {mode === "equity" && history.length ? <Button type="button" variant="ghost" className="h-9 px-2.5 text-xs text-gray-500 hover:text-red-700" onClick={onClearEquity} title="Hapus seluruh snapshot equity"><Trash2 className="size-4" />Reset</Button> : null}
         </div>
       </div>
       {chartData.length === 0 ? (
@@ -476,7 +493,7 @@ function PortfolioHistoryChart({ history, trades }: { history: Array<{ date: str
       ) : (
         <div>
           <div className="mb-2 flex items-baseline justify-between gap-3">
-            <p className="text-xs text-gray-500">{mode === "equity" ? "Equity terakhir" : "Kumulatif realized"}</p>
+            <p className="text-xs text-gray-500">{mode === "equity" ? hasActivePositions ? "Equity terakhir" : "Snapshot terakhir" : "Kumulatif realized"}</p>
             <p className={cn("text-sm font-semibold text-gray-950", mode === "trade" && latestValue >= 0 && "text-emerald-700", mode === "trade" && latestValue < 0 && "text-red-700")}>{formatCurrency(latestValue)}</p>
           </div>
           <div className="h-52 w-full">
