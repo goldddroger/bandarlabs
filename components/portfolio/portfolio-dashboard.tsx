@@ -115,7 +115,7 @@ export function PortfolioDashboard() {
   const [tradeDraft, setTradeDraft] = useState<TradeDraft>(emptyTrade);
   const [tradeHistoryFilter, setTradeHistoryFilter] = useState<TradeHistoryFilter>(() => {
     const today = getJakartaDate();
-    return { mode: "month", month: today.slice(0, 7), quarter: getQuarterFromDate(today), year: today.slice(0, 4) };
+    return { mode: "year", month: today.slice(0, 7), quarter: getQuarterFromDate(today), year: today.slice(0, 4) };
   });
   const [tradeHistoryFocus, setTradeHistoryFocus] = useState<TradeHistoryFocus>({
     month: getJakartaDate().slice(0, 7),
@@ -269,7 +269,7 @@ export function PortfolioDashboard() {
       confirmLabel: "Hapus Posisi",
     });
     if (!confirmed) return;
-    savePortfolio({ ...portfolio, holdings: portfolio.holdings.filter((holding) => holding.id !== id) });
+    savePortfolio({ ...portfolio, holdings: portfolio.holdings.filter((holding) => holding.id !== id) }, { holdingIds: [id] });
     toast.info("Posisi dihapus dari portfolio");
   }
 
@@ -358,7 +358,7 @@ export function PortfolioDashboard() {
       confirmLabel: "Hapus Trade",
     });
     if (!confirmed) return;
-    savePortfolio({ ...portfolio, trades: portfolio.trades.filter((trade) => trade.id !== id) });
+    savePortfolio({ ...portfolio, trades: portfolio.trades.filter((trade) => trade.id !== id) }, { tradeIds: [id] });
     toast.info("Riwayat trade dihapus");
   }
 

@@ -10,6 +10,10 @@ type PortfolioPayload = {
   holdings?: Array<Record<string, unknown>>;
   trades?: Array<Record<string, unknown>>;
   equityHistory?: Array<Record<string, unknown>>;
+  deleted?: {
+    holdingIds?: unknown[];
+    tradeIds?: unknown[];
+  };
 };
 
 function serverClient() {
@@ -66,7 +70,12 @@ function normalizePayload(value: unknown) {
   const invalidHolding = holdings.some((row) => !row.id || !row.ticker || row.lots === null || row.average_price === null || !datePattern.test(row.purchased_at));
   const invalidTrade = trades.some((row) => !row.id || !row.ticker || row.lots === null || row.buy_price === null || row.sell_price === null || row.buy_fee_percent === null || row.sell_fee_percent === null || !datePattern.test(row.sold_at));
   const invalidHistory = equityHistory.some((row) => row.equity === null || !datePattern.test(row.snapshot_date));
-  return invalidHolding || invalidTrade || invalidHistory ? null : { holdings, trades, equityHistory };
+  const deletedHoldingIds = Array.isArray(body.deleted?.holdingIds) ? body.deleted.holdingIds.map((id) => cleanText(id, 120)).filter(Boolean) : [];
+  const deletedTradeIds = Array.isArray(body.deleted?.tradeIds) ? body.deleted.tradeIds.map((id) => cleanText(id, 120)).filter(Boolean) : [];
+  const invalidDeletion = deletedHoldingIds.length > 100 || deletedTradeIds.length > 100;
+  return invalidHolding || invalidTrade || invalidHistory || invalidDeletion
+    ? null
+    : { holdings, trades, equityHistory, deletedHoldingIds, deletedTradeIds };
 }
 
 export async function GET() {
@@ -96,14 +105,24 @@ export async function PUT(request: Request) {
   const payload = normalizePayload(await request.json().catch(() => null));
   if (!payload) return NextResponse.json({ error: "Data portfolio tidak valid." }, { status: 400 });
 
-  const { data, error } = await supabase.rpc("replace_admin_portfolio", {
-    p_holdings: payload.holdings,
-    p_trades: payload.trades,
-    p_equity_history: payload.equityHistory,
-  });
+  const holdingRows = payload.holdings.map((row) => ({ ...row, owner_id: adminOwnerId }));
+  const tradeRows = payload.trades.map((row) => ({ ...row, owner_id: adminOwnerId }));
+  const historyRows = payload.equityHistory.map((row) => ({ ...row, owner_id: adminOwnerId }));
+  const operations = [
+    holdingRows.length ? supabase.from("portfolio_holdings").upsert(holdingRows, { onConflict: "owner_id,id" }) : Promise.resolve({ error: null }),
+    tradeRows.length ? supabase.from("portfolio_trades").upsert(tradeRows, { onConflict: "owner_id,id" }) : Promise.resolve({ error: null }),
+    historyRows.length ? supabase.from("portfolio_equity_history").upsert(historyRows, { onConflict: "owner_id,snapshot_date" }) : Promise.resolve({ error: null }),
+    payload.deletedHoldingIds.length ? supabase.from("portfolio_holdings").delete().eq("owner_id", adminOwnerId).in("id", payload.deletedHoldingIds) : Promise.resolve({ error: null }),
+    payload.deletedTradeIds.length ? supabase.from("portfolio_trades").delete().eq("owner_id", adminOwnerId).in("id", payload.deletedTradeIds) : Promise.resolve({ error: null }),
+  ];
+  const results = await Promise.all(operations);
+  const error = results.find((result) => result.error)?.error;
   if (error) {
-    console.error("Portfolio sync failed", error);
-    return NextResponse.json({ error: "Portfolio gagal disimpan. Jalankan migration admin portfolio terbaru." }, { status: 500 });
+    console.error("Portfolio merge failed", error);
+    return NextResponse.json({ error: "Portfolio gagal disinkronkan ke Supabase." }, { status: 500 });
   }
-  return NextResponse.json({ success: true, counts: data });
+  return NextResponse.json({
+    success: true,
+    counts: { holdings: holdingRows.length, trades: tradeRows.length, equityHistory: historyRows.length },
+  });
 }

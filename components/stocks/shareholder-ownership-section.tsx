@@ -2,6 +2,7 @@ import {
   ShareholderFivePercentRow,
   ShareholderOnePercentRow,
 } from "@/lib/shareholder-ownership";
+import { StockInvestorClassification } from "@/components/stocks/stock-investor-classification";
 
 function formatShares(shares: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -99,9 +100,11 @@ function OnePercentTable({ rows }: { rows: readonly ShareholderOnePercentRow[] }
 }
 
 export function ShareholderOwnershipSection({
+  ticker,
   onePercentRows,
   fivePercentRows,
 }: {
+  ticker: string;
   onePercentRows: readonly ShareholderOnePercentRow[];
   fivePercentRows: readonly ShareholderFivePercentRow[];
 }) {
@@ -111,6 +114,8 @@ export function ShareholderOwnershipSection({
   const scripTotal = onePercentRows.reduce((total, row) => total + row.scripShares, 0);
 
   return (
+    <>
+    <StockInvestorClassification ticker={ticker} />
     <section className="mb-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
       <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
@@ -155,5 +160,6 @@ export function ShareholderOwnershipSection({
         </div>
       </div>
     </section>
+    </>
   );
 }

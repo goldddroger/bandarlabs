@@ -1,13 +1,13 @@
-import { OwnershipTracker } from "@/components/ownership/ownership-tracker";
+import { OwnershipWorkspace } from "@/components/ownership/ownership-workspace";
 import { PlaceholderPage } from "@/components/ui/page-shell";
 
 export default function OwnershipPage() {
   return (
     <PlaceholderPage
       title="Ownership Tracker"
-      description="Telusuri pemegang saham besar berdasarkan data kepemilikan 1% dan 5% yang tersimpan di Supabase."
+      description="Telusuri pemegang saham besar dan perubahan komposisi investor berdasarkan snapshot resmi BEI/KSEI."
     >
-      <OwnershipTracker />
+      <OwnershipWorkspace />
     </PlaceholderPage>
   );
 }

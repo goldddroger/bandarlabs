@@ -237,7 +237,7 @@ export default async function StockDetailPage({ params }: { params: Promise<{ ti
       </section>
 
       <section id="ownership" className="scroll-mt-36">
-        <ShareholderOwnershipSection onePercentRows={onePercentRows} fivePercentRows={fivePercentRows} />
+        <ShareholderOwnershipSection ticker={stock.ticker} onePercentRows={onePercentRows} fivePercentRows={fivePercentRows} />
       </section>
 
       <section id="broker-summary" className="mb-6 scroll-mt-36">

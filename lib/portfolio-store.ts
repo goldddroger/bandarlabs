@@ -34,11 +34,17 @@ export type PortfolioData = {
   equityHistory: EquitySnapshot[];
 };
 
+type PortfolioDeletion = {
+  holdingIds?: string[];
+  tradeIds?: string[];
+};
+
 const storageKey = "bandarlab.portfolio.v1";
 const changeEventName = "bandarlab-portfolio-change";
 export const portfolioSyncEventName = "bandarlab-portfolio-sync";
 const emptySnapshot = JSON.stringify({ holdings: [], trades: [], equityHistory: [] } satisfies PortfolioData);
 const adminOwnerId = "00000000-0000-4000-8000-000000000001";
+let persistQueue: Promise<void> = Promise.resolve();
 
 function parsePortfolio(snapshot: string): PortfolioData {
   try {
@@ -75,24 +81,29 @@ function hasPortfolioData(data: PortfolioData) {
   return data.holdings.length > 0 || data.trades.length > 0 || data.equityHistory.length > 0;
 }
 
-async function persistPortfolio(data: PortfolioData) {
+async function persistPortfolio(data: PortfolioData, deleted?: PortfolioDeletion) {
   const response = await fetch("/api/portfolio", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, deleted }),
   });
   const result = await response.json().catch(() => ({})) as { error?: string };
   if (!response.ok) throw new Error(result.error || "Portfolio gagal disinkronkan.");
   window.dispatchEvent(new CustomEvent(portfolioSyncEventName, { detail: { status: "saved" } }));
 }
 
-export function savePortfolio(data: PortfolioData) {
+export function savePortfolio(data: PortfolioData, deleted?: PortfolioDeletion) {
   applyPortfolioLocally(data);
-  void persistPortfolio(data).catch((error: unknown) => {
-    window.dispatchEvent(new CustomEvent(portfolioSyncEventName, {
-      detail: { status: "error", message: error instanceof Error ? error.message : "Portfolio gagal disinkronkan." },
-    }));
-  });
+  persistQueue = persistQueue
+    .catch(() => undefined)
+    .then(() => persistPortfolio(data, deleted))
+    .catch((error: unknown) => {
+      window.dispatchEvent(new CustomEvent(portfolioSyncEventName, {
+        detail: { status: "error", message: error instanceof Error ? error.message : "Portfolio gagal disinkronkan." },
+      }));
+      throw error;
+    });
+  void persistQueue.catch(() => undefined);
 }
 
 export async function syncPortfolioWithServer() {
