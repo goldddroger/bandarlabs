@@ -30,7 +30,7 @@ function displayValue(value: unknown) {
   return text.length > 180 ? `${text.slice(0, 177)}...` : text;
 }
 
-export function RightIssueAnalysisWorkspace({ ticker, issuer, score, verdict, stage, result, marketPrice, financialInputs, financialProjection }: { ticker: string | null; issuer: string | null; score: number; verdict: string; stage: string; result: unknown; marketPrice: number; financialInputs: FinancialImpactInputs; financialProjection: FinancialImpactProjection }) {
+export function RightIssueAnalysisWorkspace({ ticker, issuer, score, verdict, stage, result, marketPrice, financialInputs, financialProjection, analysisApi = "/api/right-issue-saved-analyses", watchlistApi = "/api/right-issue-watchlist", sourceName = "Right Issue Analyzer", thesisLabel = "right issue" }: { ticker: string | null; issuer: string | null; score: number; verdict: string; stage: string; result: unknown; marketPrice: number; financialInputs: FinancialImpactInputs; financialProjection: FinancialImpactProjection; analysisApi?: string; watchlistApi?: string; sourceName?: string; thesisLabel?: string }) {
   const [saved, setSaved] = useState<SavedAnalysis | null>(null);
   const [note, setNote] = useState("");
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -44,7 +44,7 @@ export function RightIssueAnalysisWorkspace({ ticker, issuer, score, verdict, st
     let cancelled = false;
     const timer = window.setTimeout(() => {
       setLoadingHistory(true);
-      fetch(`/api/right-issue-saved-analyses?ticker=${encodeURIComponent(ticker)}`, { cache: "no-store" })
+      fetch(`${analysisApi}?ticker=${encodeURIComponent(ticker)}`, { cache: "no-store" })
         .then(async (response) => {
           const payload = await response.json() as { analysis?: SavedAnalysis | null; error?: string };
           if (!response.ok) throw new Error(payload.error || "Riwayat gagal dimuat.");
@@ -57,13 +57,13 @@ export function RightIssueAnalysisWorkspace({ ticker, issuer, score, verdict, st
         .finally(() => { if (!cancelled) setLoadingHistory(false); });
     }, 0);
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [ticker]);
+  }, [analysisApi, ticker]);
 
   async function saveAnalysis() {
     if (!ticker) return toast.error("Ticker belum terdeteksi dari dokumen.");
     setSaving(true);
     try {
-      const response = await fetch("/api/right-issue-saved-analyses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ticker, issuer, score, verdict, stage, result, marketPrice, financialInputs, financialProjection, note }) });
+      const response = await fetch(analysisApi, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ticker, issuer, score, verdict, stage, result, marketPrice, financialInputs, financialProjection, note }) });
       const payload = await response.json() as { analysis?: SavedAnalysis; changes?: VersionChange[]; error?: string };
       if (!response.ok || !payload.analysis) throw new Error(payload.error || "Analisis gagal disimpan.");
       setSaved(payload.analysis);
@@ -90,7 +90,7 @@ export function RightIssueAnalysisWorkspace({ ticker, issuer, score, verdict, st
         // The calculator price remains a safe fallback when a quote provider is temporarily unavailable.
       }
       if (!(price > 0)) throw new Error("Harga pasar belum tersedia. Isi harga pasar pada kalkulator terlebih dahulu.");
-      const response = await fetch("/api/right-issue-watchlist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ticker, category, price, reminderDate: reminderDate || null }) });
+      const response = await fetch(watchlistApi, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ticker, category, price, reminderDate: reminderDate || null }) });
       const payload = await response.json() as { error?: string };
       if (!response.ok) throw new Error(payload.error || "Watchlist gagal disimpan.");
       const localEntries = getStoredSelectedAccumulationEntries();
@@ -103,11 +103,11 @@ export function RightIssueAnalysisWorkspace({ ticker, issuer, score, verdict, st
           lifecycle: "waiting",
           catalystDate: reminderDate || undefined,
           reviewDate: reminderDate || undefined,
-          source: "Right Issue Analyzer",
+          source: sourceName,
           note: "Thesis Potensi Corporate Action",
         } : entry));
       } else {
-        addSelectedStocks([ticker], { [ticker]: price }, { watchlistCategory: category, thesisTags: ["corporate_action"], lifecycle: "waiting", catalystDate: reminderDate || undefined, reviewDate: reminderDate || undefined, source: "Right Issue Analyzer", note: "Thesis Potensi Corporate Action" });
+        addSelectedStocks([ticker], { [ticker]: price }, { watchlistCategory: category, thesisTags: ["corporate_action"], lifecycle: "waiting", catalystDate: reminderDate || undefined, reviewDate: reminderDate || undefined, source: sourceName, note: "Thesis Potensi Corporate Action" });
       }
       if (reminderDate) window.dispatchEvent(new Event(stockCaResearchChangeEvent));
       toast.success(`${ticker} masuk Watchlist ${category === "daily" ? "Harian" : "Swing"} pada Rp ${new Intl.NumberFormat("id-ID").format(price)}.`);
@@ -122,7 +122,7 @@ export function RightIssueAnalysisWorkspace({ ticker, issuer, score, verdict, st
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div>
         <div className="flex items-center gap-2"><Save className="size-5 text-red-600" /><h3 className="text-base font-semibold text-gray-950">Simpan Hasil Analisis</h3></div>
-        <p className="mt-1 text-sm leading-6 text-gray-600">Snapshot baru tidak menimpa jejak sebelumnya. Perubahan dokumen akan dicatat sebagai versi berikutnya.</p>
+        <p className="mt-1 text-sm leading-6 text-gray-600">Snapshot baru tidak menimpa jejak sebelumnya. Perubahan dokumen {thesisLabel} akan dicatat sebagai versi berikutnya.</p>
         <textarea value={note} onChange={(event) => setNote(event.target.value)} rows={4} placeholder="Catatan pribadi, risiko utama, atau hal yang perlu dikonfirmasi..." className="mt-3 w-full resize-y rounded-md border border-gray-200 px-3 py-2.5 text-sm leading-6 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100" />
         <button type="button" onClick={saveAnalysis} disabled={saving || !ticker} className="mt-3 inline-flex h-10 items-center gap-2 rounded-md bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50">{saving ? <Loader2 className="size-4 animate-spin" /> : saved ? <CheckCircle2 className="size-4" /> : <Save className="size-4" />}{saved ? "Simpan sebagai versi baru" : "Simpan Analisis"}</button>
       </div>

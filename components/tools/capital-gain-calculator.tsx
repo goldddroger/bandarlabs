@@ -5,6 +5,7 @@ import { BriefcaseBusiness, Calculator, ChartNoAxesCombined, Coins, Layers3, Plu
 import { cn } from "@/lib/utils";
 import { RightIssueAnalyzer } from "@/components/tools/right-issue-analyzer";
 import { RightIssueScenarioSimulator } from "@/components/tools/right-issue-scenario-simulator";
+import { PrivatePlacementAnalyzer } from "@/components/tools/private-placement-analyzer";
 
 type CalculatorMode = "rightIssue" | "privatePlacement" | "gain" | "dividend" | "averageDown";
 
@@ -315,6 +316,15 @@ export function CapitalGainCalculator() {
               </div>
               <Field label="Saham yang kamu miliki (opsional)" suffix="lembar" value={values.ownedShares} placeholder="Contoh 10.000" onChange={(value) => updateValue("ownedShares", value)} />
               <p className="text-xs leading-5 text-gray-500">Private placement menambah saham beredar tanpa memberikan hak pembelian kepada seluruh pemegang saham lama.</p>
+              <PrivatePlacementAnalyzer
+                marketPrice={parseNumber(values.placementMarketPrice)}
+                onApplyFacts={(facts) => setValues((current) => ({
+                  ...current,
+                  outstandingShares: facts.sharesBefore === undefined ? current.outstandingShares : String(facts.sharesBefore),
+                  newPlacementShares: facts.newShares === undefined ? current.newPlacementShares : String(facts.newShares),
+                  placementPrice: facts.placementPrice === undefined ? current.placementPrice : String(facts.placementPrice),
+                }))}
+              />
             </div>
           ) : mode === "averageDown" ? (
             <div className="grid gap-4">

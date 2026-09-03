@@ -89,18 +89,18 @@ function perShare(value: number) {
   return `Rp ${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(value)}`;
 }
 
-export function RightIssueFinancialImpact({ inputs, onChange, newShares, exercisePrice }: { inputs: FinancialImpactInputs; onChange: (inputs: FinancialImpactInputs) => void; newShares: number; exercisePrice: number }) {
+export function RightIssueFinancialImpact({ inputs, onChange, newShares, exercisePrice, offeringName = "right issue" }: { inputs: FinancialImpactInputs; onChange: (inputs: FinancialImpactInputs) => void; newShares: number; exercisePrice: number; offeringName?: string }) {
   const projection = calculateFinancialImpact(inputs, newShares, exercisePrice);
   const ready = number(inputs.equity) > 0 && number(inputs.outstandingShares) > 0 && newShares > 0 && exercisePrice > 0;
   const update = (key: keyof FinancialImpactInputs, value: string) => onChange({ ...inputs, [key]: value });
   return <section className="mt-6 border-t border-gray-200 pt-5">
-    <div className="flex items-start gap-3"><Landmark className="mt-0.5 size-5 shrink-0 text-red-600" /><div><h3 className="text-base font-semibold text-gray-950">Financial Impact Projection</h3><p className="mt-1 text-sm leading-6 text-gray-600">Masukkan angka laporan terakhir dalam rupiah dan lembar saham. Proyeksi memakai dana bruto right issue serta asumsi yang dapat kamu ubah.</p></div></div>
+    <div className="flex items-start gap-3"><Landmark className="mt-0.5 size-5 shrink-0 text-red-600" /><div><h3 className="text-base font-semibold text-gray-950">Financial Impact Projection</h3><p className="mt-1 text-sm leading-6 text-gray-600">Masukkan angka laporan terakhir dalam rupiah dan lembar saham. Proyeksi memakai dana bruto {offeringName} serta asumsi yang dapat kamu ubah.</p></div></div>
     <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <Input label="Ekuitas saat ini" prefix="Rp" value={inputs.equity} onChange={(value) => update("equity", value)} />
       <Input label="Total utang berbunga" prefix="Rp" value={inputs.debt} onChange={(value) => update("debt", value)} />
       <Input label="Laba bersih tahunan" prefix="Rp" value={inputs.netIncome} onChange={(value) => update("netIncome", value)} />
       <Input label="Beban bunga tahunan" prefix="Rp" value={inputs.interestExpense} onChange={(value) => update("interestExpense", value)} />
-      <Input label="Saham beredar sebelum RI" suffix="lembar" value={inputs.outstandingShares} onChange={(value) => update("outstandingShares", value)} />
+      <Input label={`Saham beredar sebelum ${offeringName}`} suffix="lembar" value={inputs.outstandingShares} onChange={(value) => update("outstandingShares", value)} />
       <Input label="Dana untuk bayar utang" prefix="Rp" value={inputs.debtRepayment} onChange={(value) => update("debtRepayment", value)} />
       <Input label="Tambahan laba operasional" prefix="Rp" value={inputs.expectedProfitIncrease} onChange={(value) => update("expectedProfitIncrease", value)} />
       <Input label="Tarif pajak" suffix="%" value={inputs.taxRate} onChange={(value) => update("taxRate", value)} />
