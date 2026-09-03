@@ -21,16 +21,22 @@ import {
   RadarSignalType,
   replaceSelectedAccumulationEntries,
   type SelectedAccumulationEntry,
+  type WatchlistCategory,
+  type WatchlistLifecycle,
+  type WatchlistPlan,
+  type WatchlistThesis,
   signalLabel,
   stockUniverse,
   trendLabel,
   updateSelectedStockSignal,
+  updateSelectedStockPlan,
   useSelectedAccumulationRows,
   useSelectedAccumulationStocks,
 } from "@/components/accumulation/accumulation-store";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = "all" | RadarSignalType;
+type WatchlistForm = WatchlistPlan;
 type LiveStockQuote = {
   ticker: string;
   price: number;
@@ -82,6 +88,60 @@ type CloudSyncState = "loading" | "synced" | "syncing" | "error";
 
 const externalRecommendationStorageKey = "bandarlab.accumulation.externalRecommendations";
 const externalRecommendationEventName = "bandarlab-external-recommendations-changed";
+const watchlistCategories: Array<{ value: WatchlistCategory; label: string; description: string }> = [
+  { value: "personal", label: "Pribadi", description: "Ide dan riset pilihan sendiri" },
+  { value: "daily", label: "Harian", description: "Setup untuk sesi bursa terdekat" },
+  { value: "swing", label: "Swing", description: "Setup beberapa hari hingga pekan" },
+];
+const watchlistTheses: Array<{ value: WatchlistThesis; label: string }> = [
+  { value: "breakout", label: "Buy on Breakout" },
+  { value: "support", label: "Buy on Support" },
+  { value: "ema10_bounce", label: "Mantul EMA 10" },
+  { value: "financial_report", label: "Menunggu Laporan Keuangan" },
+  { value: "acquisition", label: "Potensi Akuisisi" },
+  { value: "audit_catalyst", label: "Audit LK / Siap Ada CA" },
+  { value: "corporate_action", label: "Potensi Corporate Action" },
+];
+
+function createBlankWatchlistForm(): WatchlistForm {
+  return {
+    watchlistCategory: "personal",
+    thesisTags: [],
+    lifecycle: "waiting",
+    emaTimeframe: "daily",
+    source: "",
+    note: "",
+  };
+}
+
+function lifecycleLabel(value: WatchlistLifecycle) {
+  if (value === "triggered") return "Terpicu";
+  if (value === "invalid") return "Invalid";
+  if (value === "completed") return "Selesai";
+  return "Menunggu";
+}
+
+function thesisLabel(value: WatchlistThesis) {
+  return watchlistTheses.find((item) => item.value === value)?.label ?? value;
+}
+
+function optionalNumber(value: string) {
+  if (!value.trim()) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+function planTriggerSummary(plan: WatchlistPlan) {
+  const details: string[] = [];
+  if (plan.breakoutPrice !== undefined) details.push(`Breakout Rp ${formatStockPrice(plan.breakoutPrice)}`);
+  if (plan.supportLow !== undefined || plan.supportHigh !== undefined) {
+    const low = plan.supportLow !== undefined ? formatStockPrice(plan.supportLow) : "-";
+    const high = plan.supportHigh !== undefined ? formatStockPrice(plan.supportHigh) : "-";
+    details.push(`Support Rp ${low}-${high}`);
+  }
+  if (plan.thesisTags.includes("ema10_bounce")) details.push(`EMA 10 ${plan.emaTimeframe === "weekly" ? "weekly" : "daily"}`);
+  return details.join(" · ");
+}
 
 function getStockFromUniverse(ticker: string) {
   return stockUniverse.find((stock) => stock.stock === ticker.toUpperCase());
@@ -681,6 +741,9 @@ export function AccumulationRadar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [checkedStocks, setCheckedStocks] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingWatchlistTicker, setEditingWatchlistTicker] = useState<string | null>(null);
+  const [watchlistForm, setWatchlistForm] = useState<WatchlistForm>(() => createBlankWatchlistForm());
+  const [activeWatchlistCategory, setActiveWatchlistCategory] = useState<WatchlistCategory>("personal");
   const [recommendationModalOpen, setRecommendationModalOpen] = useState(false);
   const [editingRecommendationId, setEditingRecommendationId] = useState<string | null>(null);
   const [trackRecordTarget, setTrackRecordTarget] = useState<TrackRecordTarget | null>(null);
@@ -726,10 +789,10 @@ export function AccumulationRadar() {
       })),
     [liveQuotes, selectedRows],
   );
-  const filteredSelectedRows =
-    statusFilter === "all"
-      ? selectedRowsWithLivePrices
-      : selectedRowsWithLivePrices.filter((row) => row.signalType === statusFilter);
+  const categoryRows = selectedRowsWithLivePrices.filter((row) => row.watchlistCategory === activeWatchlistCategory);
+  const filteredSelectedRows = statusFilter === "all"
+    ? categoryRows
+    : categoryRows.filter((row) => row.signalType === statusFilter);
 
   const entriesForSync = useMemo<SelectedAccumulationEntry[]>(
     () => selectedRows.map((row) => ({
@@ -738,6 +801,17 @@ export function AccumulationRadar() {
       addedAt: row.addedAt,
       entryPrice: row.entryPrice,
       entryPriceSource: row.entryPriceSource,
+      watchlistCategory: row.watchlistCategory,
+      thesisTags: row.thesisTags,
+      lifecycle: row.lifecycle,
+      breakoutPrice: row.breakoutPrice,
+      supportLow: row.supportLow,
+      supportHigh: row.supportHigh,
+      emaTimeframe: row.emaTimeframe,
+      catalystDate: row.catalystDate,
+      reviewDate: row.reviewDate,
+      source: row.source,
+      note: row.note,
     })),
     [selectedRows],
   );
@@ -903,6 +977,14 @@ export function AccumulationRadar() {
   }, [externalStocksKey, externalRecommendations]);
 
   async function addStock() {
+    if (editingWatchlistTicker) {
+      updateSelectedStockPlan(editingWatchlistTicker, watchlistForm);
+      setActiveWatchlistCategory(watchlistForm.watchlistCategory);
+      setModalOpen(false);
+      setEditingWatchlistTicker(null);
+      toast.success(`Rencana ${editingWatchlistTicker} diperbarui.`);
+      return;
+    }
     if (validCheckedStocks.length === 0) return;
     setQuoteLoading(true);
 
@@ -911,7 +993,7 @@ export function AccumulationRadar() {
       const entryPrices = Object.fromEntries(Object.entries(quotes).map(([ticker, quote]) => [ticker, quote.price]));
 
       setLiveQuotes((currentQuotes) => ({ ...currentQuotes, ...quotes }));
-      addSelectedStocks(validCheckedStocks, { ...livePriceMap, ...entryPrices });
+      addSelectedStocks(validCheckedStocks, { ...livePriceMap, ...entryPrices }, watchlistForm);
     } finally {
       setQuoteLoading(false);
     }
@@ -919,6 +1001,44 @@ export function AccumulationRadar() {
     setCheckedStocks([]);
     setSearchQuery("");
     setModalOpen(false);
+    setActiveWatchlistCategory(watchlistForm.watchlistCategory);
+    setWatchlistForm(createBlankWatchlistForm());
+    toast.success(`${validCheckedStocks.length} saham ditambahkan ke watchlist.`);
+  }
+
+  function openAddStock() {
+    setEditingWatchlistTicker(null);
+    setCheckedStocks([]);
+    setSearchQuery("");
+    setWatchlistForm({ ...createBlankWatchlistForm(), watchlistCategory: activeWatchlistCategory });
+    setModalOpen(true);
+  }
+
+  function openEditWatchlist(row: SelectedAccumulationEntry) {
+    setEditingWatchlistTicker(row.ticker);
+    setWatchlistForm({
+      watchlistCategory: row.watchlistCategory,
+      thesisTags: row.thesisTags,
+      lifecycle: row.lifecycle,
+      breakoutPrice: row.breakoutPrice,
+      supportLow: row.supportLow,
+      supportHigh: row.supportHigh,
+      emaTimeframe: row.emaTimeframe ?? "daily",
+      catalystDate: row.catalystDate,
+      reviewDate: row.reviewDate,
+      source: row.source ?? "",
+      note: row.note ?? "",
+    });
+    setModalOpen(true);
+  }
+
+  function toggleThesis(thesis: WatchlistThesis) {
+    setWatchlistForm((current) => ({
+      ...current,
+      thesisTags: current.thesisTags.includes(thesis)
+        ? current.thesisTags.filter((item) => item !== thesis)
+        : [...current.thesisTags, thesis],
+    }));
   }
 
   async function removeStock(ticker: string) {
@@ -937,7 +1057,7 @@ export function AccumulationRadar() {
     if (selectedStocks.length === 0) return;
     const confirmed = await confirm({
       title: "Kosongkan seluruh radar?",
-      description: "Semua saham pada Watchlist Pribadi akan dihapus sekaligus. Rekomendasi eksternal tidak ikut terhapus.",
+      description: "Semua saham pada watchlist Pribadi, Harian, dan Swing akan dihapus sekaligus. Rekomendasi Eksternal tidak ikut terhapus.",
       subject: `${selectedStocks.length} saham aktif`,
       confirmLabel: "Kosongkan Radar",
     });
@@ -1105,7 +1225,7 @@ export function AccumulationRadar() {
           </div>
         </div>
         <div className="grid shrink-0 gap-2 sm:flex">
-          <Button className="h-10 w-full whitespace-nowrap sm:w-auto" type="button" onClick={() => setModalOpen(true)}>
+          <Button className="h-10 w-full whitespace-nowrap sm:w-auto" type="button" onClick={openAddStock}>
             <Plus className="size-4" />
             Tambah Saham
           </Button>
@@ -1122,88 +1242,102 @@ export function AccumulationRadar() {
           aria-modal="true"
           aria-labelledby="add-stock-title"
         >
-          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl">
+          <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4">
               <div>
                 <h3 id="add-stock-title" className="text-lg font-semibold text-gray-950">
-                  Tambah Saham ke Radar
+                  {editingWatchlistTicker ? `Edit Rencana ${editingWatchlistTicker}` : "Tambah Saham ke Radar"}
                 </h3>
                 <p className="mt-1 text-sm text-gray-600">
-                  Cari kode atau nama emiten, lalu pilih beberapa saham sekaligus.
+                  {editingWatchlistTicker ? "Perbarui kategori, thesis, pemicu, dan jadwal review." : "Pilih beberapa saham, lalu terapkan satu rencana pemantauan sekaligus."}
                 </p>
               </div>
               <button
                 className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-red-500"
                 type="button"
                 aria-label="Tutup modal tambah saham"
-                onClick={() => setModalOpen(false)}
+                onClick={() => { setModalOpen(false); setEditingWatchlistTicker(null); }}
               >
                 <X className="size-5" />
               </button>
             </div>
 
-            <div className="border-b border-gray-100 p-5">
-              <label className="grid gap-2 text-sm text-gray-600" htmlFor="accumulation-stock-search">
-                <span>Cari Saham</span>
-                <span className="relative block">
-                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    id="accumulation-stock-search"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Contoh: AHAP, JATI, BBCA..."
-                    className="h-11 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 hover:border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                    autoFocus
-                  />
-                </span>
-              </label>
-              <div className="mt-3 flex flex-col gap-1 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
-                <p>
-                  Menampilkan {visibleAvailableStocks.length} saham tersedia.
-                </p>
-                {validCheckedStocks.length > 0 ? (
-                  <p className="font-semibold text-red-600">{validCheckedStocks.join(", ")} dipilih</p>
+            <div className="bandarlab-scrollbar min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.9fr)]">
+                {!editingWatchlistTicker ? (
+                  <div className="min-w-0 rounded-lg border border-gray-200">
+                    <div className="border-b border-gray-100 p-4">
+                      <label className="grid gap-2 text-sm font-medium text-gray-700" htmlFor="accumulation-stock-search">
+                        Cari Saham
+                        <span className="relative block">
+                          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+                          <input id="accumulation-stock-search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Contoh: AHAP, JATI, BBCA..." className="h-11 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-red-500 focus:ring-2 focus:ring-red-100" autoFocus />
+                        </span>
+                      </label>
+                      <div className="mt-3 flex flex-wrap justify-between gap-2 text-xs text-gray-500">
+                        <span>{visibleAvailableStocks.length} saham tersedia</span>
+                        <span className="font-semibold text-red-600">{validCheckedStocks.length} dipilih</span>
+                      </div>
+                    </div>
+                    <div className="bandarlab-scrollbar grid max-h-[420px] overflow-y-auto overscroll-contain p-2 sm:grid-cols-2">
+                      {visibleAvailableStocks.map((stock) => {
+                        const checked = validCheckedStocks.includes(stock.stock);
+                        return (
+                          <label key={stock.stock} className={cn("flex min-h-14 cursor-pointer items-start gap-3 rounded-md px-3 py-2 text-sm hover:bg-gray-50", checked && "bg-red-50 hover:bg-red-50")}>
+                            <input type="checkbox" checked={checked} onChange={() => toggleCheckedStock(stock.stock)} className="mt-1 size-4 rounded border-gray-300 accent-red-600" />
+                            <span className="min-w-0"><span className={cn("block font-semibold text-gray-950", checked && "text-red-700")}>{stock.stock}</span><span className="block truncate text-xs text-gray-500">{stock.name}</span></span>
+                          </label>
+                        );
+                      })}
+                      {visibleAvailableStocks.length === 0 ? <p className="px-3 py-8 text-sm text-gray-500">Tidak ada saham yang cocok.</p> : null}
+                    </div>
+                  </div>
                 ) : null}
+
+                <div className={cn("grid content-start gap-5", editingWatchlistTicker && "lg:col-span-2 lg:grid-cols-2")}>
+                  <fieldset className="grid gap-2">
+                    <legend className="mb-2 text-sm font-semibold text-gray-900">Jenis watchlist</legend>
+                    <div className="grid grid-cols-3 gap-2">
+                      {watchlistCategories.map((category) => (
+                        <button key={category.value} type="button" onClick={() => setWatchlistForm((current) => ({ ...current, watchlistCategory: category.value }))} className={cn("min-h-16 rounded-md border px-2 py-2 text-left transition", watchlistForm.watchlistCategory === category.value ? "border-red-500 bg-red-50 text-red-700" : "border-gray-200 hover:bg-gray-50")}>
+                          <span className="block text-sm font-semibold">{category.label}</span><span className="mt-0.5 block text-[11px] leading-4 text-gray-500">{category.description}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+
+                  <fieldset>
+                    <legend className="mb-2 text-sm font-semibold text-gray-900">Alasan pemantauan <span className="font-normal text-gray-500">(bisa lebih dari satu)</span></legend>
+                    <div className="flex flex-wrap gap-2">
+                      {watchlistTheses.map((thesis) => (
+                        <button key={thesis.value} type="button" onClick={() => toggleThesis(thesis.value)} className={cn("rounded-full border px-3 py-1.5 text-xs font-medium transition", watchlistForm.thesisTags.includes(thesis.value) ? "border-red-500 bg-red-50 text-red-700" : "border-gray-200 text-gray-600 hover:border-gray-300")}>
+                          {thesis.label}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {watchlistForm.thesisTags.includes("breakout") ? <label className="grid gap-1.5 text-sm text-gray-700">Harga breakout<input type="number" min="0" value={watchlistForm.breakoutPrice ?? ""} onChange={(event) => setWatchlistForm((current) => ({ ...current, breakoutPrice: optionalNumber(event.target.value) }))} className="h-10 rounded-md border border-gray-200 px-3" placeholder="Rp" /></label> : null}
+                    {watchlistForm.thesisTags.includes("support") ? <><label className="grid gap-1.5 text-sm text-gray-700">Support bawah<input type="number" min="0" value={watchlistForm.supportLow ?? ""} onChange={(event) => setWatchlistForm((current) => ({ ...current, supportLow: optionalNumber(event.target.value) }))} className="h-10 rounded-md border border-gray-200 px-3" placeholder="Rp" /></label><label className="grid gap-1.5 text-sm text-gray-700">Support atas<input type="number" min="0" value={watchlistForm.supportHigh ?? ""} onChange={(event) => setWatchlistForm((current) => ({ ...current, supportHigh: optionalNumber(event.target.value) }))} className="h-10 rounded-md border border-gray-200 px-3" placeholder="Rp" /></label></> : null}
+                    {watchlistForm.thesisTags.includes("ema10_bounce") ? <label className="grid gap-1.5 text-sm text-gray-700">Timeframe EMA 10<select value={watchlistForm.emaTimeframe ?? "daily"} onChange={(event) => setWatchlistForm((current) => ({ ...current, emaTimeframe: event.target.value as "daily" | "weekly" }))} className="h-10 rounded-md border border-gray-200 bg-white px-3"><option value="daily">Daily</option><option value="weekly">Weekly</option></select></label> : null}
+                    <label className="grid gap-1.5 text-sm text-gray-700">Status rencana<select value={watchlistForm.lifecycle} onChange={(event) => setWatchlistForm((current) => ({ ...current, lifecycle: event.target.value as WatchlistLifecycle }))} className="h-10 rounded-md border border-gray-200 bg-white px-3"><option value="waiting">Menunggu</option><option value="triggered">Terpicu</option><option value="invalid">Invalid</option><option value="completed">Selesai</option></select></label>
+                    <label className="grid gap-1.5 text-sm text-gray-700">Tanggal katalis<input type="date" value={watchlistForm.catalystDate ?? ""} onChange={(event) => setWatchlistForm((current) => ({ ...current, catalystDate: event.target.value || undefined }))} className="h-10 rounded-md border border-gray-200 px-3" /></label>
+                    <label className="grid gap-1.5 text-sm text-gray-700">Review / kedaluwarsa<input type="date" value={watchlistForm.reviewDate ?? ""} onChange={(event) => setWatchlistForm((current) => ({ ...current, reviewDate: event.target.value || undefined }))} className="h-10 rounded-md border border-gray-200 px-3" /></label>
+                    <label className="grid gap-1.5 text-sm text-gray-700 sm:col-span-2">Sumber<input value={watchlistForm.source ?? ""} onChange={(event) => setWatchlistForm((current) => ({ ...current, source: event.target.value }))} className="h-10 rounded-md border border-gray-200 px-3" placeholder="Riset sendiri, keterbukaan informasi, mentor..." /></label>
+                    <label className="grid gap-1.5 text-sm text-gray-700 sm:col-span-2">Catatan<textarea value={watchlistForm.note ?? ""} onChange={(event) => setWatchlistForm((current) => ({ ...current, note: event.target.value }))} className="min-h-20 rounded-md border border-gray-200 px-3 py-2" placeholder="Kondisi entry, invalidasi, atau hal yang perlu dicek." /></label>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="bandarlab-scrollbar grid max-h-[min(60vh,520px)] overflow-y-auto overscroll-contain p-3 sm:grid-cols-2">
-              {visibleAvailableStocks.map((stock) => {
-                const checked = validCheckedStocks.includes(stock.stock);
-
-                return (
-                  <label
-                    key={stock.stock}
-                    className={cn(
-                      "flex min-h-14 cursor-pointer items-start gap-3 rounded-md px-3 py-2 text-sm transition duration-150 hover:bg-gray-50",
-                      checked && "bg-red-50 hover:bg-red-50",
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleCheckedStock(stock.stock)}
-                      className="mt-1 size-4 rounded border-gray-300 accent-red-600"
-                    />
-                    <span className="min-w-0">
-                      <span className={cn("block font-semibold text-gray-950", checked && "text-red-700")}>{stock.stock}</span>
-                      <span className="block truncate text-xs text-gray-500">{stock.name}</span>
-                    </span>
-                  </label>
-                );
-              })}
-              {visibleAvailableStocks.length === 0 ? (
-                <p className="px-3 py-8 text-sm text-gray-500">Tidak ada saham yang cocok dengan pencarian.</p>
-              ) : null}
-            </div>
-
             <div className="flex flex-col-reverse gap-2 border-t border-gray-200 bg-gray-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-end">
-              <Button className="h-10" variant="ghost" type="button" onClick={() => setModalOpen(false)}>
+              <Button className="h-10" variant="ghost" type="button" onClick={() => { setModalOpen(false); setEditingWatchlistTicker(null); }}>
                 Batal
               </Button>
-              <Button className="h-10" type="button" onClick={addStock} disabled={validCheckedStocks.length === 0}>
-                <Plus className="size-4" />
-                Tambah {validCheckedStocks.length > 0 ? validCheckedStocks.length : ""}
+              <Button className="h-10" type="button" onClick={addStock} disabled={!editingWatchlistTicker && validCheckedStocks.length === 0}>
+                {editingWatchlistTicker ? <Pencil className="size-4" /> : <Plus className="size-4" />}
+                {editingWatchlistTicker ? "Simpan Rencana" : `Tambah ${validCheckedStocks.length || ""}`}
               </Button>
             </div>
           </div>
@@ -1350,13 +1484,19 @@ export function AccumulationRadar() {
       ) : null}
 
       <div className="space-y-1 px-1">
-        <h1 className="text-xl font-semibold text-gray-950">Watchlist Pribadi</h1>
+        <h1 className="text-xl font-semibold text-gray-950">Watchlist Saya</h1>
         <p className="text-sm leading-6 text-gray-600">
-          Area ini berisi saham yang kamu masukkan sendiri. Harga masuk watchlist disimpan sebagai titik awal pemantauan, sementara harga saat ini mengikuti data Yahoo Finance atau Google Finance jika tersedia.
+          Pisahkan ide riset pribadi, setup harian, dan swing tanpa mencampurnya dengan Rekomendasi Eksternal.
         </p>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="grid grid-cols-3 border-b border-gray-200 bg-gray-50 p-1.5">
+          {watchlistCategories.map((category) => {
+            const count = selectedRows.filter((row) => row.watchlistCategory === category.value).length;
+            return <button key={category.value} type="button" onClick={() => setActiveWatchlistCategory(category.value)} className={cn("min-w-0 rounded-md px-2 py-2.5 text-sm font-semibold transition", activeWatchlistCategory === category.value ? "bg-white text-red-700 shadow-sm ring-1 ring-gray-200" : "text-gray-500 hover:text-gray-900")}><span className="block truncate">{category.label}</span><span className="mt-0.5 block text-xs font-normal">{count} saham</span></button>;
+          })}
+        </div>
         <div className="flex flex-col gap-4 border-b border-gray-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h3 className="text-sm font-semibold text-gray-950">Saham Aktif</h3>
@@ -1390,9 +1530,10 @@ export function AccumulationRadar() {
                   <div className="min-w-0">
                     <StockTickerLink ticker={row.stock} className="text-base" />
                     <p className="mt-1 truncate text-sm text-gray-600">{row.name}</p>
-                    <p className="mt-1 text-xs font-medium text-gray-500">{row.sector}</p>
+                     <p className="mt-1 text-xs font-medium text-gray-500">{row.sector}</p>
                   </div>
-                  <div className="flex shrink-0 gap-1">
+                   <div className="flex shrink-0 gap-1">
+                    <button className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 hover:bg-amber-50 hover:text-amber-700" type="button" aria-label={`Edit rencana ${row.stock}`} onClick={() => openEditWatchlist(row)}><Pencil className="size-4" /></button>
                     <button
                       className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-blue-50 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-red-500"
                       type="button"
@@ -1474,23 +1615,28 @@ export function AccumulationRadar() {
                     <p className="font-semibold text-gray-950">Rp {formatStockPrice(row.entryPrice)}</p>
                   </div>
                 </div>
+                <div className="mt-3 rounded-md border border-gray-100 bg-gray-50 p-2.5">
+                  <div className="flex flex-wrap items-center gap-1.5"><span className="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-gray-700 ring-1 ring-gray-200">{lifecycleLabel(row.lifecycle)}</span>{row.thesisTags.slice(0, 2).map((tag) => <span key={tag} className="rounded-full bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">{thesisLabel(tag)}</span>)}</div>
+                  {planTriggerSummary(row) ? <p className="mt-2 text-xs font-medium text-gray-700">{planTriggerSummary(row)}</p> : null}
+                  {row.reviewDate ? <p className="mt-2 text-xs text-gray-500">Review {row.reviewDate}</p> : null}
+                </div>
                 <p className="mt-3 text-xs text-gray-500">Masuk radar {row.addedAt}</p>
               </article>
             );
           })}
           {filteredSelectedRows.length === 0 ? (
             <div className="rounded-lg border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
-              {selectedRows.length === 0
+                {categoryRows.length === 0
                 ? "Belum ada saham di radar. Gunakan tombol Tambah Saham di bagian atas untuk memilih saham."
                 : "Tidak ada saham yang cocok dengan filter status."}
             </div>
           ) : null}
         </div>
         <div className="bandarlab-scrollbar hidden overflow-x-auto md:block">
-          <table className="min-w-[1180px] w-full text-left text-sm">
+          <table className="min-w-[1260px] w-full text-left text-sm">
             <thead className="bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                {["Stock", "Nama Emiten", "Sektor", "Status", "Harga Saat Ini", "Harga Masuk Watchlist", "Change", "Trend", "Masuk Radar", ""].map((head) => (
+                {["Stock", "Nama Emiten", "Status", "Rencana", "Harga Saat Ini", "Harga Masuk", "Change", "Trend", "Masuk Radar", ""].map((head) => (
                   <th key={head || "actions"} className="px-4 py-3 font-semibold">
                     {head}
                   </th>
@@ -1504,7 +1650,6 @@ export function AccumulationRadar() {
                     <StockTickerLink ticker={row.stock} />
                   </td>
                   <td className="px-4 py-3 text-gray-700">{row.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{row.sector}</td>
                   <td className="px-4 py-3">
                     <label className="sr-only" htmlFor={`status-${row.stock}`}>
                       Ubah status {row.stock}
@@ -1522,6 +1667,11 @@ export function AccumulationRadar() {
                       <option value="watchlist">{signalLabel("watchlist")}</option>
                       <option value="hold">{signalLabel("hold")}</option>
                     </select>
+                  </td>
+                  <td className="max-w-64 px-4 py-3">
+                    <div className="flex flex-wrap gap-1"><span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-700">{lifecycleLabel(row.lifecycle)}</span>{row.thesisTags.slice(0, 2).map((tag) => <span key={tag} className="rounded-full bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">{thesisLabel(tag)}</span>)}</div>
+                    {planTriggerSummary(row) ? <span className="mt-1.5 block text-xs font-medium text-gray-700">{planTriggerSummary(row)}</span> : null}
+                    {row.reviewDate ? <span className="mt-1.5 block text-xs text-gray-500">Review {row.reviewDate}</span> : null}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 font-semibold text-gray-950">
                     <span className="block">Rp {formatStockPrice(row.currentPrice)}</span>
@@ -1569,6 +1719,7 @@ export function AccumulationRadar() {
                   <td className="whitespace-nowrap px-4 py-3 text-gray-600">{row.addedAt}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1">
+                      <button className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 hover:bg-amber-50 hover:text-amber-700" type="button" aria-label={`Edit rencana ${row.stock}`} onClick={() => openEditWatchlist(row)}><Pencil className="size-4" /></button>
                       <button
                         className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-blue-50 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-red-500"
                         type="button"
@@ -1600,7 +1751,7 @@ export function AccumulationRadar() {
               {filteredSelectedRows.length === 0 ? (
                 <tr>
                   <td className="px-4 py-10 text-center text-gray-500" colSpan={10}>
-                    {selectedRows.length === 0
+                    {categoryRows.length === 0
                       ? "Belum ada saham di radar. Gunakan tombol Tambah Saham di bagian atas untuk memilih saham."
                       : "Tidak ada saham yang cocok dengan filter status."}
                   </td>

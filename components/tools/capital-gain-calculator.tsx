@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { BriefcaseBusiness, Calculator, ChartNoAxesCombined, Coins, Layers3, Plus, RefreshCw, Trash2, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RightIssueAnalyzer } from "@/components/tools/right-issue-analyzer";
+import { RightIssueScenarioSimulator } from "@/components/tools/right-issue-scenario-simulator";
 
 type CalculatorMode = "rightIssue" | "privatePlacement" | "gain" | "dividend" | "averageDown";
 
@@ -30,6 +32,7 @@ const defaultValues = {
   dividendPerShare: "",
   dividendTaxPercent: "10",
   oldShares: "",
+  averageCost: "",
   marketPrice: "",
   ratioOld: "",
   ratioNew: "",
@@ -285,8 +288,20 @@ export function CapitalGainCalculator() {
                 <Field label="Rasio saham lama" value={values.ratioOld} placeholder="Contoh 2" onChange={(value) => updateValue("ratioOld", value)} />
                 <Field label="Rasio saham baru" value={values.ratioNew} placeholder="Contoh 1" onChange={(value) => updateValue("ratioNew", value)} />
               </div>
-              <Field label="Harga tebus (exercise)" prefix="Rp" value={values.exercisePrice} placeholder="Contoh 800" onChange={(value) => updateValue("exercisePrice", value)} />
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Harga tebus (exercise)" prefix="Rp" value={values.exercisePrice} placeholder="Contoh 800" onChange={(value) => updateValue("exercisePrice", value)} />
+                <Field label="Harga average kepemilikan (opsional)" prefix="Rp" value={values.averageCost} placeholder="Jika kosong, gunakan harga pasar" onChange={(value) => updateValue("averageCost", value)} />
+              </div>
               <p className="text-xs leading-5 text-gray-500">Contoh rasio 2:1 berarti setiap 2 saham lama memperoleh hak menebus 1 saham baru.</p>
+              <RightIssueAnalyzer
+                marketPrice={parseNumber(values.marketPrice)}
+                onApplyFacts={(facts) => setValues((current) => ({
+                  ...current,
+                  exercisePrice: facts.exercisePrice === undefined ? current.exercisePrice : String(facts.exercisePrice),
+                  ratioOld: facts.ratioOld === undefined ? current.ratioOld : String(facts.ratioOld),
+                  ratioNew: facts.ratioNew === undefined ? current.ratioNew : String(facts.ratioNew),
+                }))}
+              />
             </div>
           ) : mode === "privatePlacement" ? (
             <div className="grid gap-4">
@@ -469,6 +484,16 @@ export function CapitalGainCalculator() {
           )}
         </div>
       </div>
+      {mode === "rightIssue" ? (
+        <RightIssueScenarioSimulator
+          oldShares={parseNumber(values.oldShares)}
+          averageCost={parseNumber(values.averageCost)}
+          marketPrice={parseNumber(values.marketPrice)}
+          ratioOld={parseNumber(values.ratioOld)}
+          ratioNew={parseNumber(values.ratioNew)}
+          exercisePrice={parseNumber(values.exercisePrice)}
+        />
+      ) : null}
     </section>
   );
 }

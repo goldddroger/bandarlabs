@@ -34,6 +34,11 @@ function nonNegativeNumber(value: unknown) {
   return Number.isFinite(number) && number >= 0 ? number : null;
 }
 
+function optionalDate(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  return normalizeDate(value);
+}
+
 function normalizeDate(value: unknown) {
   const text = cleanText(value, 40).toLowerCase().replace(/[.,]/g, "");
   if (datePattern.test(text)) return text;
@@ -65,6 +70,19 @@ function normalizePayload(value: unknown) {
     entry_price: nonNegativeNumber(row.entryPrice),
     entry_price_source: cleanText(row.entryPriceSource, 20) || null,
     started_at: normalizeDate(row.addedAt) ?? fallbackDate,
+    watchlist_category: cleanText(row.watchlistCategory, 20) || "personal",
+    thesis_tags: Array.isArray(row.thesisTags)
+      ? row.thesisTags.map((tag) => cleanText(tag, 40)).filter(Boolean).slice(0, 12)
+      : [],
+    lifecycle: cleanText(row.lifecycle, 20) || "waiting",
+    breakout_price: nonNegativeNumber(row.breakoutPrice),
+    support_low: nonNegativeNumber(row.supportLow),
+    support_high: nonNegativeNumber(row.supportHigh),
+    ema_timeframe: cleanText(row.emaTimeframe, 20) || null,
+    catalyst_date: optionalDate(row.catalystDate),
+    review_date: optionalDate(row.reviewDate),
+    plan_source: cleanText(row.source, 300) || null,
+    plan_note: cleanText(row.note, 8_000) || null,
   }));
   const recommendations = body.recommendations.map((row) => ({
     id: cleanText(row.id, 160),
@@ -81,7 +99,10 @@ function normalizePayload(value: unknown) {
   const validStatuses = new Set(["accumulation", "watchlist", "hold"]);
   const validRadarTrends = new Set(["uptrend", "sideways", "downtrend"]);
   const validRecommendationTrends = new Set(["Uptrend", "Sideways", "Downtrend"]);
-  const invalidEntry = entries.some((row) => !row.ticker || !validStatuses.has(row.status) || (row.trend && !validRadarTrends.has(row.trend)) || row.entry_price === null || !row.started_at);
+  const validCategories = new Set(["personal", "daily", "swing"]);
+  const validLifecycles = new Set(["waiting", "triggered", "invalid", "completed"]);
+  const validTheses = new Set(["breakout", "support", "ema10_bounce", "financial_report", "acquisition", "audit_catalyst", "corporate_action"]);
+  const invalidEntry = entries.some((row) => !row.ticker || !validStatuses.has(row.status) || (row.trend && !validRadarTrends.has(row.trend)) || row.entry_price === null || !row.started_at || !validCategories.has(row.watchlist_category) || !validLifecycles.has(row.lifecycle) || row.thesis_tags.some((tag) => !validTheses.has(tag)) || (row.ema_timeframe && row.ema_timeframe !== "daily" && row.ema_timeframe !== "weekly"));
   const invalidRecommendation = recommendations.some((row) => !row.id || !row.ticker || !row.source || !validStatuses.has(row.status) || !validRecommendationTrends.has(row.trend) || row.entry_price === null || !row.monitored_at);
   if (invalidEntry || invalidRecommendation) return null;
   return {
@@ -95,7 +116,7 @@ export async function GET() {
   if (!supabase) return NextResponse.json({ error: "Supabase accumulation belum dikonfigurasi." }, { status: 503 });
 
   const [entriesResult, recommendationsResult, workspaceResult] = await Promise.all([
-    supabase.from("radar_entries").select("ticker,status,trend,entry_price,entry_price_source,started_at").eq("owner_id", adminOwnerId).order("created_at", { ascending: true }),
+    supabase.from("radar_entries").select("ticker,status,trend,entry_price,entry_price_source,started_at,watchlist_category,thesis_tags,lifecycle,breakout_price,support_low,support_high,ema_timeframe,catalyst_date,review_date,plan_source,plan_note").eq("owner_id", adminOwnerId).order("created_at", { ascending: true }),
     supabase.from("external_recommendations").select("id,ticker,source,status,trend,monitored_at,entry_price,entry_price_source,note").eq("owner_id", adminOwnerId).order("created_at", { ascending: false }),
     supabase.from("accumulation_workspaces").select("updated_at").eq("owner_id", adminOwnerId).maybeSingle(),
   ]);
@@ -114,6 +135,17 @@ export async function GET() {
       addedAt: displayDate(row.started_at),
       entryPrice: Number(row.entry_price),
       entryPriceSource: row.entry_price_source ?? undefined,
+      watchlistCategory: row.watchlist_category ?? "personal",
+      thesisTags: row.thesis_tags ?? [],
+      lifecycle: row.lifecycle ?? "waiting",
+      breakoutPrice: row.breakout_price === null ? undefined : Number(row.breakout_price),
+      supportLow: row.support_low === null ? undefined : Number(row.support_low),
+      supportHigh: row.support_high === null ? undefined : Number(row.support_high),
+      emaTimeframe: row.ema_timeframe ?? undefined,
+      catalystDate: row.catalyst_date ?? undefined,
+      reviewDate: row.review_date ?? undefined,
+      source: row.plan_source ?? undefined,
+      note: row.plan_note ?? undefined,
     })),
     recommendations: (recommendationsResult.data ?? []).map((row) => ({
       id: row.id,

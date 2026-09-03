@@ -18,8 +18,32 @@ export type AccumulationRow = {
 
 export type TrendDirection = "uptrend" | "sideways" | "downtrend";
 export type RadarSignalType = "accumulation" | "watchlist" | "hold";
+export type WatchlistCategory = "personal" | "daily" | "swing";
+export type WatchlistLifecycle = "waiting" | "triggered" | "invalid" | "completed";
+export type WatchlistThesis =
+  | "breakout"
+  | "support"
+  | "ema10_bounce"
+  | "financial_report"
+  | "acquisition"
+  | "audit_catalyst"
+  | "corporate_action";
 
-export type SelectedAccumulationEntry = {
+export type WatchlistPlan = {
+  watchlistCategory: WatchlistCategory;
+  thesisTags: WatchlistThesis[];
+  lifecycle: WatchlistLifecycle;
+  breakoutPrice?: number;
+  supportLow?: number;
+  supportHigh?: number;
+  emaTimeframe?: "daily" | "weekly";
+  catalystDate?: string;
+  reviewDate?: string;
+  source?: string;
+  note?: string;
+};
+
+export type SelectedAccumulationEntry = WatchlistPlan & {
   ticker: string;
   signalType: RadarSignalType;
   addedAt: string;
@@ -104,6 +128,7 @@ function createEntry(
   addedAt = formatToday(),
   entryPrice?: number,
   entryPriceSource: SelectedAccumulationEntry["entryPriceSource"] = entryPrice ? "market" : "fallback",
+  plan: Partial<WatchlistPlan> = {},
 ): SelectedAccumulationEntry | null {
   const row = stockUniverse.find((stock) => stock.stock === ticker);
   if (!row) return null;
@@ -114,6 +139,17 @@ function createEntry(
     addedAt,
     entryPrice: entryPrice ?? row.currentPrice,
     entryPriceSource,
+    watchlistCategory: plan.watchlistCategory ?? "personal",
+    thesisTags: plan.thesisTags ?? [],
+    lifecycle: plan.lifecycle ?? "waiting",
+    breakoutPrice: plan.breakoutPrice,
+    supportLow: plan.supportLow,
+    supportHigh: plan.supportHigh,
+    emaTimeframe: plan.emaTimeframe,
+    catalystDate: plan.catalystDate,
+    reviewDate: plan.reviewDate,
+    source: plan.source,
+    note: plan.note,
   };
 }
 
@@ -203,9 +239,39 @@ function getSelectedEntriesFromSnapshot(snapshot: string): SelectedAccumulationE
             "entryPriceSource" in entry && (entry.entryPriceSource === "market" || entry.entryPriceSource === "fallback")
               ? entry.entryPriceSource
               : "fallback";
+          const watchlistCategory =
+            "watchlistCategory" in entry && (entry.watchlistCategory === "personal" || entry.watchlistCategory === "daily" || entry.watchlistCategory === "swing")
+              ? entry.watchlistCategory
+              : "personal";
+          const lifecycle =
+            "lifecycle" in entry && (entry.lifecycle === "waiting" || entry.lifecycle === "triggered" || entry.lifecycle === "invalid" || entry.lifecycle === "completed")
+              ? entry.lifecycle
+              : "waiting";
+          const validTheses: WatchlistThesis[] = ["breakout", "support", "ema10_bounce", "financial_report", "acquisition", "audit_catalyst", "corporate_action"];
+          const thesisTags = "thesisTags" in entry && Array.isArray(entry.thesisTags)
+            ? entry.thesisTags.filter((tag: unknown): tag is WatchlistThesis => typeof tag === "string" && validTheses.includes(tag as WatchlistThesis))
+            : [];
+          const optionalNumber = (key: "breakoutPrice" | "supportLow" | "supportHigh") =>
+            key in entry && typeof entry[key] === "number" && Number.isFinite(entry[key]) ? entry[key] : undefined;
+          const optionalText = (key: "catalystDate" | "reviewDate" | "source" | "note") =>
+            key in entry && typeof entry[key] === "string" && entry[key].trim() ? entry[key] : undefined;
+          const emaTimeframe = "emaTimeframe" in entry && (entry.emaTimeframe === "daily" || entry.emaTimeframe === "weekly")
+            ? entry.emaTimeframe
+            : undefined;
 
           if (row && signalType && Number.isFinite(entryPrice)) {
-            return { ticker, signalType, addedAt, entryPrice, entryPriceSource };
+            return {
+              ticker, signalType, addedAt, entryPrice, entryPriceSource,
+              watchlistCategory, lifecycle, thesisTags,
+              breakoutPrice: optionalNumber("breakoutPrice"),
+              supportLow: optionalNumber("supportLow"),
+              supportHigh: optionalNumber("supportHigh"),
+              emaTimeframe,
+              catalystDate: optionalText("catalystDate"),
+              reviewDate: optionalText("reviewDate"),
+              source: optionalText("source"),
+              note: optionalText("note"),
+            };
           }
         }
 
@@ -237,6 +303,17 @@ function getSelectedRowsFromSnapshot(snapshot: string): SelectedAccumulationRow[
         addedAt: entry.addedAt,
         entryPrice: Number.isFinite(entry.entryPrice) ? entry.entryPrice : row.currentPrice,
         entryPriceSource: entry.entryPriceSource,
+        watchlistCategory: entry.watchlistCategory,
+        thesisTags: entry.thesisTags,
+        lifecycle: entry.lifecycle,
+        breakoutPrice: entry.breakoutPrice,
+        supportLow: entry.supportLow,
+        supportHigh: entry.supportHigh,
+        emaTimeframe: entry.emaTimeframe,
+        catalystDate: entry.catalystDate,
+        reviewDate: entry.reviewDate,
+        source: entry.source,
+        note: entry.note,
       };
     })
     .filter(Boolean) as SelectedAccumulationRow[];
@@ -279,12 +356,12 @@ function getClientSelectedEntries() {
   return entries;
 }
 
-export function addSelectedStocks(tickers: string[], entryPrices: StockPriceMap = {}) {
+export function addSelectedStocks(tickers: string[], entryPrices: StockPriceMap = {}, plan: Partial<WatchlistPlan> = {}) {
   const existingEntries = getClientSelectedEntries();
   const existingTickers = new Set(existingEntries.map((entry) => entry.ticker));
   const newEntries = tickers
     .filter((ticker) => !existingTickers.has(ticker))
-    .map((ticker) => createEntry(ticker, formatToday(), entryPrices[ticker], entryPrices[ticker] ? "market" : "fallback"))
+    .map((ticker) => createEntry(ticker, formatToday(), entryPrices[ticker], entryPrices[ticker] ? "market" : "fallback", plan))
     .filter(Boolean) as SelectedAccumulationEntry[];
 
   saveSelectedEntries([...existingEntries, ...newEntries]);
@@ -321,6 +398,11 @@ export function updateSelectedStockSignal(ticker: string, signalType: RadarSigna
   saveSelectedEntries(
     existingEntries.map((entry) => (entry.ticker === ticker ? { ...entry, signalType } : entry)),
   );
+}
+
+export function updateSelectedStockPlan(ticker: string, plan: WatchlistPlan) {
+  const existingEntries = getClientSelectedEntries();
+  saveSelectedEntries(existingEntries.map((entry) => (entry.ticker === ticker ? { ...entry, ...plan } : entry)));
 }
 
 export function resetSelectedStocks() {

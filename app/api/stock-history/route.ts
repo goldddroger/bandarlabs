@@ -77,6 +77,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const ticker = normalizeTicker(searchParams.get("ticker") ?? "");
   const start = searchParams.get("start");
+  const includeBefore = searchParams.get("includeBefore") === "1";
   const range = searchParams.get("range")?.toLowerCase() ?? "";
 
   if (!ticker) {
@@ -136,7 +137,7 @@ export async function GET(request: Request) {
       .filter((row): row is { date: string; open: number; high: number; low: number; close: number; volume: number | null } =>
         [row.open, row.high, row.low, row.close].every((value) => typeof value === "number" && Number.isFinite(value)),
       )
-      .filter((row) => !start || row.date >= start);
+      .filter((row) => !start || includeBefore || row.date >= start);
     const filteredRows = rangeStartDate ? rows.filter((row) => row.date >= rangeStartDate) : rows;
 
     return json({
