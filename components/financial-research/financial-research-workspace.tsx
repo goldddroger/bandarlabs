@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { FinancialReportImportDialog } from "@/components/financial-research/financial-report-import-dialog";
 import { FinancialPeriodComparison } from "@/components/financial-research/financial-period-comparison";
+import { FinancialAuditWatch } from "@/components/financial-research/financial-audit-watch";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -197,6 +198,8 @@ export function FinancialResearchWorkspace() {
         </div>
         <Button type="button" className="w-full lg:w-auto" onClick={() => setImportOpen(true)}><Plus className="size-4" />Upload Laporan</Button>
       </header>
+
+      <FinancialAuditWatch />
 
       <div className="mb-5 grid overflow-hidden rounded-lg border border-gray-200 bg-white sm:grid-cols-3">
         <HeaderMetric label="Laporan tersimpan" value={String(reports.length)} detail={`${tickerCount} emiten`} icon={FileSpreadsheet} />

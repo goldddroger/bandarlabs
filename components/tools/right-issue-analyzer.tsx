@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { AlertTriangle, BellRing, CalendarClock, CheckCircle2, FileSearch, FileText, Loader2, ShieldAlert, Trash2, Upload } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AlertTriangle, BellRing, CalendarClock, CheckCircle2, Cloud, FileSearch, FileText, Loader2, ShieldAlert, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { stockCaResearchChangeEvent } from "@/lib/stock-ca-research";
 import { RightIssuePostTracker } from "@/components/tools/right-issue-post-tracker";
+import { calculateFinancialImpact, emptyFinancialImpactInputs, RightIssueFinancialImpact, type FinancialImpactInputs } from "@/components/tools/right-issue-financial-impact";
+import { RightIssueAnalysisWorkspace } from "@/components/tools/right-issue-analysis-workspace";
 
 type TimelineEvent = {
   type: "cum_right" | "ex_right" | "recording_date" | "trading_period" | "exercise_deadline" | "share_distribution";
@@ -32,12 +34,25 @@ type AnalysisResult = {
     hasWarrants: boolean;
     hasStandbyBuyer: boolean;
     controllerCommitment: boolean;
+    productiveUse?: boolean;
+    debtUse?: boolean;
+    workingCapitalUse?: boolean;
+    useOfProceedsSummary?: string;
   };
   findings: Array<{ tone: "positive" | "neutral" | "warning"; title: string; detail: string }>;
   evidence: Array<{ label: string; value: string; sourceFile: string; pageNumber: number }>;
   documents: Array<{ name: string; pageCount: number }>;
   timeline: TimelineEvent[];
   disclaimer: string;
+};
+
+type SavedAnalysisSummary = {
+  id: string;
+  ticker: string;
+  issuer: string;
+  updatedAt: string;
+  result: AnalysisResult;
+  financialInputs?: Partial<FinancialImpactInputs>;
 };
 
 const verdictCopy = {
@@ -68,6 +83,22 @@ export function RightIssueAnalyzer({
   const [reminderLeadDays, setReminderLeadDays] = useState(1);
   const [savingReminders, setSavingReminders] = useState(false);
   const [remindersSaved, setRemindersSaved] = useState(false);
+  const [financialInputs, setFinancialInputs] = useState<FinancialImpactInputs>(emptyFinancialImpactInputs);
+  const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysisSummary[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      fetch("/api/right-issue-saved-analyses", { cache: "no-store" })
+        .then(async (response) => {
+          if (!response.ok) return;
+          const payload = await response.json() as { analyses?: SavedAnalysisSummary[] };
+          if (!cancelled) setSavedAnalyses((payload.analyses ?? []).filter((item) => item.result?.ticker));
+        })
+        .catch(() => undefined);
+    }, 0);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, []);
 
   function addFiles(nextFiles: File[]) {
     const pdfs = nextFiles.filter((file) => file.name.toLowerCase().endsWith(".pdf"));
@@ -92,6 +123,7 @@ export function RightIssueAnalyzer({
       const payload = await response.json() as AnalysisResult & { error?: string };
       if (!response.ok) throw new Error(payload.error || "Dokumen gagal dianalisis.");
       setResult(payload);
+      setFinancialInputs(emptyFinancialImpactInputs);
       setRemindersSaved(false);
       toast.success("Analisis right issue selesai.");
     } catch (error) {
@@ -126,6 +158,7 @@ export function RightIssueAnalyzer({
   const priceDiscount = result?.facts.exercisePrice && marketPrice > 0
     ? ((result.facts.exercisePrice - marketPrice) / marketPrice) * 100
     : null;
+  const financialProjection = calculateFinancialImpact(financialInputs, result?.facts.newShares ?? 0, result?.facts.exercisePrice ?? 0);
 
   return (
     <section className="mt-6 border-t border-gray-200 pt-5">
@@ -137,6 +170,8 @@ export function RightIssueAnalyzer({
         <button type="button" onClick={() => inputRef.current?.click()} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50"><Upload className="size-4" />Pilih PDF</button>
         <input ref={inputRef} type="file" accept=".pdf,application/pdf" multiple className="sr-only" onChange={(event) => { addFiles(Array.from(event.target.files ?? [])); event.target.value = ""; }} />
       </div>
+
+      {savedAnalyses.length ? <div className="mt-4 border-y border-gray-100 py-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-gray-500"><Cloud className="size-4" />Analisis tersimpan</div><div className="flex gap-2 overflow-x-auto pb-1">{savedAnalyses.map((saved) => <button key={saved.id} type="button" onClick={() => { setResult(saved.result); setFinancialInputs({ ...emptyFinancialImpactInputs, ...saved.financialInputs }); setFiles([]); setRemindersSaved(false); }} className="min-w-36 rounded-md border border-gray-200 bg-white px-3 py-2 text-left hover:border-red-200 hover:bg-red-50"><span className="block text-sm font-semibold text-gray-900">{saved.ticker}</span><span className="mt-0.5 block truncate text-xs text-gray-500">{saved.issuer || "Right issue"}</span></button>)}</div></div> : null}
 
       {files.length === 0 ? (
         <button type="button" onClick={() => inputRef.current?.click()} className="mt-4 flex min-h-28 w-full flex-col items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 text-center hover:border-red-300 hover:bg-red-50/40">
@@ -167,6 +202,13 @@ export function RightIssueAnalyzer({
             <Fact label="Harga pelaksanaan" value={result.facts.exercisePrice === null ? "Belum tersedia" : `Rp ${formatNumber(result.facts.exercisePrice)}`} />
             <Fact label="Rasio HMETD" value={result.facts.ratioOld && result.facts.ratioNew ? `${result.facts.ratioOld}:${result.facts.ratioNew}` : "Belum tersedia"} />
           </div>
+
+          <RightIssueFinancialImpact
+            inputs={financialInputs}
+            onChange={setFinancialInputs}
+            newShares={result.facts.newShares ?? 0}
+            exercisePrice={result.facts.exercisePrice ?? 0}
+          />
 
           <section className="mt-6 border-t border-gray-200 pt-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -208,6 +250,17 @@ export function RightIssueAnalyzer({
 
           {result.evidence.length ? <details className="mt-5 rounded-md border border-gray-200 px-4 py-3"><summary className="cursor-pointer text-sm font-semibold text-gray-800">Jejak sumber ({result.evidence.length})</summary><div className="mt-3 grid gap-2">{result.evidence.map((item) => <div key={`${item.label}-${item.pageNumber}`} className="flex flex-col gap-1 text-xs text-gray-600 sm:flex-row sm:justify-between"><span><strong className="text-gray-800">{item.label}:</strong> {item.value}</span><span className="truncate sm:max-w-80">{item.sourceFile} · halaman {item.pageNumber}</span></div>)}</div></details> : null}
           <p className="mt-4 text-xs leading-5 text-gray-500">{result.disclaimer} Selalu verifikasi angka pada dokumen sumber.</p>
+          <RightIssueAnalysisWorkspace
+            ticker={result.ticker}
+            issuer={result.issuer}
+            score={result.score}
+            verdict={result.verdict}
+            stage={result.stage}
+            result={result}
+            marketPrice={marketPrice}
+            financialInputs={financialInputs}
+            financialProjection={financialProjection}
+          />
         </div>
       ) : null}
       <RightIssuePostTracker draft={result ? {

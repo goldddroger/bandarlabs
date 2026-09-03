@@ -158,6 +158,8 @@ export async function POST(request: Request) {
   const relatedPartyUse = /(?:penggunaan dana|pengambilalihan|transaksi)[\s\S]{0,180}(?:merupakan transaksi afiliasi|kepada pihak berelasi)/i.test(merged)
     && !/(?:bukan|tidak) merupakan transaksi afiliasi/i.test(merged);
   const detailedUse = /rencana penggunaan dana[\s\S]{0,2500}(?:sebesar Rp|sebesar kurang lebih|sekitar \d{1,3}%)/i.test(merged);
+  const useOfProceedsIndex = merged.search(/rencana penggunaan dana/i);
+  const useOfProceedsSummary = useOfProceedsIndex >= 0 ? compact(merged.slice(useOfProceedsIndex, useOfProceedsIndex + 1200)) : "";
 
   const findings: Finding[] = [];
   if (productiveUse && detailedUse) findings.push({ tone: "positive", title: "Penggunaan dana produktif dan cukup spesifik", detail: "Dokumen merinci penggunaan dana untuk ekspansi, aset, akuisisi, atau belanja modal. Nilai tambah tetap perlu diuji terhadap proyeksi imbal hasil dan waktu realisasi.", points: 18 });
@@ -190,7 +192,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ticker, issuer, score, verdict, confidence, stage: proposalOnly ? "proposal" : "final_or_advanced",
-    facts: { newShares, dilution, exercisePrice, ratioOld, ratioNew, hasWarrants, hasStandbyBuyer, controllerCommitment, productiveUse, debtUse, workingCapitalUse },
+    facts: { newShares, dilution, exercisePrice, ratioOld, ratioNew, hasWarrants, hasStandbyBuyer, controllerCommitment, productiveUse, debtUse, workingCapitalUse, useOfProceedsSummary },
     findings, evidence, timeline,
     documents: documents.map((document) => ({ name: document.name, pageCount: document.pageCount })),
     disclaimer: "Analisis berbasis isi dokumen dan bersifat alat bantu riset, bukan rekomendasi jual atau beli.",
