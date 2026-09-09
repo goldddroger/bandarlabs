@@ -1,11 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getRequestOwnerId, unauthorizedResponseBody } from "@/lib/request-session";
 import { normalizeTicker } from "@/lib/stock-quotes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const adminOwnerId = "00000000-0000-4000-8000-000000000001";
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const statuses = new Set(["planned", "ongoing", "completed"]);
 const proceedsCategories = ["capex", "acquisition", "debtRepayment", "workingCapital", "relatedParty"] as const;
@@ -160,7 +160,9 @@ function mapRow(row: Record<string, unknown>) {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase tracker belum dikonfigurasi." }, { status: 503 });
   const { data, error } = await supabase.from("right_issue_post_trackers").select("*").eq("owner_id", adminOwnerId).order("reference_date", { ascending: false });
@@ -169,6 +171,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase tracker belum dikonfigurasi." }, { status: 503 });
   const payload = normalizePayload(await request.json().catch(() => null));
@@ -183,6 +187,8 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase tracker belum dikonfigurasi." }, { status: 503 });
   const body = await request.json().catch(() => null) as TrackerPayload | null;
@@ -195,6 +201,8 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase tracker belum dikonfigurasi." }, { status: 503 });
   const id = cleanText(new URL(request.url).searchParams.get("id"), 80);

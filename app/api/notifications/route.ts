@@ -1,11 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { normalizeTicker } from "@/lib/stock-quotes";
+import { getRequestOwnerId, getRequestSession, unauthorizedResponseBody } from "@/lib/request-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const adminOwnerId = "00000000-0000-4000-8000-000000000001";
 
 type NotificationPayload = {
   bestEntries?: Array<Record<string, unknown>>;
@@ -73,13 +72,16 @@ function normalizePayload(value: unknown) {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  const session = getRequestSession(request);
+  if (!ownerId || !session) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase notifikasi belum dikonfigurasi." }, { status: 503 });
   const [bestResult, fcaResult, workspaceResult] = await Promise.all([
-    supabase.from("best_entry_alerts").select("ticker,entry_price,last_fired_value,updated_at").eq("owner_id", adminOwnerId).order("ticker"),
-    supabase.from("fca_watch_records").select("ticker,company_name,watched_at,last_known_active,last_known_criteria,alert_type,alert_message,alert_created_at,alert_unread").eq("owner_id", adminOwnerId).order("watched_at", { ascending: false }),
-    supabase.from("notification_workspaces").select("updated_at").eq("owner_id", adminOwnerId).maybeSingle(),
+    supabase.from("best_entry_alerts").select("ticker,entry_price,last_fired_value,updated_at").eq("owner_id", ownerId).order("ticker"),
+    supabase.from("fca_watch_records").select("ticker,company_name,watched_at,last_known_active,last_known_criteria,alert_type,alert_message,alert_created_at,alert_unread").eq("owner_id", ownerId).order("watched_at", { ascending: false }),
+    supabase.from("notification_workspaces").select("updated_at").eq("owner_id", ownerId).maybeSingle(),
   ]);
   const error = bestResult.error ?? fcaResult.error ?? workspaceResult.error;
   if (error) {
@@ -89,6 +91,7 @@ export async function GET() {
 
   return NextResponse.json({
     initialized: Boolean(workspaceResult.data),
+    allowLocalBootstrap: session.role === "admin",
     updatedAt: workspaceResult.data?.updated_at ?? null,
     bestEntries: (bestResult.data ?? []).map((row) => ({
       ticker: row.ticker,
@@ -113,12 +116,15 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase notifikasi belum dikonfigurasi." }, { status: 503 });
   const payload = normalizePayload(await request.json().catch(() => null));
   if (!payload) return NextResponse.json({ error: "Data notifikasi tidak valid." }, { status: 400 });
 
-  const { data, error } = await supabase.rpc("replace_admin_notifications", {
+  const { data, error } = await supabase.rpc("replace_user_notifications", {
+    p_owner_id: ownerId,
     p_best_entries: payload.bestEntries,
     p_fca_watches: payload.fcaWatches,
   });

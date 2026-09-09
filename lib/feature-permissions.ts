@@ -57,9 +57,13 @@ export function permissionForPath(pathname: string): FeaturePermission | null {
     ["/api/portfolio", "portfolio"], ["/api/accumulation", "accumulation"], ["/api/journal", "journal"],
     ["/api/corporate-actions", "corporate_action"], ["/api/right-issue", "calculator"],
     ["/api/private-placement", "calculator"], ["/api/market-movers", "dashboard"],
-    ["/api/notifications", "notifications"],
+    ["/api/stock-ca-research", "stocks"], ["/api/notifications", "notifications"],
   ];
-  return [...apiRules, ...pageRules].find(([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`))?.[1] ?? null;
+  return [...apiRules, ...pageRules].find(([prefix]) => (
+    pathname === prefix
+    || pathname.startsWith(`${prefix}/`)
+    || (prefix.startsWith("/api/") && pathname.startsWith(`${prefix}-`))
+  ))?.[1] ?? null;
 }
 
 export function permissionForMenuHref(href: string) {

@@ -1,11 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getRequestOwnerId, unauthorizedResponseBody } from "@/lib/request-session";
 import { normalizeTicker } from "@/lib/stock-quotes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const adminOwnerId = "00000000-0000-4000-8000-000000000001";
 const verdicts = new Set(["positive", "mixed", "caution"]);
 const stages = new Set(["proposal", "final_or_advanced"]);
 
@@ -108,6 +108,8 @@ function mapAnalysis(row: Record<string, unknown>, versions: Array<Record<string
 }
 
 export async function GET(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase analisis belum dikonfigurasi." }, { status: 503 });
   const ticker = normalizeTicker(new URL(request.url).searchParams.get("ticker") ?? "");
@@ -124,6 +126,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase analisis belum dikonfigurasi." }, { status: 503 });
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;

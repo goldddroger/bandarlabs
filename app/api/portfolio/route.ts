@@ -1,9 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getRequestOwnerId, getRequestSession, unauthorizedResponseBody } from "@/lib/request-session";
 
 export const runtime = "nodejs";
 
-const adminOwnerId = "00000000-0000-4000-8000-000000000001";
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 type PortfolioPayload = {
@@ -83,19 +83,24 @@ function normalizePayload(value: unknown) {
     : { holdings, trades, equityHistory, deletedHoldingIds, deletedTradeIds, deletedEquityDates };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  const session = getRequestSession(request);
+  if (!ownerId || !session) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase portfolio belum dikonfigurasi." }, { status: 503 });
 
   const [holdingsResult, tradesResult, historyResult] = await Promise.all([
-    supabase.from("portfolio_holdings").select("id,ticker,lots,average_price,purchased_at,note").eq("owner_id", adminOwnerId).order("created_at", { ascending: false }),
-    supabase.from("portfolio_trades").select("id,ticker,lots,buy_price,sell_price,buy_fee_percent,sell_fee_percent,sold_at,note").eq("owner_id", adminOwnerId).order("sold_at", { ascending: false }),
-    supabase.from("portfolio_equity_history").select("snapshot_date,equity").eq("owner_id", adminOwnerId).order("snapshot_date", { ascending: true }),
+    supabase.from("portfolio_holdings").select("id,ticker,lots,average_price,purchased_at,note").eq("owner_id", ownerId).order("created_at", { ascending: false }),
+    supabase.from("portfolio_trades").select("id,ticker,lots,buy_price,sell_price,buy_fee_percent,sell_fee_percent,sold_at,note").eq("owner_id", ownerId).order("sold_at", { ascending: false }),
+    supabase.from("portfolio_equity_history").select("snapshot_date,equity").eq("owner_id", ownerId).order("snapshot_date", { ascending: true }),
   ]);
   const error = holdingsResult.error ?? tradesResult.error ?? historyResult.error;
   if (error) return NextResponse.json({ error: "Data portfolio Supabase gagal dimuat." }, { status: 500 });
 
   return NextResponse.json({
+    ownerId,
+    allowLocalBootstrap: session.role === "admin",
     portfolio: {
       holdings: (holdingsResult.data ?? []).map((row) => ({ id: row.id, ticker: row.ticker, lots: Number(row.lots), averagePrice: Number(row.average_price), purchasedAt: row.purchased_at, note: row.note })),
       trades: (tradesResult.data ?? []).map((row) => ({ id: row.id, ticker: row.ticker, lots: Number(row.lots), buyPrice: Number(row.buy_price), sellPrice: Number(row.sell_price), buyFeePercent: Number(row.buy_fee_percent), sellFeePercent: Number(row.sell_fee_percent), soldAt: row.sold_at, note: row.note })),
@@ -105,21 +110,23 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase portfolio belum dikonfigurasi." }, { status: 503 });
   const payload = normalizePayload(await request.json().catch(() => null));
   if (!payload) return NextResponse.json({ error: "Data portfolio tidak valid." }, { status: 400 });
 
-  const holdingRows = payload.holdings.map((row) => ({ ...row, owner_id: adminOwnerId }));
-  const tradeRows = payload.trades.map((row) => ({ ...row, owner_id: adminOwnerId }));
-  const historyRows = payload.equityHistory.map((row) => ({ ...row, owner_id: adminOwnerId }));
+  const holdingRows = payload.holdings.map((row) => ({ ...row, owner_id: ownerId }));
+  const tradeRows = payload.trades.map((row) => ({ ...row, owner_id: ownerId }));
+  const historyRows = payload.equityHistory.map((row) => ({ ...row, owner_id: ownerId }));
   const operations = [
     holdingRows.length ? supabase.from("portfolio_holdings").upsert(holdingRows, { onConflict: "owner_id,id" }) : Promise.resolve({ error: null }),
     tradeRows.length ? supabase.from("portfolio_trades").upsert(tradeRows, { onConflict: "owner_id,id" }) : Promise.resolve({ error: null }),
     historyRows.length ? supabase.from("portfolio_equity_history").upsert(historyRows, { onConflict: "owner_id,snapshot_date" }) : Promise.resolve({ error: null }),
-    payload.deletedHoldingIds.length ? supabase.from("portfolio_holdings").delete().eq("owner_id", adminOwnerId).in("id", payload.deletedHoldingIds) : Promise.resolve({ error: null }),
-    payload.deletedTradeIds.length ? supabase.from("portfolio_trades").delete().eq("owner_id", adminOwnerId).in("id", payload.deletedTradeIds) : Promise.resolve({ error: null }),
-    payload.deletedEquityDates.length ? supabase.from("portfolio_equity_history").delete().eq("owner_id", adminOwnerId).in("snapshot_date", payload.deletedEquityDates) : Promise.resolve({ error: null }),
+    payload.deletedHoldingIds.length ? supabase.from("portfolio_holdings").delete().eq("owner_id", ownerId).in("id", payload.deletedHoldingIds) : Promise.resolve({ error: null }),
+    payload.deletedTradeIds.length ? supabase.from("portfolio_trades").delete().eq("owner_id", ownerId).in("id", payload.deletedTradeIds) : Promise.resolve({ error: null }),
+    payload.deletedEquityDates.length ? supabase.from("portfolio_equity_history").delete().eq("owner_id", ownerId).in("snapshot_date", payload.deletedEquityDates) : Promise.resolve({ error: null }),
   ];
   const results = await Promise.all(operations);
   const error = results.find((result) => result.error)?.error;

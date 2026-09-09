@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { corporateActionNoteStatuses, type CorporateActionNotePayload } from "@/lib/corporate-action";
 import {
-  corporateActionAdminOwnerId,
   createCorporateActionAdminClient,
   loadCorporateActionWorkspace,
   mapCorporateActionNote,
 } from "@/lib/corporate-action-server";
+import { getRequestOwnerId, unauthorizedResponseBody } from "@/lib/request-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,10 +26,12 @@ function normalizeNote(value: unknown): CorporateActionNotePayload | null {
   return { eventId, keyMessage, decision, followUp, status: status as CorporateActionNotePayload["status"] };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   try {
     return NextResponse.json(
-      await loadCorporateActionWorkspace(),
+      await loadCorporateActionWorkspace(ownerId),
       { headers: { "Cache-Control": "private, no-store, max-age=0, must-revalidate" } },
     );
   } catch (error) {
@@ -43,6 +45,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = createCorporateActionAdminClient();
   if (!supabase) return NextResponse.json({ error: "Supabase corporate action belum dikonfigurasi." }, { status: 503 });
   const payload = normalizeNote(await request.json().catch(() => null));
@@ -53,7 +57,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase.from("corporate_action_notes").insert({
     id: crypto.randomUUID(),
-    owner_id: corporateActionAdminOwnerId,
+    owner_id: ownerId,
     event_id: payload.eventId,
     key_message: payload.keyMessage,
     decision: payload.decision,
@@ -69,6 +73,8 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = createCorporateActionAdminClient();
   if (!supabase) return NextResponse.json({ error: "Supabase corporate action belum dikonfigurasi." }, { status: 503 });
   const body = await request.json().catch(() => null) as (Record<string, unknown> & { id?: string }) | null;
@@ -82,13 +88,15 @@ export async function PATCH(request: Request) {
     decision: payload.decision,
     follow_up: payload.followUp,
     status: payload.status,
-  }).eq("id", id).eq("owner_id", corporateActionAdminOwnerId).select("id,event_id,key_message,decision,follow_up,status,created_at,updated_at").maybeSingle();
+  }).eq("id", id).eq("owner_id", ownerId).select("id,event_id,key_message,decision,follow_up,status,created_at,updated_at").maybeSingle();
 
   if (error || !data) return NextResponse.json({ error: "Perubahan catatan gagal disimpan." }, { status: 500 });
   return NextResponse.json({ note: mapCorporateActionNote(data as Record<string, unknown>) });
 }
 
 export async function DELETE(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = createCorporateActionAdminClient();
   if (!supabase) return NextResponse.json({ error: "Supabase corporate action belum dikonfigurasi." }, { status: 503 });
   const body = await request.json().catch(() => null) as { id?: string; resource?: string } | null;
@@ -108,7 +116,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true, deletedEventId: id });
   }
 
-  const { error } = await supabase.from("corporate_action_notes").delete().eq("id", id).eq("owner_id", corporateActionAdminOwnerId);
+  const { error } = await supabase.from("corporate_action_notes").delete().eq("id", id).eq("owner_id", ownerId);
   if (error) return NextResponse.json({ error: "Catatan gagal dihapus dari database." }, { status: 500 });
   return NextResponse.json({ success: true });
 }

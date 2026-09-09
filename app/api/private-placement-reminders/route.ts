@@ -1,16 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getRequestOwnerId, unauthorizedResponseBody } from "@/lib/request-session";
 import { normalizeTicker } from "@/lib/stock-quotes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const ownerId = "00000000-0000-4000-8000-000000000001";
 const types = new Set(["rups_approval", "execution_deadline", "funding", "distribution", "listing", "result_announcement"]);
 function db() { const url = process.env.NEXT_PUBLIC_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY; return url && key ? createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } }) : null; }
 function clean(value: unknown, max: number) { return String(value ?? "").trim().slice(0, max); }
 function before(date: string, days: number) { const value = new Date(`${date}T12:00:00Z`); value.setUTCDate(value.getUTCDate() - days); return value.toISOString().slice(0, 10); }
 
 export async function POST(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = db(); if (!supabase) return NextResponse.json({ error: "Supabase reminder belum dikonfigurasi." }, { status: 503 });
   const body = await request.json().catch(() => null) as Record<string, unknown> | null; const ticker = normalizeTicker(clean(body?.ticker, 12)); const issuer = clean(body?.issuer, 300); const leadDays = Math.max(0, Math.min(30, Math.trunc(Number(body?.leadDays) || 0))); const raw = Array.isArray(body?.events) ? body.events.slice(0, 8) : [];
   const events = raw.map((item) => { const event = item as Record<string, unknown>; return { type: clean(event.type, 40), label: clean(event.label, 160), date: clean(event.date, 10), sourceFile: clean(event.sourceFile, 180), pageNumber: Math.max(1, Math.trunc(Number(event.pageNumber) || 1)) }; });

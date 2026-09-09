@@ -3,8 +3,6 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { CorporateActionEvent, CorporateActionNote } from "@/lib/corporate-action";
 
-export const corporateActionAdminOwnerId = "00000000-0000-4000-8000-000000000001";
-
 export function createCorporateActionAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -25,7 +23,7 @@ export function mapCorporateActionNote(row: Record<string, unknown>): CorporateA
   };
 }
 
-export async function loadCorporateActionWorkspace(): Promise<{
+export async function loadCorporateActionWorkspace(ownerId: string): Promise<{
   events: CorporateActionEvent[];
   notes: CorporateActionNote[];
 }> {
@@ -40,7 +38,7 @@ export async function loadCorporateActionWorkspace(): Promise<{
     supabase
       .from("corporate_action_notes")
       .select("id,event_id,key_message,decision,follow_up,status,created_at,updated_at")
-      .eq("owner_id", corporateActionAdminOwnerId)
+      .eq("owner_id", ownerId)
       .order("updated_at", { ascending: false }),
   ]);
 

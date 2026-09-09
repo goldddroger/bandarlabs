@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { journalCategories, type JournalAttachment, type JournalEntry, type JournalPayload } from "@/lib/journal";
 import { journalServerConfig } from "@/lib/journal-server";
+import { getRequestOwnerId, unauthorizedResponseBody } from "@/lib/request-session";
 
 export const runtime = "nodejs";
 
@@ -44,12 +45,15 @@ async function withSignedUrls(entries: JournalEntry[], supabase: NonNullable<Ret
   })));
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const auth = authorize();
   if ("response" in auth) return auth.response;
   const { data, error } = await auth.config.supabase
     .from("journal_entries")
     .select("*,journal_attachments(*)")
+    .eq("owner_id", ownerId)
     .order("pinned", { ascending: false })
     .order("journal_date", { ascending: false })
     .order("updated_at", { ascending: false });
@@ -58,42 +62,52 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const auth = authorize();
   if ("response" in auth) return auth.response;
   const payload = normalizePayload(await request.json().catch(() => null));
   if (!payload) return NextResponse.json({ error: "Isi jurnal belum valid." }, { status: 400 });
-  const { data, error } = await auth.config.supabase.from("journal_entries").insert(payload).select("*").single();
+  const { data, error } = await auth.config.supabase.from("journal_entries").insert({ ...payload, owner_id: ownerId }).select("*").single();
   if (error) return NextResponse.json({ error: "Jurnal gagal disimpan." }, { status: 500 });
   return NextResponse.json({ entry: { ...data, journal_attachments: [] } }, { status: 201 });
 }
 
 export async function PATCH(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const auth = authorize();
   if ("response" in auth) return auth.response;
   const body = await request.json().catch(() => null) as ({ id?: string } & Partial<JournalPayload>) | null;
   const payload = normalizePayload(body);
   if (!body?.id || !payload) return NextResponse.json({ error: "Perubahan jurnal belum valid." }, { status: 400 });
-  const { error } = await auth.config.supabase.from("journal_entries").update(payload).eq("id", body.id);
+  const { error } = await auth.config.supabase.from("journal_entries").update(payload).eq("id", body.id).eq("owner_id", ownerId);
   if (error) return NextResponse.json({ error: "Perubahan jurnal gagal disimpan." }, { status: 500 });
   return NextResponse.json({ success: true });
 }
 
 export async function DELETE(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const auth = authorize();
   if ("response" in auth) return auth.response;
   const body = await request.json().catch(() => null) as { id?: string; attachmentId?: string } | null;
   if (!body?.id) return NextResponse.json({ error: "ID jurnal tidak valid." }, { status: 400 });
 
   if (body.attachmentId) {
+    const { data: ownedEntry } = await auth.config.supabase.from("journal_entries").select("id").eq("id", body.id).eq("owner_id", ownerId).maybeSingle();
+    if (!ownedEntry) return NextResponse.json({ error: "Jurnal tidak ditemukan." }, { status: 404 });
     const { data } = await auth.config.supabase.from("journal_attachments").select("storage_path").eq("id", body.attachmentId).eq("entry_id", body.id).maybeSingle();
     if (data?.storage_path) await auth.config.supabase.storage.from("journal-media").remove([data.storage_path]);
     const { error } = await auth.config.supabase.from("journal_attachments").delete().eq("id", body.attachmentId).eq("entry_id", body.id);
     return error ? NextResponse.json({ error: "Lampiran gagal dihapus." }, { status: 500 }) : NextResponse.json({ success: true });
   }
 
+  const { data: ownedEntry } = await auth.config.supabase.from("journal_entries").select("id").eq("id", body.id).eq("owner_id", ownerId).maybeSingle();
+  if (!ownedEntry) return NextResponse.json({ error: "Jurnal tidak ditemukan." }, { status: 404 });
   const { data: attachments } = await auth.config.supabase.from("journal_attachments").select("storage_path").eq("entry_id", body.id);
   const paths = (attachments ?? []).map((attachment) => attachment.storage_path);
   if (paths.length > 0) await auth.config.supabase.storage.from("journal-media").remove(paths);
-  const { error } = await auth.config.supabase.from("journal_entries").delete().eq("id", body.id);
+  const { error } = await auth.config.supabase.from("journal_entries").delete().eq("id", body.id).eq("owner_id", ownerId);
   return error ? NextResponse.json({ error: "Jurnal gagal dihapus." }, { status: 500 }) : NextResponse.json({ success: true });
 }

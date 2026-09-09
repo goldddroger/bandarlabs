@@ -2,11 +2,9 @@
 
 import { FormEvent, useState } from "react";
 import { BarChart3, Eye, EyeOff, Loader2, LockKeyhole } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 export function LoginForm() {
-  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -25,10 +23,20 @@ export function LoginForm() {
       });
       const result = await response.json() as { error?: string; homePath?: string };
       if (!response.ok) throw new Error(result.error || "Login gagal diproses.");
+      const personalKeys = [
+        "bandarlab.portfolio.v1",
+        "bandarlab.accumulation.selectedStocks",
+        "bandarlab.accumulation.externalRecommendations",
+        "bandarlab-fca-watch-v1",
+      ];
+      personalKeys.forEach((key) => window.localStorage.removeItem(key));
+      for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+        const key = window.localStorage.key(index);
+        if (key?.startsWith("bandarlab-best-entry:")) window.localStorage.removeItem(key);
+      }
       const requested = new URLSearchParams(window.location.search).get("next");
       const destination = requested?.startsWith("/") && !requested.startsWith("//") ? requested : result.homePath || "/dashboard";
-      router.replace(destination);
-      router.refresh();
+      window.location.assign(destination);
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "Login gagal diproses.");
     } finally {

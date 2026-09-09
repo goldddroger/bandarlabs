@@ -1,11 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getRequestOwnerId, unauthorizedResponseBody } from "@/lib/request-session";
 import { normalizeTicker } from "@/lib/stock-quotes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const adminOwnerId = "00000000-0000-4000-8000-000000000001";
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 function serverClient() {
@@ -19,6 +19,8 @@ function todayInJakarta() {
 }
 
 export async function POST(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase radar belum dikonfigurasi." }, { status: 503 });
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;

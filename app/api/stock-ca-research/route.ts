@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getRequestOwnerId, unauthorizedResponseBody } from "@/lib/request-session";
 import { normalizeTicker } from "@/lib/stock-quotes";
 import { stockCaResearchStatuses, type StockCaResearchPayload } from "@/lib/stock-ca-research";
 
 export const runtime = "nodejs";
-const adminOwnerId = "00000000-0000-4000-8000-000000000001";
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 function serverClient() {
@@ -48,6 +48,8 @@ function mapNote(row: Record<string, unknown>) {
 }
 
 export async function GET(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase research note belum dikonfigurasi." }, { status: 503 });
   const { searchParams } = new URL(request.url);
@@ -62,6 +64,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase research note belum dikonfigurasi." }, { status: 503 });
   const payload = normalizePayload(await request.json().catch(() => null));
@@ -72,6 +76,8 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase research note belum dikonfigurasi." }, { status: 503 });
   const body = await request.json().catch(() => null) as (Record<string, unknown> & { id?: string }) | null;
@@ -84,6 +90,8 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase research note belum dikonfigurasi." }, { status: 503 });
   const body = await request.json().catch(() => null) as { id?: string } | null;

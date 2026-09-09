@@ -1,14 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getRequestOwnerId, unauthorizedResponseBody } from "@/lib/request-session";
 import { normalizeTicker } from "@/lib/stock-quotes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const ownerId = "00000000-0000-4000-8000-000000000001";
 function db() { const url = process.env.NEXT_PUBLIC_SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY; return url && key ? createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } }) : null; }
 function today() { return new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Jakarta" }).format(new Date()); }
 
 export async function POST(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = db(); if (!supabase) return NextResponse.json({ error: "Supabase radar belum dikonfigurasi." }, { status: 503 });
   const body = await request.json().catch(() => null) as Record<string, unknown> | null; const ticker = normalizeTicker(String(body?.ticker ?? "")); const category = body?.category === "daily" ? "daily" : body?.category === "swing" ? "swing" : null; const price = Number(body?.price); const reminderDate = String(body?.reminderDate ?? "").trim() || null;
   if (!ticker || !category || !(price > 0) || (reminderDate && !/^\d{4}-\d{2}-\d{2}$/.test(reminderDate))) return NextResponse.json({ error: "Ticker, kategori, harga, atau reminder belum valid." }, { status: 400 });

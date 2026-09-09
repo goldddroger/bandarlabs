@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getRequestOwnerId, unauthorizedResponseBody } from "@/lib/request-session";
 import { normalizeTicker } from "@/lib/stock-quotes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const ownerId = "00000000-0000-4000-8000-000000000001";
 const stages = new Set(["proposal", "approved", "revision", "completed"]);
 const verdicts = new Set(["positive", "mixed", "caution"]);
 
@@ -30,6 +30,8 @@ function changes(previous: unknown, current: unknown) {
 function map(row: Record<string, unknown>, versions: Array<Record<string, unknown>> = []) { return { id: row.id, ticker: row.ticker, issuer: row.issuer_name, score: row.score, verdict: row.verdict, stage: row.stage, marketPrice: optionalNumber(row.market_price), result: row.analysis_snapshot, financialInputs: row.financial_inputs, financialProjection: row.financial_projection, note: row.personal_note, updatedAt: row.updated_at, versions: versions.map((version) => ({ id: version.id, versionNo: version.version_no, stage: version.stage, documentDate: version.document_date, documents: version.documents, changes: version.changes, createdAt: version.created_at })) }; }
 
 export async function GET(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = db(); if (!supabase) return NextResponse.json({ error: "Supabase analisis belum dikonfigurasi." }, { status: 503 });
   const ticker = normalizeTicker(new URL(request.url).searchParams.get("ticker") ?? "");
   if (!ticker) { const { data, error } = await supabase.from("private_placement_analyses").select("*").eq("owner_id", ownerId).order("updated_at", { ascending: false }); if (error) return NextResponse.json({ error: "Analisis gagal dimuat. Jalankan migration Private Placement." }, { status: 500 }); return NextResponse.json({ analyses: (data ?? []).map((row) => map(row)) }); }
@@ -41,6 +43,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = db(); if (!supabase) return NextResponse.json({ error: "Supabase analisis belum dikonfigurasi." }, { status: 503 });
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   const ticker = normalizeTicker(text(body?.ticker, 12)); const result = object(body?.result); const documents = Array.isArray(result.documents) ? result.documents.slice(0, 16) : []; const verdict = text(body?.verdict, 24); const stage = text(body?.stage, 30);

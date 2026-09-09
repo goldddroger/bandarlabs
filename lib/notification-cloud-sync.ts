@@ -12,6 +12,7 @@ const fcaEvent = "bandarlab:fca-watch-change";
 type CloudBestEntry = BestEntryRecord & { lastFiredValue?: string | null };
 type NotificationWorkspace = {
   initialized?: boolean;
+  allowLocalBootstrap?: boolean;
   bestEntries?: CloudBestEntry[];
   fcaWatches?: FcaWatchRecord[];
   error?: string;
@@ -94,9 +95,10 @@ async function initializeWorkspace() {
   if (!response.ok) throw new Error(workspace.error || "Notifikasi gagal dimuat dari database.");
 
   const local = currentPayload();
-  const bestEntries = workspace.initialized ? workspace.bestEntries ?? [] : local.bestEntries;
-  const fcaWatches = workspace.initialized ? workspace.fcaWatches ?? [] : local.fcaWatches;
-  if (!workspace.initialized) await saveWorkspace({ bestEntries, fcaWatches });
+  const useLocal = !workspace.initialized && Boolean(workspace.allowLocalBootstrap);
+  const bestEntries = useLocal ? local.bestEntries : workspace.bestEntries ?? [];
+  const fcaWatches = useLocal ? local.fcaWatches : workspace.fcaWatches ?? [];
+  if (useLocal) await saveWorkspace({ bestEntries, fcaWatches });
   applyWorkspace(bestEntries, fcaWatches);
 }
 

@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getRequestOwnerId, getRequestSession, unauthorizedResponseBody } from "@/lib/request-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const adminOwnerId = "00000000-0000-4000-8000-000000000001";
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const monthNumbers: Record<string, string> = {
   jan: "01", januari: "01", feb: "02", februari: "02", mar: "03", maret: "03",
@@ -111,14 +111,17 @@ function normalizePayload(value: unknown) {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  const session = getRequestSession(request);
+  if (!ownerId || !session) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase accumulation belum dikonfigurasi." }, { status: 503 });
 
   const [entriesResult, recommendationsResult, workspaceResult] = await Promise.all([
-    supabase.from("radar_entries").select("ticker,status,trend,entry_price,entry_price_source,started_at,watchlist_category,thesis_tags,lifecycle,breakout_price,support_low,support_high,ema_timeframe,catalyst_date,review_date,plan_source,plan_note").eq("owner_id", adminOwnerId).order("created_at", { ascending: true }),
-    supabase.from("external_recommendations").select("id,ticker,source,status,trend,monitored_at,entry_price,entry_price_source,note").eq("owner_id", adminOwnerId).order("created_at", { ascending: false }),
-    supabase.from("accumulation_workspaces").select("updated_at").eq("owner_id", adminOwnerId).maybeSingle(),
+    supabase.from("radar_entries").select("ticker,status,trend,entry_price,entry_price_source,started_at,watchlist_category,thesis_tags,lifecycle,breakout_price,support_low,support_high,ema_timeframe,catalyst_date,review_date,plan_source,plan_note").eq("owner_id", ownerId).order("created_at", { ascending: true }),
+    supabase.from("external_recommendations").select("id,ticker,source,status,trend,monitored_at,entry_price,entry_price_source,note").eq("owner_id", ownerId).order("created_at", { ascending: false }),
+    supabase.from("accumulation_workspaces").select("updated_at").eq("owner_id", ownerId).maybeSingle(),
   ]);
   const error = entriesResult.error ?? recommendationsResult.error ?? workspaceResult.error;
   if (error) {
@@ -128,6 +131,7 @@ export async function GET() {
 
   return NextResponse.json({
     initialized: Boolean(workspaceResult.data),
+    allowLocalBootstrap: session.role === "admin",
     updatedAt: workspaceResult.data?.updated_at ?? null,
     entries: (entriesResult.data ?? []).map((row) => ({
       ticker: row.ticker,
@@ -162,12 +166,15 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase accumulation belum dikonfigurasi." }, { status: 503 });
   const payload = normalizePayload(await request.json().catch(() => null));
   if (!payload) return NextResponse.json({ error: "Data accumulation tidak valid." }, { status: 400 });
 
-  const { data, error } = await supabase.rpc("replace_admin_accumulation", {
+  const { data, error } = await supabase.rpc("replace_user_accumulation", {
+    p_owner_id: ownerId,
     p_entries: payload.entries,
     p_recommendations: payload.recommendations,
   });

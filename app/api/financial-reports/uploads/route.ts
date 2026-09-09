@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getRequestOwnerId, unauthorizedResponseBody } from "@/lib/request-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +30,8 @@ function safeName(value: unknown) {
 }
 
 export async function POST(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = adminClient();
   if (!supabase) return NextResponse.json({ error: "Supabase belum dikonfigurasi." }, { status: 503 });
   const body = await request.json().catch(() => null) as { ticker?: unknown; periodEnd?: unknown; files?: Array<{ name?: unknown; size?: unknown }> } | null;
@@ -42,7 +45,7 @@ export async function POST(request: Request) {
 
   const uploads = [];
   for (const file of normalized) {
-    const path = `admin/${ticker}/${periodEnd}/supporting/${crypto.randomUUID()}-${file.name}`;
+    const path = `${ownerId}/${ticker}/${periodEnd}/supporting/${crypto.randomUUID()}-${file.name}`;
     const { data, error } = await supabase.storage.from("financial-reports").createSignedUploadUrl(path);
     if (error || !data) {
       const paths = uploads.map((upload) => upload.path);
@@ -55,10 +58,13 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = adminClient();
   if (!supabase) return NextResponse.json({ error: "Supabase belum dikonfigurasi." }, { status: 503 });
   const body = await request.json().catch(() => null) as { paths?: unknown[] } | null;
-  const paths = (Array.isArray(body?.paths) ? body.paths : []).map(String).filter((path) => /^admin\/[A-Z0-9]{4,8}\/\d{4}-\d{2}-\d{2}\/supporting\/[A-Za-z0-9._-]+$/.test(path)).slice(0, maxFiles);
+  const prefix = `${ownerId}/`;
+  const paths = (Array.isArray(body?.paths) ? body.paths : []).map(String).filter((path) => path.startsWith(prefix) && /^[0-9a-f-]{36}\/[A-Z0-9]{4,8}\/\d{4}-\d{2}-\d{2}\/supporting\/[A-Za-z0-9._-]+$/i.test(path)).slice(0, maxFiles);
   if (paths.length) await supabase.storage.from("financial-reports").remove(paths);
   return NextResponse.json({ success: true });
 }

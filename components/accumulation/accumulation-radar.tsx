@@ -80,6 +80,7 @@ type HistoryPriceRow = {
 };
 type CloudWorkspace = {
   initialized?: boolean;
+  allowLocalBootstrap?: boolean;
   entries?: SelectedAccumulationEntry[];
   recommendations?: RecommendationRow[];
   error?: string;
@@ -835,9 +836,10 @@ export function AccumulationRadar() {
         const payload = await response.json() as CloudWorkspace;
         if (!response.ok) throw new Error(payload.error || "Accumulation gagal dimuat dari database.");
 
-        const nextEntries = payload.initialized ? payload.entries ?? [] : localEntries;
-        const nextRecommendations = payload.initialized ? payload.recommendations ?? [] : localRecommendations;
-        if (!payload.initialized) await saveAccumulationWorkspace(nextEntries, nextRecommendations);
+        const allowLocalBootstrap = Boolean(payload.allowLocalBootstrap);
+        const nextEntries = payload.initialized || !allowLocalBootstrap ? payload.entries ?? [] : localEntries;
+        const nextRecommendations = payload.initialized || !allowLocalBootstrap ? payload.recommendations ?? [] : localRecommendations;
+        if (!payload.initialized && allowLocalBootstrap) await saveAccumulationWorkspace(nextEntries, nextRecommendations);
         if (controller.signal.aborted) return;
 
         replaceSelectedAccumulationEntries(nextEntries);

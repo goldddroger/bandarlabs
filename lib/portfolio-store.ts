@@ -45,6 +45,7 @@ const changeEventName = "bandarlab-portfolio-change";
 export const portfolioSyncEventName = "bandarlab-portfolio-sync";
 const emptySnapshot = JSON.stringify({ holdings: [], trades: [], equityHistory: [] } satisfies PortfolioData);
 const adminOwnerId = "00000000-0000-4000-8000-000000000001";
+let activePortfolioOwnerId = adminOwnerId;
 let persistQueue: Promise<void> = Promise.resolve();
 
 function parsePortfolio(snapshot: string): PortfolioData {
@@ -110,17 +111,19 @@ export function savePortfolio(data: PortfolioData, deleted?: PortfolioDeletion) 
 export async function syncPortfolioWithServer() {
   const local = parsePortfolio(getPortfolioSnapshot());
   const response = await fetch("/api/portfolio", { cache: "no-store" });
-  const result = await response.json().catch(() => ({})) as { portfolio?: PortfolioData; error?: string };
+  const result = await response.json().catch(() => ({})) as { portfolio?: PortfolioData; ownerId?: string; allowLocalBootstrap?: boolean; error?: string };
   if (!response.ok || !result.portfolio) throw new Error(result.error || "Portfolio Supabase gagal dimuat.");
+  if (result.ownerId) activePortfolioOwnerId = result.ownerId;
 
   if (hasPortfolioData(result.portfolio)) {
     applyPortfolioLocally(result.portfolio);
     return "downloaded" as const;
   }
-  if (hasPortfolioData(local)) {
+  if (result.allowLocalBootstrap && hasPortfolioData(local)) {
     await persistPortfolio(local);
     return "uploaded" as const;
   }
+  applyPortfolioLocally(result.portfolio);
   return "empty" as const;
 }
 
@@ -129,7 +132,7 @@ function sqlText(value: unknown) {
 }
 
 export function downloadPortfolioSql(data: PortfolioData) {
-  const owner = sqlText(adminOwnerId);
+  const owner = sqlText(activePortfolioOwnerId);
   const holdings = data.holdings.length > 0
     ? `insert into public.portfolio_holdings (id, owner_id, ticker, lots, average_price, purchased_at, note) values\n${data.holdings.map((row) => `  (${sqlText(row.id)}, ${owner}, ${sqlText(row.ticker)}, ${row.lots}, ${row.averagePrice}, ${sqlText(row.purchasedAt)}, ${sqlText(row.note)})`).join(",\n")};`
     : "";

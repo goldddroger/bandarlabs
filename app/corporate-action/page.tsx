@@ -2,6 +2,9 @@ import { CorporateActionJournal } from "@/components/corporate-action/corporate-
 import type { CorporateActionQuoteMap } from "@/lib/corporate-action";
 import { loadCorporateActionWorkspace } from "@/lib/corporate-action-server";
 import { getStockQuote } from "@/lib/stock-quotes";
+import { cookies } from "next/headers";
+import { adminSessionCookie, verifyAdminSession } from "@/lib/admin-auth";
+import { legacyAdminOwnerId } from "@/lib/request-session";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +21,9 @@ async function loadInitialQuotes(tickers: string[]): Promise<CorporateActionQuot
   }, {});
 }
 
-async function loadInitialWorkspace() {
+async function loadInitialWorkspace(ownerId: string) {
   try {
-    const workspace = await loadCorporateActionWorkspace();
+    const workspace = await loadCorporateActionWorkspace(ownerId);
     const quotes = await loadInitialQuotes(workspace.events.map((event) => event.ticker));
     return { ...workspace, quotes, error: null };
   } catch (error) {
@@ -30,6 +33,8 @@ async function loadInitialWorkspace() {
 }
 
 export default async function CorporateActionPage() {
-  const workspace = await loadInitialWorkspace();
+  const cookieStore = await cookies();
+  const session = verifyAdminSession(cookieStore.get(adminSessionCookie)?.value, process.env.AUTH_SESSION_SECRET);
+  const workspace = await loadInitialWorkspace(session?.userId ?? legacyAdminOwnerId);
   return <CorporateActionJournal initialEvents={workspace.events} initialNotes={workspace.notes} initialQuotes={workspace.quotes} initialError={workspace.error} />;
 }

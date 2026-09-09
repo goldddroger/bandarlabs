@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getRequestOwnerId, unauthorizedResponseBody } from "@/lib/request-session";
 import type {
   FinancialBreakdown,
   FinancialInsight,
@@ -13,7 +14,6 @@ import { mergePdfInsights, parseFinancialPdf } from "@/lib/financial-pdf-parser"
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const adminOwnerId = "00000000-0000-4000-8000-000000000001";
 const workbookMime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const maxFileSize = 10 * 1024 * 1024;
 const maxSupportingFiles = 3;
@@ -136,6 +136,8 @@ function databaseError(error: { code?: string; message?: string } | null, fallba
 }
 
 export async function GET(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = adminClient();
   if (!supabase) return noStore({ error: "Supabase riset laporan belum dikonfigurasi." }, { status: 503 });
   const id = new URL(request.url).searchParams.get("id");
@@ -171,6 +173,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = adminClient();
   if (!supabase) return noStore({ error: "Supabase riset laporan belum dikonfigurasi." }, { status: 503 });
   const form = await request.formData().catch(() => null);
@@ -201,7 +205,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return noStore({ error: error instanceof Error ? error.message : "Metadata PDF tidak valid." }, { status: 400 });
   }
-  const expectedPrefix = `admin/${report.ticker}/${report.periodEnd}/supporting/`;
+  const expectedPrefix = `${adminOwnerId}/${report.ticker}/${report.periodEnd}/supporting/`;
   if (supportingUploads.length > maxSupportingFiles || supportingUploads.some((document) => !document.name.toLowerCase().endsWith(".pdf") || document.size < 1 || document.size > maxFileSize || !document.path.startsWith(expectedPrefix)) || supportingUploads.reduce((total, document) => total + document.size, 0) > maxSupportingTotalSize) return noStore({ error: "Metadata PDF pendamping tidak valid." }, { status: 400 });
 
   let parsedDocuments: Awaited<ReturnType<typeof parseFinancialPdf>>[] = [];
@@ -219,7 +223,7 @@ export async function POST(request: Request) {
   }
 
   const safeFileName = file.name.replace(/[^A-Za-z0-9._-]/g, "-").slice(-160);
-  const storagePath = `admin/${report.ticker}/${report.periodEnd}/${crypto.randomUUID()}-${safeFileName}`;
+  const storagePath = `${adminOwnerId}/${report.ticker}/${report.periodEnd}/${crypto.randomUUID()}-${safeFileName}`;
   const uploadedPaths: string[] = supportingUploads.map((document) => document.path);
   const { error: uploadError } = await supabase.storage.from("financial-reports").upload(storagePath, Buffer.from(await file.arrayBuffer()), { contentType: workbookMime, upsert: false });
   if (uploadError) {
@@ -280,7 +284,7 @@ export async function POST(request: Request) {
 
   const stockSync = await supabase.from("stocks").upsert({ ticker: report.ticker, name: report.entityName }, { onConflict: "ticker" });
   if (stockSync.error) console.warn("Financial report stock sync failed", stockSync.error.message);
-  const { data: reportId, error } = await supabase.rpc("replace_admin_financial_report", { p_report: reportPayload, p_facts: factsPayload });
+  const { data: reportId, error } = await supabase.rpc("replace_user_financial_report", { p_owner_id: adminOwnerId, p_report: reportPayload, p_facts: factsPayload });
   if (error || !reportId) {
     await supabase.storage.from("financial-reports").remove(uploadedPaths);
     return noStore({ error: databaseError(error, "Laporan gagal disimpan") }, { status: 500 });
@@ -299,6 +303,8 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = adminClient();
   if (!supabase) return noStore({ error: "Supabase riset laporan belum dikonfigurasi." }, { status: 503 });
   const body = await request.json().catch(() => null) as { id?: string; analystNote?: string } | null;
@@ -311,6 +317,8 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const adminOwnerId = getRequestOwnerId(request);
+  if (!adminOwnerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = adminClient();
   if (!supabase) return noStore({ error: "Supabase riset laporan belum dikonfigurasi." }, { status: 503 });
   const body = await request.json().catch(() => null) as { id?: string } | null;
