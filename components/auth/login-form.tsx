@@ -23,10 +23,10 @@ export function LoginForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-      const result = await response.json() as { error?: string };
+      const result = await response.json() as { error?: string; homePath?: string };
       if (!response.ok) throw new Error(result.error || "Login gagal diproses.");
       const requested = new URLSearchParams(window.location.search).get("next");
-      const destination = requested?.startsWith("/") && !requested.startsWith("//") ? requested : "/dashboard";
+      const destination = requested?.startsWith("/") && !requested.startsWith("//") ? requested : result.homePath || "/dashboard";
       router.replace(destination);
       router.refresh();
     } catch (loginError) {
@@ -46,7 +46,7 @@ export function LoginForm() {
         <div className="max-w-md">
           <div className="border-l-4 border-red-600 pl-6">
             <p className="text-3xl font-semibold leading-10 text-gray-950">Catatan, data, dan keputusan investasi dalam satu workspace pribadi.</p>
-            <p className="mt-4 text-sm leading-6 text-gray-600">Akses dibatasi untuk administrator BandarLab.</p>
+            <p className="mt-4 text-sm leading-6 text-gray-600">Setiap akun hanya dapat membuka fitur yang diberikan kepadanya.</p>
           </div>
         </div>
         <p className="text-xs text-gray-500">BandarLab bukan rekomendasi jual atau beli saham.</p>
@@ -60,7 +60,7 @@ export function LoginForm() {
           </div>
           <span className="mt-12 flex size-10 items-center justify-center rounded-md bg-red-50 text-red-700 lg:mt-0"><LockKeyhole className="size-5" /></span>
           <h1 className="mt-5 text-2xl font-semibold text-gray-950">Masuk ke BandarLab</h1>
-          <p className="mt-2 text-sm leading-6 text-gray-600">Gunakan akun administrator untuk melanjutkan.</p>
+          <p className="mt-2 text-sm leading-6 text-gray-600">Gunakan username dan password BandarLab untuk melanjutkan.</p>
 
           <form onSubmit={submit} className="mt-7 space-y-5">
             <div><label htmlFor="admin-username" className="block text-sm font-semibold text-gray-800">Username</label><input id="admin-username" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoFocus className="mt-2 h-11 w-full rounded-md border border-gray-300 px-3 text-sm font-normal focus:border-red-500 focus:ring-2 focus:ring-red-100" /></div>

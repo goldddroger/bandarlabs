@@ -6,6 +6,7 @@ import { BarChart3, ExternalLink, X } from "lucide-react";
 import { menuSections } from "@/lib/data";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { cn } from "@/lib/utils";
+import { hasFeaturePermission, permissionForMenuHref, type AppSession } from "@/lib/feature-permissions";
 
 function getMenuKey(sectionLabel: string, itemLabel: string) {
   return `${sectionLabel}:${itemLabel}`;
@@ -41,7 +42,7 @@ function getActiveMenuKey(pathname: string) {
   return prefixMatch?.key;
 }
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({ session, onNavigate }: { session: AppSession | null; onNavigate?: () => void }) {
   const pathname = usePathname();
   const activeMenuKey = getActiveMenuKey(pathname);
 
@@ -64,7 +65,11 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </Link>
 
       <nav className="bandarlab-scrollbar flex-1 overflow-y-auto px-3 py-5">
-        {menuSections.map((section) => (
+        {menuSections.map((section) => ({ ...section, items: section.items.filter((item) => {
+          if (item.href === "/settings") return session?.role === "admin";
+          const permission = permissionForMenuHref(item.href);
+          return !permission || hasFeaturePermission(session, permission);
+        }) })).filter((section) => section.items.length > 0).map((section) => (
           <div key={section.label} className="mb-6">
             <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-normal text-gray-500">{section.label}</p>
             <div className="grid gap-1">
@@ -106,11 +111,11 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function AppSidebar({ mobileOpen, onMobileClose }: { mobileOpen: boolean; onMobileClose: () => void }) {
+export function AppSidebar({ session, mobileOpen, onMobileClose }: { session: AppSession | null; mobileOpen: boolean; onMobileClose: () => void }) {
   return (
     <>
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[280px] border-r border-gray-200 bg-white lg:flex lg:flex-col">
-        <SidebarContent />
+        <SidebarContent session={session} />
       </aside>
 
       <div
@@ -136,7 +141,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: { mobileOpen: boolean;
         >
           <X className="size-5" />
         </button>
-        <SidebarContent onNavigate={onMobileClose} />
+        <SidebarContent session={session} onNavigate={onMobileClose} />
       </aside>
     </>
   );
