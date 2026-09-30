@@ -5,8 +5,11 @@ import { hasFeaturePermission, homePathForSession, permissionForPath } from "@/l
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const publicRoute = pathname === "/capital-gain";
   const authRoute = pathname === "/login" || pathname === "/api/auth/login" || pathname === "/api/auth/logout";
   const session = verifyAdminSession(request.cookies.get(adminSessionCookie)?.value, process.env.AUTH_SESSION_SECRET);
+
+  if (publicRoute) return NextResponse.next();
 
   if (authRoute) {
     if (pathname === "/login" && session) return NextResponse.redirect(new URL(homePathForSession(session), request.url));

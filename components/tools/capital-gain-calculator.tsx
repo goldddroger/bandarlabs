@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { RightIssueAnalyzer } from "@/components/tools/right-issue-analyzer";
 import { RightIssueScenarioSimulator } from "@/components/tools/right-issue-scenario-simulator";
 import { PrivatePlacementAnalyzer } from "@/components/tools/private-placement-analyzer";
+import { formatLotInput } from "@/lib/capital-gain";
 
 type CalculatorMode = "rightIssue" | "privatePlacement" | "gain" | "dividend" | "averageDown";
 
@@ -332,7 +333,7 @@ export function CapitalGainCalculator() {
                 {purchases.map((purchase, index) => (
                   <div key={purchase.id} className="grid gap-3 rounded-md border border-gray-100 bg-gray-50 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px] sm:items-end">
                     <Field label={`Harga beli #${index + 1}`} prefix="Rp" value={purchase.price} placeholder="Contoh 1.000" onChange={(value) => updatePurchase(purchase.id, "price", value)} />
-                    <Field label="Jumlah pembelian" suffix="lot" value={purchase.lots} placeholder="Contoh 10" onChange={(value) => updatePurchase(purchase.id, "lots", value)} />
+                    <Field label="Jumlah pembelian" suffix="lot" value={purchase.lots} placeholder="Contoh 1.000" onChange={(value) => updatePurchase(purchase.id, "lots", formatLotInput(value))} />
                     <button type="button" onClick={() => removePurchase(purchase.id)} disabled={purchases.length === 1} className="inline-flex size-10 items-center justify-center justify-self-end rounded-md border border-gray-200 bg-white text-gray-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40" aria-label={`Hapus pembelian ${index + 1}`}><Trash2 className="size-4" /></button>
                   </div>
                 ))}
@@ -358,7 +359,7 @@ export function CapitalGainCalculator() {
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Lot" value={values.lots} placeholder="Contoh 10" onChange={(value) => updateValue("lots", value)} />
+              <Field label="Lot" value={values.lots} placeholder="Contoh 1.000" onChange={(value) => updateValue("lots", formatLotInput(value))} />
               <Field label="Fee beli (%)" value={values.buyFeePercent} onChange={(value) => updateValue("buyFeePercent", value)} />
               <Field label="Fee jual (%)" value={values.sellFeePercent} onChange={(value) => updateValue("sellFeePercent", value)} />
             </div>

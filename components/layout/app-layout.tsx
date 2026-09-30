@@ -14,7 +14,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (pathname === "/login") return;
+    if (pathname === "/login" || pathname === "/capital-gain") return;
     const controller = new AbortController();
     fetch("/api/auth/session", { cache: "no-store", signal: controller.signal })
       .then(async (response) => response.ok ? response.json() as Promise<{ session: AppSession }> : null)
@@ -23,7 +23,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, [pathname]);
 
-  if (pathname === "/login") {
+  if (pathname === "/login" || pathname === "/capital-gain") {
     return <><div className="min-h-screen bg-white text-gray-900">{children}</div><Toaster richColors position="top-right" /></>;
   }
 
