@@ -31,20 +31,21 @@ function noStore(payload: unknown, init?: ResponseInit) {
   });
 }
 
-async function loadSnapshot(supabase: SupabaseClient, threshold: 1 | 5, reportDate: string) {
-  const cacheKey = `${threshold}:${reportDate}`;
+async function loadSnapshot(supabase: SupabaseClient, threshold: 1 | 5, reportDate: string, ticker = "") {
+  const cacheKey = `${threshold}:${reportDate}:${ticker}`;
   const cached = snapshotCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.rows;
   const rows: OwnershipSnapshotRow[] = [];
   const batchSize = 1000;
   for (let offset = 0; offset < 20_000; offset += batchSize) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("shareholder_ownership")
       .select(selectColumns)
       .eq("disclosure_threshold", threshold)
       .eq("report_date", reportDate)
-      .order("id")
-      .range(offset, offset + batchSize - 1);
+      .order("id");
+    if (ticker) query = query.eq("ticker", ticker);
+    const { data, error } = await query.range(offset, offset + batchSize - 1);
     if (error) throw new Error(error.message);
     const batch = (data ?? []) as OwnershipSnapshotRow[];
     rows.push(...batch);
@@ -131,6 +132,7 @@ export async function GET(request: Request) {
   const movementParam = params.get("movement") ?? "all";
   const movement = validMovements.has(movementParam as OwnershipMovement) ? movementParam as OwnershipMovement : "all";
   const sort = params.get("sort") ?? "change_desc";
+  const ticker = (params.get("ticker") ?? "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
 
   let dates: string[];
   try {
@@ -147,7 +149,7 @@ export async function GET(request: Request) {
   if (!currentDate) return noStore({ dates, currentDate: "", comparisonDate: "", rows: [], counts: emptyMovementCounts(), total: 0, page: 1, totalPages: 1 });
 
   try {
-    if (comparisonDate) {
+    if (comparisonDate && !ticker) {
       const databaseResult = await loadDatabaseScreener(supabase, { threshold, currentDate, comparisonDate, search, scope, movement, sort, page, pageSize });
       if (databaseResult) {
         const total = Number(databaseResult.total || 0);
@@ -167,8 +169,8 @@ export async function GET(request: Request) {
       }
     }
     const [currentRows, previousRows] = await Promise.all([
-      loadSnapshot(supabase, threshold, currentDate),
-      comparisonDate ? loadSnapshot(supabase, threshold, comparisonDate) : Promise.resolve([]),
+      loadSnapshot(supabase, threshold, currentDate, ticker),
+      comparisonDate ? loadSnapshot(supabase, threshold, comparisonDate, ticker) : Promise.resolve([]),
     ]);
     if (!comparisonDate) return noStore({ dates, currentDate, comparisonDate: "", rows: [], counts: emptyMovementCounts(), total: 0, page: 1, totalPages: 1, snapshotRows: currentRows.length, comparisonRequired: true });
     let rows = buildOwnershipMovements(currentRows, previousRows, currentDate);
@@ -176,7 +178,8 @@ export async function GET(request: Request) {
       const scopeMatches = scope === "all"
         || (scope === "A" ? ["A", "F"].includes(row.local_foreign ?? "") : row.local_foreign === "L");
       const searchMatches = !search || `${row.investor_name} ${row.account_holder ?? ""} ${row.ticker} ${row.issuer_name}`.toLowerCase().includes(search);
-      return scopeMatches && searchMatches;
+      const tickerMatches = !ticker || row.ticker === ticker;
+      return scopeMatches && searchMatches && tickerMatches;
     });
     const counts = movementCounts(rows);
     if (movement !== "all") rows = rows.filter((row) => row.movement === movement);
