@@ -11,6 +11,8 @@ export type OwnershipSnapshotRow = {
   local_foreign: string | null;
   nationality: string | null;
   domicile: string | null;
+  scripless_shares?: number | null;
+  scrip_shares?: number | null;
   shares: number;
   percentage: number | null;
   report_date: string;
@@ -43,6 +45,8 @@ export function buildOwnershipMovements(
     currentKeys.add(rowKey);
     const previous = previousMap.get(rowKey);
     const shares = Number(row.shares || 0);
+    const scriplessShares = Number(row.scripless_shares || 0);
+    const scripShares = Number(row.scrip_shares || 0);
     const percentage = Number(row.percentage || 0);
     const previousShares = previous ? Number(previous.shares || 0) : null;
     const previousPercentage = previous ? Number(previous.percentage || 0) : null;
@@ -57,6 +61,8 @@ export function buildOwnershipMovements(
     return {
       ...row,
       row_key: rowKey,
+      scripless_shares: scriplessShares,
+      scrip_shares: scripShares,
       shares,
       percentage,
       previous_shares: previousShares,
@@ -76,6 +82,8 @@ export function buildOwnershipMovements(
       ...row,
       id: -Math.abs(row.id),
       row_key: rowKey,
+      scripless_shares: 0,
+      scrip_shares: 0,
       shares: 0,
       percentage: 0,
       report_date: currentDate,

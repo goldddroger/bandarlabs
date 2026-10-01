@@ -11,7 +11,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const selectColumns = "id,ticker,disclosure_threshold,issuer_name,investor_name,account_holder,classification,local_foreign,nationality,domicile,shares,percentage,report_date";
+const selectColumns = "id,ticker,disclosure_threshold,issuer_name,investor_name,account_holder,classification,local_foreign,nationality,domicile,scripless_shares,scrip_shares,shares,percentage,report_date";
 const validMovements = new Set<OwnershipMovement>(["new", "increased", "stable", "decreased", "exited"]);
 const cacheTtl = 2 * 60 * 1000;
 const snapshotCache = new Map<string, { expiresAt: number; rows: OwnershipSnapshotRow[] }>();
