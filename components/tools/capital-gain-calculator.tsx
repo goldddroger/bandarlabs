@@ -1,14 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BriefcaseBusiness, Calculator, ChartNoAxesCombined, Coins, Layers3, Plus, RefreshCw, Trash2, TrendingDown } from "lucide-react";
+import { BriefcaseBusiness, Calculator, ChartNoAxesCombined, Coins, Layers2, Layers3, Plus, RefreshCw, Trash2, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RightIssueAnalyzer } from "@/components/tools/right-issue-analyzer";
 import { RightIssueScenarioSimulator } from "@/components/tools/right-issue-scenario-simulator";
 import { PrivatePlacementAnalyzer } from "@/components/tools/private-placement-analyzer";
 import { formatLotInput } from "@/lib/capital-gain";
 
-type CalculatorMode = "rightIssue" | "privatePlacement" | "gain" | "dividend" | "averageDown";
+export type CalculatorMode = "rightIssue" | "privatePlacement" | "gain" | "dividend" | "averageDown" | "lotManagement";
 
 const calculatorModes: Array<{ value: CalculatorMode; label: string; icon: typeof Calculator }> = [
   { value: "rightIssue", label: "Right Issue", icon: Layers3 },
@@ -16,7 +16,17 @@ const calculatorModes: Array<{ value: CalculatorMode; label: string; icon: typeo
   { value: "gain", label: "Capital Gain", icon: ChartNoAxesCombined },
   { value: "dividend", label: "Dividen", icon: Coins },
   { value: "averageDown", label: "Average Down", icon: TrendingDown },
+  { value: "lotManagement", label: "Lot Management", icon: Layers2 },
 ];
+
+const calculatorDescriptions: Record<CalculatorMode, string> = {
+  rightIssue: "Hitung hak saham baru, kebutuhan modal, nilai HMETD, dan harga teoretis setelah ex-right.",
+  privatePlacement: "Ukur dilusi, dana yang dihimpun, serta dampak harga dan kepemilikan setelah private placement.",
+  gain: "Hitung modal beli, biaya transaksi, hasil jual bersih, dan profit atau loss berdasarkan jumlah lot.",
+  dividend: "Hitung capital gain bersama dividen bruto, pajak, dan dividen bersih yang diterima.",
+  averageDown: "Gabungkan beberapa harga pembelian untuk melihat average baru dan estimasi hasil pada target jual.",
+  lotManagement: "Atur ukuran posisi dari batas risiko, beberapa rencana entry, stop loss, fee, dan target harga.",
+};
 
 type PurchaseRow = { id: number; price: string; lots: string };
 
@@ -45,6 +55,15 @@ const defaultValues = {
   placementPrice: "",
   ownedShares: "",
   targetSellPrice: "",
+  lotEntry1: "",
+  lotEntry2: "",
+  lotEntry3: "",
+  lotEntry4: "",
+  lotStopLoss: "",
+  lotRiskPercent: "1",
+  lotFeePercent: "0,4",
+  lotBalance: "",
+  lotTargetPrice: "",
 };
 
 function parseNumber(value: string) {
@@ -58,6 +77,15 @@ function formatCurrency(value: number) {
     style: "currency",
     currency: "IDR",
     maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatAveragePrice(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: value % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
   }).format(value);
 }
 
@@ -111,8 +139,8 @@ function Field({
   );
 }
 
-export function CapitalGainCalculator() {
-  const [mode, setMode] = useState<CalculatorMode>("rightIssue");
+export function CapitalGainCalculator({ initialMode = "rightIssue", showModeNavigation = true }: { initialMode?: CalculatorMode; showModeNavigation?: boolean }) {
+  const [mode, setMode] = useState<CalculatorMode>(initialMode);
   const [values, setValues] = useState(defaultValues);
   const [purchases, setPurchases] = useState<PurchaseRow[]>(defaultPurchases);
   const [nextPurchaseId, setNextPurchaseId] = useState(3);
@@ -212,6 +240,48 @@ export function CapitalGainCalculator() {
     return { totalShares, totalCapital, averagePrice, targetSellPrice, targetValue, targetProfitLoss, targetProfitLossPercent };
   }, [purchases, values.targetSellPrice]);
 
+  const lotManagementResult = useMemo(() => {
+    const stopLoss = parseNumber(values.lotStopLoss);
+    const balance = parseNumber(values.lotBalance);
+    const riskPercent = parseNumber(values.lotRiskPercent);
+    const feePercent = parseNumber(values.lotFeePercent) / 100;
+    const targetPrice = parseNumber(values.lotTargetPrice);
+    const entries = [values.lotEntry1, values.lotEntry2, values.lotEntry3, values.lotEntry4]
+      .map(parseNumber)
+      .filter((entry) => entry > stopLoss && stopLoss > 0);
+    const riskBudget = balance * (riskPercent / 100);
+    const riskPerEntry = entries.length > 0 ? riskBudget / entries.length : 0;
+    const rows = entries.map((entry) => {
+      const riskPerShare = (entry - stopLoss) + (entry * feePercent);
+      const lots = riskPerShare > 0 ? Math.floor(riskPerEntry / riskPerShare / 100) : 0;
+      const shares = lots * 100;
+      const capital = entry * shares;
+      const estimatedLoss = ((entry - stopLoss) * shares) + (capital * feePercent);
+      return {
+        entry,
+        lots,
+        shares,
+        capital,
+        estimatedLoss,
+        capitalPercent: balance > 0 ? (capital / balance) * 100 : 0,
+      };
+    });
+    const totalLots = rows.reduce((total, row) => total + row.lots, 0);
+    const totalShares = rows.reduce((total, row) => total + row.shares, 0);
+    const totalCapital = rows.reduce((total, row) => total + row.capital, 0);
+    const estimatedLoss = rows.reduce((total, row) => total + row.estimatedLoss, 0);
+    const averagePrice = totalShares > 0 ? totalCapital / totalShares : 0;
+    const capitalPercent = balance > 0 ? (totalCapital / balance) * 100 : 0;
+    const estimatedProfit = targetPrice > 0
+      ? ((targetPrice - averagePrice) * totalShares) - (totalCapital * feePercent)
+      : 0;
+    const rewardRisk = estimatedLoss > 0 && targetPrice > 0 ? estimatedProfit / estimatedLoss : 0;
+    const invalidEntries = [values.lotEntry1, values.lotEntry2, values.lotEntry3, values.lotEntry4]
+      .map(parseNumber)
+      .filter((entry) => entry > 0 && stopLoss > 0 && entry <= stopLoss).length;
+    return { rows, totalLots, totalShares, totalCapital, estimatedLoss, averagePrice, capitalPercent, estimatedProfit, rewardRisk, riskBudget, targetPrice, invalidEntries };
+  }, [values.lotBalance, values.lotEntry1, values.lotEntry2, values.lotEntry3, values.lotEntry4, values.lotFeePercent, values.lotRiskPercent, values.lotStopLoss, values.lotTargetPrice]);
+
   function updateValue(key: keyof typeof defaultValues, value: string) {
     setValues((current) => ({ ...current, [key]: value }));
   }
@@ -220,7 +290,7 @@ export function CapitalGainCalculator() {
     setValues(defaultValues);
     setPurchases(defaultPurchases);
     setNextPurchaseId(3);
-    setMode("rightIssue");
+    setMode(initialMode);
   }
 
   function updatePurchase(id: number, key: "price" | "lots", value: string) {
@@ -242,9 +312,9 @@ export function CapitalGainCalculator() {
     <section className="mx-auto w-full max-w-7xl">
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-normal text-gray-950">Kalkulator Saham</h1>
+          <h1 className="text-2xl font-semibold tracking-normal text-gray-950">{showModeNavigation ? "Kalkulator Saham" : `Kalkulator ${calculatorModes.find((item) => item.value === mode)?.label ?? "Saham"}`}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-            Hitung estimasi right issue, private placement, average down, capital gain, fee transaksi, serta dividen saham Indonesia.
+            {showModeNavigation ? "Hitung right issue, private placement, lot management, average down, capital gain, fee transaksi, serta dividen saham Indonesia." : calculatorDescriptions[mode]}
           </p>
         </div>
         <button
@@ -259,16 +329,15 @@ export function CapitalGainCalculator() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(360px,0.7fr)]">
         <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="mb-5 grid grid-cols-2 gap-2 rounded-lg border border-gray-200 bg-gray-100 p-2 sm:grid-cols-6">
-              {calculatorModes.map(({ value, label, icon: Icon }, index) => (
+          {showModeNavigation ? <div className="mb-5 grid grid-cols-2 gap-2 rounded-lg border border-gray-200 bg-gray-100 p-2 sm:grid-cols-3">
+              {calculatorModes.map(({ value, label, icon: Icon }) => (
                 <button
                   key={value}
                   type="button"
                   aria-pressed={mode === value}
                   onClick={() => setMode(value)}
                   className={cn(
-                    "col-span-1 inline-flex h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 text-sm font-semibold transition duration-150 sm:col-span-2",
-                    index >= 3 && "sm:col-span-3",
+                    "inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-md px-3 py-2 text-center text-sm font-semibold leading-5 transition duration-150",
                     mode === value
                       ? "bg-red-600 text-white shadow-sm"
                       : "text-gray-600 hover:bg-white hover:text-gray-950",
@@ -278,7 +347,7 @@ export function CapitalGainCalculator() {
                   <span>{label}</span>
                 </button>
               ))}
-          </div>
+          </div> : null}
 
           {mode === "rightIssue" ? (
             <div className="grid gap-4">
@@ -326,6 +395,22 @@ export function CapitalGainCalculator() {
                   placementPrice: facts.placementPrice === undefined ? current.placementPrice : String(facts.placementPrice),
                 }))}
               />
+            </div>
+          ) : mode === "lotManagement" ? (
+            <div className="grid gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {["lotEntry1", "lotEntry2", "lotEntry3", "lotEntry4"].map((key, index) => (
+                  <Field key={key} label={`Entry price ${index + 1}${index === 0 ? "" : " (opsional)"}`} prefix="Rp" value={values[key as keyof typeof defaultValues]} placeholder="Contoh 1.000" onChange={(value) => updateValue(key as keyof typeof defaultValues, value)} />
+                ))}
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Stop loss" prefix="Rp" value={values.lotStopLoss} placeholder="Harus di bawah entry" onChange={(value) => updateValue("lotStopLoss", value)} />
+                <Field label="Modal tersedia" prefix="Rp" value={values.lotBalance} placeholder="Contoh 100.000.000" onChange={(value) => updateValue("lotBalance", value)} />
+                <Field label="Risk maksimum" suffix="%" value={values.lotRiskPercent} placeholder="Contoh 1" onChange={(value) => updateValue("lotRiskPercent", value)} />
+                <Field label="Buffer fee" suffix="%" value={values.lotFeePercent} placeholder="Contoh 0,4" onChange={(value) => updateValue("lotFeePercent", value)} />
+              </div>
+              <Field label="Target price (opsional)" prefix="Rp" value={values.lotTargetPrice} placeholder="Isi untuk estimasi profit dan R:R" onChange={(value) => updateValue("lotTargetPrice", value)} />
+              {lotManagementResult.invalidEntries > 0 ? <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">{lotManagementResult.invalidEntries} entry tidak dihitung karena harganya sama dengan atau di bawah stop loss.</p> : null}
             </div>
           ) : mode === "averageDown" ? (
             <div className="grid gap-4">
@@ -390,6 +475,8 @@ export function CapitalGainCalculator() {
                   ? "Harga teoretis = [(Saham Lama x Harga Pasar) + (Saham Baru x Harga Placement)] / Total Saham Baru. Dilusi = Saham Baru / Total Saham Setelah Placement."
                 : mode === "averageDown"
                   ? "Setiap input lot dikonversi menjadi 100 saham. Harga rata-rata = Total nilai seluruh pembelian / Total jumlah saham. Estimasi P/L target = (Target Jual x Total Saham) - Total Modal."
+                : mode === "lotManagement"
+                  ? "Risk nominal = Modal x Risk %. Risk dibagi rata ke entry aktif. Lot per entry = Risk per Entry / [(Entry - Stop Loss) + Buffer Fee] / 100, lalu dibulatkan turun."
                 : <>P/L = [(Harga Jual x Lot x 100) - Fee Jual] - [(Harga Beli x Lot x 100) + Fee Beli]{mode === "dividend" ? " + [(Dividen per Saham x Lot x 100) - Pajak Dividen]." : "."}</>}
             </p>
           </div>
@@ -433,6 +520,24 @@ export function CapitalGainCalculator() {
                   tone="red"
                 />
               ) : null}
+            </div>
+          ) : mode === "lotManagement" ? (
+            <div className="grid gap-4">
+              <div className="overflow-x-auto rounded-md border border-gray-200">
+                <table className="w-full min-w-[520px] text-left text-sm">
+                  <thead className="bg-gray-50 text-xs uppercase text-gray-500"><tr>{["Entry", "SL", "Lot", "% Modal", "Nilai"].map((head) => <th key={head} className="px-3 py-3 font-semibold">{head}</th>)}</tr></thead>
+                  <tbody>{lotManagementResult.rows.length ? lotManagementResult.rows.map((row, index) => <tr key={`${row.entry}-${index}`} className="border-t border-gray-100"><td className="px-3 py-3 font-semibold text-gray-950">{formatShares(row.entry)}</td><td className="px-3 py-3 text-gray-700">{formatShares(parseNumber(values.lotStopLoss))}</td><td className="px-3 py-3 font-semibold text-gray-950">{formatShares(row.lots)}</td><td className="px-3 py-3 text-gray-700">{row.capitalPercent.toFixed(2)}%</td><td className="px-3 py-3 text-gray-700">{formatCurrency(row.capital)}</td></tr>) : <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-500">Isi entry, stop loss, dan modal untuk menghitung lot.</td></tr>}</tbody>
+                  {lotManagementResult.rows.length ? <tfoot className="border-t border-gray-200 bg-gray-50 font-semibold text-gray-950"><tr><td colSpan={2} className="px-3 py-3">Total</td><td className="px-3 py-3">{formatShares(lotManagementResult.totalLots)}</td><td className="px-3 py-3">{lotManagementResult.capitalPercent.toFixed(2)}%</td><td className="px-3 py-3">{formatCurrency(lotManagementResult.totalCapital)}</td></tr></tfoot> : null}
+                </table>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Metric label="Risk maksimum" value={formatCurrency(lotManagementResult.riskBudget)} />
+                <Metric label="Estimasi loss" value={formatCurrency(lotManagementResult.estimatedLoss)} tone="red" />
+                <Metric label="Estimated average" value={formatAveragePrice(lotManagementResult.averagePrice)} />
+                <Metric label="Total saham" value={`${formatShares(lotManagementResult.totalShares)} lembar`} />
+                {lotManagementResult.targetPrice > 0 ? <Metric label="Estimasi profit di target" value={formatCurrency(lotManagementResult.estimatedProfit)} tone={lotManagementResult.estimatedProfit >= 0 ? "green" : "red"} /> : null}
+                {lotManagementResult.targetPrice > 0 ? <Metric label="Reward : Risk" value={`${lotManagementResult.rewardRisk.toFixed(2)}x`} tone={lotManagementResult.rewardRisk >= 2 ? "green" : "red"} /> : null}
+              </div>
             </div>
           ) : mode === "averageDown" ? (
             <div className="grid gap-3 sm:grid-cols-2">
@@ -485,6 +590,12 @@ export function CapitalGainCalculator() {
                 Estimasi harga teoretis menjadi {formatCurrency(privatePlacementResult.theoreticalPrice)}.
                 {privatePlacementResult.ownedShares > 0 ? ` Porsi kepemilikan berkurang ${privatePlacementResult.ownershipDilution.toFixed(4)} poin persentase.` : " Isi jumlah saham pribadi untuk melihat perubahan porsi kepemilikan."}
               </p>
+            </div>
+          ) : mode === "lotManagement" ? (
+            <div className={cn("mt-4 rounded-lg border p-4", lotManagementResult.totalLots > 0 ? "border-green-200 bg-green-50 text-green-800" : "border-gray-200 bg-gray-50 text-gray-700")}>
+              <p className="text-xs font-semibold uppercase">Rencana Posisi</p>
+              <p className="mt-2 text-3xl font-semibold">{formatShares(lotManagementResult.totalLots)} lot</p>
+              <p className="mt-2 text-sm">Modal terpakai {formatCurrency(lotManagementResult.totalCapital)} ({lotManagementResult.capitalPercent.toFixed(2)}%). Estimasi loss sudah termasuk buffer fee dan tidak melebihi risk karena lot dibulatkan turun.</p>
             </div>
           ) : (
             <div className={cn("mt-4 rounded-lg border p-4", averageDownResult.targetSellPrice <= 0 ? "border-blue-200 bg-blue-50 text-blue-900" : averageDownResult.targetProfitLoss >= 0 ? "border-green-200 bg-green-50 text-green-800" : "border-red-200 bg-red-50 text-red-800")}>

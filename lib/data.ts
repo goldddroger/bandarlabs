@@ -6,6 +6,7 @@ import {
   FileSearch,
   HelpCircle,
   LayoutDashboard,
+  Layers3,
   Network,
   NotebookPen,
   WalletCards,
@@ -126,7 +127,6 @@ export const menuSections = [
     items: [
       { label: "Stock Screener", href: "/stock-screener", icon: RefreshCw },
       { label: "Group Konglo", href: "/group-konglo", icon: Building2 },
-      { label: "Kalkulator Saham", href: "/calculator-gain", icon: Calculator },
     ],
   },
   {
@@ -137,6 +137,15 @@ export const menuSections = [
     ],
   },
 ];
+
+export const calculatorMenuItems = [
+  { label: "Right Issue", href: "/calculator/right-issue", icon: Layers3 },
+  { label: "Private Placement", href: "/calculator/private-placement", icon: Building2 },
+  { label: "Capital Gain", href: "/calculator/capital-gain", icon: ChartNoAxesCombined },
+  { label: "Dividen", href: "/calculator/dividend", icon: Calculator },
+  { label: "Average Down", href: "/calculator/average-down", icon: RefreshCw },
+  { label: "Lot Management", href: "/calculator/lot-management", icon: WalletCards },
+] as const;
 
 export const accumulationRows = [
   { stock: "TOSK", score: 87, oneMonth: 63, threeMonth: 87, sixMonth: 82, trend: "Strong" },

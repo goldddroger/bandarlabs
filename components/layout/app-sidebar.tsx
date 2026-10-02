@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, ExternalLink, X } from "lucide-react";
-import { menuSections } from "@/lib/data";
+import { useState } from "react";
+import { BarChart3, Calculator, ChevronDown, ExternalLink, X } from "lucide-react";
+import { calculatorMenuItems, menuSections } from "@/lib/data";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { cn } from "@/lib/utils";
 import { hasFeaturePermission, permissionForMenuHref, type AppSession } from "@/lib/feature-permissions";
@@ -45,6 +46,9 @@ function getActiveMenuKey(pathname: string) {
 function SidebarContent({ session, onNavigate }: { session: AppSession | null; onNavigate?: () => void }) {
   const pathname = usePathname();
   const activeMenuKey = getActiveMenuKey(pathname);
+  const calculatorActive = pathname.startsWith("/calculator");
+  const [calculatorOpen, setCalculatorOpen] = useState(calculatorActive);
+  const calculatorExpanded = calculatorOpen;
 
   return (
     <>
@@ -100,6 +104,45 @@ function SidebarContent({ session, onNavigate }: { session: AppSession | null; o
                   </Link>
                 );
               })}
+              {section.label === "TOOLS" && hasFeaturePermission(session, "calculator") ? (
+                <div className="mt-1">
+                  <button
+                    type="button"
+                    aria-expanded={calculatorExpanded}
+                    onClick={() => setCalculatorOpen((current) => !current)}
+                    className={cn(
+                      "flex min-h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-semibold text-gray-700 transition duration-150 hover:bg-gray-100 hover:text-gray-950",
+                      calculatorActive && "bg-gray-100 text-gray-950",
+                    )}
+                  >
+                    <Calculator className={cn("size-5 text-gray-500", calculatorActive && "text-red-600")} />
+                    <span className="flex-1">Kalkulator Saham</span>
+                    <ChevronDown className={cn("size-4 text-gray-400 transition-transform duration-200", calculatorExpanded && "rotate-180")} />
+                  </button>
+                  {calculatorExpanded ? (
+                    <div className="ml-5 mt-1 grid gap-0.5 border-l border-gray-200 pl-3">
+                      {calculatorMenuItems.map((item) => {
+                        const active = pathname === item.href;
+                        const Icon = item.icon;
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={onNavigate}
+                            className={cn(
+                              "flex min-h-9 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-gray-600 transition duration-150 hover:bg-gray-50 hover:text-gray-950",
+                              active && "bg-red-50 font-semibold text-red-700 hover:bg-red-50 hover:text-red-700",
+                            )}
+                          >
+                            <Icon className={cn("size-4 shrink-0 text-gray-400", active && "text-red-600")} />
+                            <span>{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
         ))}

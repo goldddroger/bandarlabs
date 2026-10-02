@@ -11,7 +11,7 @@ export const featurePermissions = [
   { id: "fca", label: "FCA Tracker", description: "Daftar papan pemantauan khusus dan reminder perubahan.", homePath: "/fca" },
   { id: "stock_screener", label: "Stock Screener", description: "Akses sumber dan alat screening saham.", homePath: "/stock-screener" },
   { id: "group_konglo", label: "Group Konglo", description: "Pemetaan grup usaha dan ticker terkait.", homePath: "/group-konglo" },
-  { id: "calculator", label: "Kalkulator Saham", description: "Capital gain, dividen, right issue, dan private placement.", homePath: "/calculator-gain" },
+  { id: "calculator", label: "Kalkulator Saham", description: "Position sizing, capital gain, dividen, right issue, dan private placement.", homePath: "/calculator/capital-gain" },
   { id: "notifications", label: "Notifikasi", description: "Reminder dan alert lintas fitur.", homePath: "/notifikasi" },
 ] as const;
 
@@ -46,7 +46,7 @@ export function permissionForPath(pathname: string): FeaturePermission | null {
   const pageRules: Array<[string, FeaturePermission]> = [
     ["/financial-research", "financial_research"], ["/broker-summary", "broker_summary"],
     ["/stock-screener", "stock_screener"], ["/group-konglo", "group_konglo"],
-    ["/calculator-gain", "calculator"], ["/corporate-action", "corporate_action"],
+    ["/calculator-gain", "calculator"], ["/calculator", "calculator"], ["/corporate-action", "corporate_action"],
     ["/accumulation", "accumulation"], ["/portfolio", "portfolio"], ["/ownership", "ownership"],
     ["/journal", "journal"], ["/stocks", "stocks"], ["/dashboard", "dashboard"],
     ["/notifikasi", "notifications"], ["/alerts", "notifications"], ["/fca", "fca"],

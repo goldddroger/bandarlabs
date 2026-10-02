@@ -1,5 +1,5 @@
-import { CapitalGainCalculator } from "@/components/tools/capital-gain-calculator";
+import { redirect } from "next/navigation";
 
 export default function CalculatorGainPage() {
-  return <CapitalGainCalculator />;
+  redirect("/calculator/capital-gain");
 }
