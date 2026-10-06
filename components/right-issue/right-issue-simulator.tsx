@@ -16,10 +16,14 @@ import { ScenarioComparison } from "./scenario-comparison";
 import { ScenarioPriceMatrix } from "./scenario-price-matrix";
 import { ScenarioInsight } from "./scenario-insight";
 import { ExDateImpact } from "./ex-date-impact";
+import { HmetdDocumentReader } from "./hmetd-document-reader";
+import { applyHmetdTerms } from "@/lib/calculations/hmetd-terms";
 
 export function RightIssueSimulator({ ticker = "", source, sourceError }: { ticker?: string; source?: { topic: string; document: string }; sourceError?: string }) {
   const [draft, setDraft] = useState(() => emptyRightIssueDraft(ticker));
   const [demo, setDemo] = useState(false);
+  const [documentSource, setDocumentSource] = useState<{ ticker: string; filename: string; edited: boolean } | null>(null);
+  const [readerVersion, setReaderVersion] = useState(0);
   const [scenarioDraft, setScenarioDraft] = useState(emptyRightIssueScenarioDraft);
   const incomplete = [draft.ownedShares, draft.averageBuy, draft.cumPrice, draft.ratioOld, draft.ratioNew, draft.subscriptionPrice].some((value) => !value.trim());
   const input = useMemo(() => ({
@@ -39,6 +43,8 @@ export function RightIssueSimulator({ ticker = "", source, sourceError }: { tick
   }, [input, scenarioDraft.matrixLow, scenarioDraft.matrixHigh, scenarioDraft.matrixStep, parentSalePrice]);
   function update(key: keyof RightIssueDraft, value: string) {
     setDraft((current) => ({ ...current, [key]: value }));
+    if (key === "ticker") setDocumentSource(null);
+    else if (!["ownedShares", "averageBuy", "cumPrice", "marketRightsPrice"].includes(key)) setDocumentSource((current) => current ? { ...current, edited: true } : null);
   }
   function updateScenario(key: keyof RightIssueScenarioDraft, value: string) {
     setScenarioDraft((current) => ({ ...current, [key]: value }));
@@ -56,10 +62,16 @@ export function RightIssueSimulator({ ticker = "", source, sourceError }: { tick
       {source && !demo && draft.ticker === ticker ? <div className="mb-5 border-l-2 border-red-500 bg-gray-50 px-4 py-3"><p className="text-sm font-semibold text-gray-950">Agenda {ticker}: {source.topic}</p><p className="mt-1 text-xs leading-5 text-gray-500">{source.document} · Rasio, harga pelaksanaan, dan tanggal spesifik diisi dari dokumen resmi emiten.</p></div> : null}
       {sourceError ? <p className="mb-5 text-xs leading-5 text-amber-800">{sourceError}</p> : null}
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <button type="button" onClick={() => { setDraft(rightIssueDemo); setScenarioDraft(rightIssueScenarioDemo); setDemo(true); }} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-gray-300 px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"><FlaskConical className="size-4" />Load Example</button>
-        <button type="button" onClick={() => { setDraft(emptyRightIssueDraft(ticker)); setScenarioDraft(emptyRightIssueScenarioDraft()); setDemo(false); }} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-gray-300 px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"><RotateCcw className="size-4" />Reset Simulation</button>
+        <button type="button" onClick={() => { setDraft(rightIssueDemo); setScenarioDraft(rightIssueScenarioDemo); setDemo(true); setDocumentSource(null); setReaderVersion((value) => value + 1); }} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-gray-300 px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"><FlaskConical className="size-4" />Load Example</button>
+        <button type="button" onClick={() => { setDraft(emptyRightIssueDraft(ticker)); setScenarioDraft(emptyRightIssueScenarioDraft()); setDemo(false); setDocumentSource(null); setReaderVersion((value) => value + 1); }} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-gray-300 px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"><RotateCcw className="size-4" />Reset Simulation</button>
         {demo ? <span className="rounded bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">Demo Data · bukan ketentuan aktual WMPP</span> : null}
       </div>
+      <HmetdDocumentReader key={readerVersion} onApply={(terms, document) => {
+        setDraft((current) => applyHmetdTerms(current, terms));
+        setScenarioDraft(emptyRightIssueScenarioDraft()); setDemo(false);
+        setDocumentSource({ ticker: terms.ticker, filename: document.filename, edited: false });
+      }} />
+      {documentSource ? <p className="mb-5 break-words border-l-2 border-red-500 px-3 text-xs leading-5 text-gray-600">Sumber simulasi {documentSource.ticker}: {documentSource.filename}{documentSource.edited ? " (ketentuan disunting manual)" : " (hasil tinjauan dokumen)"}</p> : null}
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <RightIssueForm draft={draft} onChange={update} />
         <RightIssueSummary calculation={result.data} draft={draft} errors={incomplete ? [] : result.errors} incomplete={incomplete} />

@@ -124,6 +124,14 @@ Jurnal Riset menyimpan catatan mentor, thesis, observasi, tag, ticker terkait, d
 
 Sebagian data pribadi masih dibaca dari `localStorage`. Schema, RLS, SSR client, dan alat ekspor SQL sudah tersedia untuk tahap pemindahan penuh ke query Supabase.
 
+## Pembaca Keterbukaan HMETD
+
+Simulator `/tools/right-issue-simulator` dan `/stocks/[ticker]/right-issue` menerima satu PDF berbasis teks (maksimal 4 MB / 150 halaman). Hasil bacaan mencakup rasio, harga pelaksanaan, jadwal reguler / negosiasi, sumber halaman, dan kutipan penggunaan dana. Nilai nominal saham tidak digunakan sebagai harga tebus; jumlah saham perusahaan tidak digunakan untuk menebak rasio.
+
+Tinjau dan koreksi hasil sebelum menerapkan ke simulator. Nilai bertentangan memerlukan pilihan atau pengosongan eksplisit, sedangkan ketentuan indikatif dan jadwal sementara ditandai. Dokumen scan belum didukung tanpa OCR. PDF hanya diproses sementara, tidak disimpan ke Supabase. Fitur memakai sesi pengguna dan akses kalkulator atau detail saham; tidak memerlukan environment variable baru.
+
+Jalankan `npm run test:hmetd-document` untuk pengujian parser, tinjauan konflik, dan integrasi perhitungan; `npm run test:right-issue` untuk mesin simulasi.
+
 ## Disclaimer
 
 BandarLab adalah alat bantu riset dan pencatatan. Informasi yang ditampilkan bukan rekomendasi jual atau beli saham.
