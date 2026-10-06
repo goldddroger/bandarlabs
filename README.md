@@ -132,6 +132,14 @@ Tinjau dan koreksi hasil sebelum menerapkan ke simulator. Nilai bertentangan mem
 
 Jalankan `npm run test:hmetd-document` untuk pengujian parser, tinjauan konflik, dan integrasi perhitungan; `npm run test:right-issue` untuk mesin simulasi.
 
+## Pembeli HMETD
+
+Mode **Pembeli HMETD** pada Right Issue Simulator menghitung pembelian hak milik orang lain dan penebusannya, tanpa membutuhkan saham lama atau rasio entitlement. Satu hak diasumsikan membeli satu saham baru. Jumlah diisi dalam hak, harga dalam rupiah per hak / saham.
+
+Modal efektif = harga HMETD x (1 + fee beli) + harga pelaksanaan + biaya penebusan tetap / jumlah hak. Titik impas harga saham memasukkan fee jual. Batas harga HMETD dan label murah / mahal memakai acuan saham ex-right yang diisi pengguna, setelah fee jual dan buffer diskon pribadi. Batas negatif berarti tidak ada harga HMETD nonnegatif yang memenuhi syarat, bukan otomatis Rp0. Biaya broker harus diisi sesuai tarif; tidak ada jaminan arbitrase, profit, atau valuasi fundamental.
+
+Contoh LAPD memakai harga pelaksanaan indikatif Rp50 dari dokumen 11 September 2026; BUVA memakai Rp250 dari dokumen 6 Oktober 2026. Harga HMETD dan harga saham pada contoh seluruhnya asumsi, bukan quote pasar terbaru. Hasil tinjauan PDF juga dapat dipakai pada mode ini. `npm run test:hmetd-buyer` menguji modal, fee, batas harga, klasifikasi, dan validasi.
+
 ## Disclaimer
 
 BandarLab adalah alat bantu riset dan pencatatan. Informasi yang ditampilkan bukan rekomendasi jual atau beli saham.

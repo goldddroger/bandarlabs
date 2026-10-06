@@ -21,6 +21,7 @@ export type HmetdDocument = {
   issuer: string | null;
   proposal: boolean;
   tentativeSchedule: boolean;
+  nonStandardRight: boolean;
   fields: Record<HmetdField, { status: "found" | "missing" | "indicative" | "conflict"; candidates: HmetdCandidate[] }>;
   warnings: string[];
   context: HmetdEvidence[];

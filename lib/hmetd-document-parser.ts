@@ -45,6 +45,7 @@ export function parseHmetdDocument(filename: string, pages: string[]): HmetdDocu
   const filenameTicker = filename.match(/^\d{8}_([A-Z]{4})_/) ?? filename.match(/^([A-Z]{4})\.pdf$/);
   if (filenameTicker) add("ticker", filenameTicker[1], 0, `Nama file: ${filename}`);
   let issuer: string | null = null;
+  let nonStandardRight = false;
   texts.forEach((text, index) => {
     const page = index + 1;
     issuer ??= text.match(/\bPT\.?\s+[A-Z][A-Z\s&.,()-]{3,90}?\s+T[Bb][Kk]\b/)?.[0] ?? null;
@@ -58,7 +59,7 @@ export function parseHmetdDocument(filename: string, pages: string[]): HmetdDocu
       if (Number(match[1]) > 0 && Number(match[2]) > 0) add("ratio", `${Number(match[1])}:${Number(match[2])}`, page, match[0], proposal);
     }
     for (const match of text.matchAll(/setiap\s+(\d+)(?:\s*\([^)]{1,60}\))?\s+HMETD.{0,160}?(?:membeli|memperoleh)\s+(?:sebanyak\s+)?(\d+)(?:\s*\([^)]{1,60}\))?\s+saham baru/gi)) {
-      if (match[1] !== match[2]) warnings.push("Hak per HMETD tidak satu banding satu. Rasio perlu dikonversi dan diperiksa manual sebelum simulasi saham baru.");
+      if (match[1] !== match[2]) { nonStandardRight = true; warnings.push("Hak per HMETD tidak satu banding satu. Rasio perlu dikonversi dan diperiksa manual sebelum simulasi saham baru."); }
     }
     for (const match of text.matchAll(new RegExp(`harga pelaksanaan(?:\\s+(?:indika[^\\s:]*|sebesar|adalah|ditetapkan|saham|PMHMETD|II|I)){0,4}\\s*:?\\s*(?:sebesar\\s+)?Rp\\s*(${numberPattern})(?!\\d|\\.\\d|,\\d)`, "gi"))) {
       const price = Number(match[1].replace(/\./g, "").replace(",", "."));
@@ -90,7 +91,7 @@ export function parseHmetdDocument(filename: string, pages: string[]): HmetdDocu
     const useIndex = text.search(/(?:perkiraan secara garis besar penggunaan dana|rencana penggunaan dana|penggunaan dana hasil)/i);
     if (useIndex >= 0 && context.length < 3) context.push({ page, quote: text.slice(useIndex, useIndex + 900) });
   });
-  if (warnings.some((warning) => warning.includes("tidak satu banding satu"))) fields.ratio.candidates = [];
+  if (nonStandardRight) fields.ratio.candidates = [];
   for (const key of Object.keys(fields) as HmetdField[]) {
     const candidates: HmetdCandidate[] = fields[key].candidates;
     fields[key].status = candidates.length > 1 ? "conflict" : candidates.length === 0 ? "missing" : candidates[0].indicative ? "indicative" : "found";
@@ -105,5 +106,5 @@ export function parseHmetdDocument(filename: string, pages: string[]): HmetdDocu
   }
   if (fields.ratio.status === "missing") warnings.push("Rasio saham lama : HMETD tidak ditemukan secara eksplisit. Jumlah saham perusahaan tidak digunakan untuk menebak rasio.");
   if (fields.subscriptionPrice.status === "missing") warnings.push("Harga pelaksanaan belum ditemukan. Nilai nominal saham bukan harga pelaksanaan.");
-  return { filename, pageCount: pages.length, issuer, proposal, tentativeSchedule, fields, warnings: [...new Set(warnings)], context };
+  return { filename, pageCount: pages.length, issuer, proposal, tentativeSchedule, nonStandardRight, fields, warnings: [...new Set(warnings)], context };
 }

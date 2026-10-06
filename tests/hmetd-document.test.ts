@@ -94,6 +94,7 @@ test("rasio eksplisit dan nominal ribuan / desimal lokal", () => {
 test("HMETD non satu-saham tidak diterapkan otomatis", () => {
   const doc = parseHmetdDocument("ABCD.pdf", ["Rasio HMETD: 4:1. Setiap 1 HMETD memberikan hak untuk membeli sebanyak 2 Saham Baru."]);
   assert.equal(doc.fields.ratio.status, "missing");
+  assert.equal(doc.nonStandardRight, true);
   assert.ok(doc.warnings.some((warning) => warning.includes("tidak satu banding satu")));
 });
 test("format file lain tidak diartikan sebagai HMETD", () => {

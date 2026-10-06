@@ -12,6 +12,7 @@
     "test:capital-gain": "tsx --test tests/capital-gain.test.ts",
     "test:right-issue": "tsx --test tests/right-issue.test.ts",
     "test:hmetd-document": "tsx --test tests/hmetd-document.test.ts",
+    "test:hmetd-buyer": "tsx --test tests/hmetd-buyer.test.ts",
     "auth:generate": "tsx scripts/generate-admin-auth.ts",
     "db:seed": "node --experimental-strip-types prisma/seed.ts",
     "supabase:seed:generate": "tsx scripts/generate-supabase-seed.ts"
