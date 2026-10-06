@@ -3,7 +3,7 @@ export function formatNumber(value: number, decimals = 0) {
 }
 
 export function formatCurrency(value: number, decimals = 0) {
-  return `Rp${formatNumber(value, decimals)}`;
+  return `${value < 0 ? "-" : ""}Rp${formatNumber(Math.abs(value), decimals)}`;
 }
 
 export function formatPercentage(value: number) {

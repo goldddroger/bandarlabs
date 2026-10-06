@@ -41,3 +41,43 @@ export type RightIssueCalculation = {
   dilution: number;
   outOfTheMoney: boolean;
 };
+
+export type RightIssueScenarioDraft = {
+  postExPrice: string;
+  parentSalePrice: string;
+  matrixLow: string;
+  matrixHigh: string;
+  matrixStep: string;
+};
+
+export type RightIssueStrategy = "exercise" | "sell-rights" | "expire" | "exit";
+
+export type RightIssueScenario = {
+  id: RightIssueStrategy;
+  rightsReceived: number;
+  sharesAfter: number;
+  cashRequired: number;
+  rightsProceeds: number | null;
+  economicCost: number | null;
+  effectiveCost: number | null;
+  endingValue: number | null;
+  netEconomicValue: number | null;
+  profitLoss: number | null;
+  returnPercent: number | null;
+  breakEvenPrice: number | null;
+  dilution: number;
+  opportunityCost: number | null;
+};
+
+export type RightIssueScenarioCalculation = {
+  base: RightIssueCalculation;
+  postExPrice: number;
+  parentSalePrice: number;
+  scenarios: RightIssueScenario[];
+};
+
+export type RightIssueMatrixRow = {
+  price: number;
+  scenarios: RightIssueScenario[];
+  highestValueStrategies: RightIssueStrategy[];
+};
