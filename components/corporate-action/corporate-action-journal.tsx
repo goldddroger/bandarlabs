@@ -19,6 +19,7 @@ import {
   type FollowUpStatus,
 } from "@/lib/corporate-action";
 import { cn } from "@/lib/utils";
+import { RightIssueActionLink } from "@/components/right-issue/right-issue-action-link";
 
 type JournalTab = "agenda" | "timeline" | "notes" | "documents";
 type WorkspacePayload = { events?: CorporateActionEvent[]; notes?: CorporateActionNote[]; error?: string };
@@ -300,7 +301,7 @@ function AgendaRow({ event, quote, onAddNote, onDeleteEvent }: { event: Corporat
   return (
     <tr className="align-top hover:bg-gray-50">
       <td className="px-4 py-4"><Link href={`/stocks/${event.ticker}`} className="font-semibold text-red-700 hover:underline">{event.ticker}</Link><p className="mt-1 max-w-48 text-xs leading-5 text-gray-500">{event.company}</p></td>
-      <td className="px-4 py-4"><span className="font-semibold text-gray-900">{event.actionType}</span><p className="mt-1 max-w-sm text-xs leading-5 text-gray-600">{event.topic}</p></td>
+      <td className="px-4 py-4"><span className="font-semibold text-gray-900">{event.actionType}</span><p className="mt-1 max-w-sm text-xs leading-5 text-gray-600">{event.topic}</p><RightIssueActionLink event={event} /></td>
       <td className="whitespace-nowrap px-4 py-4 text-gray-700">{formatDate(event.eventDate)}</td>
       <td className="px-4 py-4"><MovementValue movement={movementPercent(event, quote)} /><p className="mt-1 whitespace-nowrap text-xs text-gray-500">{formatCurrency(event.announcementPrice)} → {formatCurrency(quote?.price ?? null)}</p><p className="mt-0.5 text-[11px] text-gray-400">{quote?.source ?? "Menunggu quote"}</p></td>
       <td className="px-4 py-4"><StateBadge state={event.state} /></td>
@@ -315,6 +316,7 @@ function AgendaCard({ event, quote, onAddNote, onDeleteEvent }: { event: Corpora
       <div className="flex items-start justify-between gap-3"><div><Link href={`/stocks/${event.ticker}`} className="font-semibold text-red-700 hover:underline">{event.ticker}</Link><p className="mt-1 text-xs text-gray-500">{event.company}</p></div><StateBadge state={event.state} /></div>
       <p className="mt-3 text-sm font-semibold text-gray-900">{event.actionType} · {formatDate(event.eventDate)}</p>
       <p className="mt-1 text-sm leading-6 text-gray-600">{event.topic}</p>
+      <RightIssueActionLink event={event} />
       <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-100 pt-3"><MovementValue movement={movementPercent(event, quote)} /><div className="flex items-center gap-1"><button type="button" onClick={() => onAddNote(event.id)} className="h-8 rounded-md px-2 text-xs font-semibold text-red-700 hover:bg-red-50">Tambah catatan</button><button type="button" onClick={() => onDeleteEvent(event)} className="flex size-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-700" aria-label={`Hapus agenda ${event.ticker}`}><Trash2 className="size-4" /></button></div></div>
     </article>
   );
@@ -346,6 +348,7 @@ function TimelineView({ events, selectedEventId, onEventChange }: { events: Corp
         <label className="text-xs font-semibold uppercase text-gray-500" htmlFor="timeline-event">Pilih agenda</label>
         <select id="timeline-event" className="mt-2 h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm" value={event.id} onChange={(changeEvent) => onEventChange(changeEvent.target.value)}>{events.map((item) => <option key={item.id} value={item.id}>{item.ticker} · {item.actionType}</option>)}</select>
         <div className="mt-4 border-t border-gray-100 pt-4"><p className="text-sm font-semibold text-gray-950">{event.company}</p><p className="mt-2 text-xs leading-5 text-gray-600">{event.topic}</p></div>
+        <RightIssueActionLink event={event} />
       </aside>
       <div className="rounded-lg border border-gray-200 bg-white p-4 sm:p-6">
         <div className="mb-5 flex items-center justify-between gap-3"><div><h2 className="text-base font-semibold text-gray-950">Timeline {event.ticker}</h2><p className="mt-1 text-xs text-gray-500">Jejak berdasarkan data corporate action.</p></div><Link href={`/stocks/${event.ticker}`} className="flex items-center gap-1 text-xs font-semibold text-red-700 hover:underline">Detail saham <ChevronRight className="size-3.5" /></Link></div>

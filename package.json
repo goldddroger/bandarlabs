@@ -10,6 +10,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:capital-gain": "tsx --test tests/capital-gain.test.ts",
+    "test:right-issue": "tsx --test tests/right-issue.test.ts",
     "auth:generate": "tsx scripts/generate-admin-auth.ts",
     "db:seed": "node --experimental-strip-types prisma/seed.ts",
     "supabase:seed:generate": "tsx scripts/generate-supabase-seed.ts"

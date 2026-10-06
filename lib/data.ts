@@ -127,6 +127,7 @@ export const menuSections = [
     items: [
       { label: "Stock Screener", href: "/stock-screener", icon: RefreshCw },
       { label: "Group Konglo", href: "/group-konglo", icon: Building2 },
+      { label: "Right Issue Simulator", href: "/tools/right-issue-simulator", icon: Layers3 },
     ],
   },
   {

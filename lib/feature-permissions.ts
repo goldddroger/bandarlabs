@@ -44,6 +44,7 @@ export function homePathForSession(session: Pick<AppSession, "role" | "permissio
 
 export function permissionForPath(pathname: string): FeaturePermission | null {
   const pageRules: Array<[string, FeaturePermission]> = [
+    ["/tools/right-issue-simulator", "calculator"],
     ["/financial-research", "financial_research"], ["/broker-summary", "broker_summary"],
     ["/stock-screener", "stock_screener"], ["/group-konglo", "group_konglo"],
     ["/calculator-gain", "calculator"], ["/calculator", "calculator"], ["/corporate-action", "corporate_action"],
