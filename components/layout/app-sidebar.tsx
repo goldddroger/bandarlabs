@@ -2,53 +2,32 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { BarChart3, Calculator, ChevronDown, ExternalLink, X } from "lucide-react";
-import { calculatorMenuItems, menuSections } from "@/lib/data";
+import { calculatorMenuItems } from "@/lib/data";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { cn } from "@/lib/utils";
-import { hasFeaturePermission, permissionForMenuHref, type AppSession } from "@/lib/feature-permissions";
-
-function getMenuKey(sectionLabel: string, itemLabel: string) {
-  return `${sectionLabel}:${itemLabel}`;
-}
-
-function getActiveMenuKey(pathname: string) {
-  const normalizedPath = pathname === "/" ? "/dashboard" : pathname;
-  const exactMatch = menuSections
-    .flatMap((section) =>
-      section.items.map((item) => ({
-        key: getMenuKey(section.label, item.label),
-        href: item.href,
-        external: "external" in item && item.external,
-      })),
-    )
-    .find((item) => !item.external && item.href === normalizedPath);
-
-  if (exactMatch) {
-    return exactMatch.key;
-  }
-
-  const prefixMatch = menuSections
-    .flatMap((section) =>
-      section.items.map((item) => ({
-        key: getMenuKey(section.label, item.label),
-        href: item.href,
-        external: "external" in item && item.external,
-      })),
-    )
-    .filter((item) => !item.external && normalizedPath.startsWith(`${item.href}/`))
-    .sort((first, second) => second.href.length - first.href.length)[0];
-
-  return prefixMatch?.key;
-}
+import { type AppSession } from "@/lib/feature-permissions";
+import { getActiveSidebarHref, getVisibleSidebarSections } from "@/lib/sidebar-navigation";
 
 function SidebarContent({ session, onNavigate }: { session: AppSession | null; onNavigate?: () => void }) {
   const pathname = usePathname();
-  const activeMenuKey = getActiveMenuKey(pathname);
-  const calculatorActive = pathname.startsWith("/calculator");
-  const [calculatorOpen, setCalculatorOpen] = useState(calculatorActive);
-  const calculatorExpanded = calculatorOpen;
+  const activeHref = getActiveSidebarHref(pathname);
+  const calculatorActive = calculatorMenuItems.some((item) => item.href === activeHref);
+  const [calculatorState, setCalculatorState] = useState({ pathname, open: calculatorActive });
+  const calculatorExpanded = calculatorState.pathname === pathname ? calculatorState.open : calculatorActive;
+  const calculatorId = useId();
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    const activeItem = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav || !activeItem) return;
+    const viewport = nav.getBoundingClientRect();
+    const item = activeItem.getBoundingClientRect();
+    if (item.bottom > viewport.bottom) nav.scrollTop += item.bottom - viewport.bottom + 12;
+    else if (item.top < viewport.top) nav.scrollTop -= viewport.top - item.top + 12;
+  }, [pathname, calculatorExpanded]);
 
   return (
     <>
@@ -68,73 +47,71 @@ function SidebarContent({ session, onNavigate }: { session: AppSession | null; o
         </span>
       </Link>
 
-      <nav className="bandarlab-scrollbar flex-1 overflow-y-auto px-3 py-5">
-        {menuSections.map((section) => ({ ...section, items: section.items.filter((item) => {
-          if (item.href === "/settings") return session?.role === "admin";
-          const permission = permissionForMenuHref(item.href);
-          return !permission || hasFeaturePermission(session, permission);
-        }) })).filter((section) => section.items.length > 0).map((section) => (
-          <div key={section.label} className="mb-6">
-            <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-normal text-gray-500">{section.label}</p>
-            <div className="grid gap-1">
+      <nav ref={navRef} aria-label="Navigasi BandarLab" className="sidebar-navigation bandarlab-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-4">
+        {getVisibleSidebarSections(session).map((section) => (
+          <div key={section.id} className="mb-4 last:mb-0">
+            <p className="mb-1.5 px-3 text-xs font-semibold uppercase tracking-normal text-gray-500">{section.label}</p>
+            <div className="grid gap-0.5">
               {section.items.map((item) => {
-                const itemKey = getMenuKey(section.label, item.label);
-                const active = activeMenuKey === itemKey;
+                const active = activeHref === item.href;
                 const Icon = item.icon;
                 const external = "external" in item && item.external === true;
 
                 return (
                   <Link
-                    key={itemKey}
+                    key={item.href}
                     href={item.href}
                     target={external ? "_blank" : undefined}
                     rel={external ? "noreferrer" : undefined}
                     onClick={onNavigate}
+                    aria-current={active ? "page" : undefined}
                     className={cn(
                       "relative flex min-h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-gray-700 transition duration-150 hover:bg-gray-50 hover:text-gray-950",
                       active && "bg-red-50 text-red-700 hover:bg-red-50 hover:text-red-700",
                     )}
                   >
                     {active ? <span className="absolute left-0 top-2 h-6 w-1 rounded-r bg-red-600" /> : null}
-                    <Icon className={cn("size-5 text-gray-500", active && "text-red-600")} />
-                    <span className="flex-1">{item.label}</span>
+                    <Icon aria-hidden="true" className={cn("size-5 shrink-0 text-gray-500", active && "text-red-600")} />
+                    <span className="min-w-0 flex-1">{item.label}</span>
                     {external ? (
                       <ExternalLink className="size-3.5 text-gray-400" aria-hidden="true" />
                     ) : null}
                   </Link>
                 );
               })}
-              {section.label === "TOOLS" && hasFeaturePermission(session, "calculator") ? (
-                <div className="mt-1">
+              {section.calculator ? (
+                <div>
                   <button
                     type="button"
                     aria-expanded={calculatorExpanded}
-                    onClick={() => setCalculatorOpen((current) => !current)}
+                    aria-controls={calculatorId}
+                    onClick={() => setCalculatorState({ pathname, open: !calculatorExpanded })}
                     className={cn(
-                      "flex min-h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-semibold text-gray-700 transition duration-150 hover:bg-gray-100 hover:text-gray-950",
+                      "flex min-h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-gray-700 transition duration-150 hover:bg-gray-100 hover:text-gray-950",
                       calculatorActive && "bg-gray-100 text-gray-950",
                     )}
                   >
-                    <Calculator className={cn("size-5 text-gray-500", calculatorActive && "text-red-600")} />
+                    <Calculator aria-hidden="true" className={cn("size-5 shrink-0 text-gray-500", calculatorActive && "text-red-600")} />
                     <span className="flex-1">Kalkulator Saham</span>
-                    <ChevronDown className={cn("size-4 text-gray-400 transition-transform duration-200", calculatorExpanded && "rotate-180")} />
+                    <ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 text-gray-400 transition-transform duration-200", calculatorExpanded && "rotate-180")} />
                   </button>
                   {calculatorExpanded ? (
-                    <div className="ml-5 mt-1 grid gap-0.5 border-l border-gray-200 pl-3">
+                    <div id={calculatorId} className="ml-5 mt-1 grid gap-0.5 border-l border-gray-200 pl-3">
                       {calculatorMenuItems.map((item) => {
-                        const active = pathname === item.href;
+                        const active = activeHref === item.href;
                         const Icon = item.icon;
                         return (
                           <Link
                             key={item.href}
                             href={item.href}
                             onClick={onNavigate}
+                            aria-current={active ? "page" : undefined}
                             className={cn(
-                              "flex min-h-9 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-gray-600 transition duration-150 hover:bg-gray-50 hover:text-gray-950",
+                              "flex min-h-10 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-gray-600 transition duration-150 hover:bg-gray-50 hover:text-gray-950",
                               active && "bg-red-50 font-semibold text-red-700 hover:bg-red-50 hover:text-red-700",
                             )}
                           >
-                            <Icon className={cn("size-4 shrink-0 text-gray-400", active && "text-red-600")} />
+                            <Icon aria-hidden="true" className={cn("size-4 shrink-0 text-gray-400", active && "text-red-600")} />
                             <span>{item.label}</span>
                           </Link>
                         );
@@ -157,7 +134,7 @@ function SidebarContent({ session, onNavigate }: { session: AppSession | null; o
 export function AppSidebar({ session, mobileOpen, onMobileClose }: { session: AppSession | null; mobileOpen: boolean; onMobileClose: () => void }) {
   return (
     <>
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[280px] border-r border-gray-200 bg-white lg:flex lg:flex-col">
+      <aside aria-label="Sidebar desktop" className="fixed inset-y-0 left-0 z-30 hidden w-[280px] border-r border-gray-200 bg-white lg:flex lg:flex-col">
         <SidebarContent session={session} />
       </aside>
 
@@ -175,6 +152,8 @@ export function AppSidebar({ session, mobileOpen, onMobileClose }: { session: Ap
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
         aria-label="Menu utama"
+        aria-hidden={!mobileOpen}
+        inert={!mobileOpen}
       >
         <button
           className="absolute right-3 top-3 inline-flex size-10 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-red-500"

@@ -15,6 +15,7 @@ import {
   Settings,
   ShieldAlert,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 import { getIdxListedStock } from "@/lib/idx-listed-stocks";
 
@@ -106,31 +107,58 @@ export const corporateActionTypes = [
   ["Buyback", 6],
 ] as const;
 
-export const menuSections = [
+export type SidebarSection = {
+  id: string;
+  label: string;
+  calculator?: boolean;
+  items: Array<{ label: string; href: string; icon: LucideIcon; external?: boolean }>;
+};
+
+export const menuSections: SidebarSection[] = [
   {
-    label: "MENU UTAMA",
+    id: "overview",
+    label: "RINGKASAN",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    id: "personal",
+    label: "RUANG PRIBADI",
+    items: [
       { label: "Accumulation Radar", href: "/accumulation", icon: Radar },
-      { label: "Jurnal Riset", href: "/journal", icon: NotebookPen },
       { label: "Portfolio Saya", href: "/portfolio", icon: WalletCards },
-      { label: "Corporate Action", href: "/corporate-action", icon: FileText },
+      { label: "Jurnal Riset", href: "/journal", icon: NotebookPen },
+    ],
+  },
+  {
+    id: "research",
+    label: "RISET SAHAM",
+    items: [
       { label: "Stocks", href: "/stocks", icon: ChartNoAxesCombined },
+      { label: "Stock Screener", href: "/stock-screener", icon: RefreshCw },
       { label: "Bedah Laporan", href: "/financial-research", icon: FileSearch },
       { label: "Broker Summary", href: "/broker-summary", icon: Users },
       { label: "Ownership Tracker", href: "/ownership", icon: Network },
+      { label: "Group Konglo", href: "/group-konglo", icon: Building2 },
+    ],
+  },
+  {
+    id: "corporate-actions",
+    label: "AKSI KORPORASI",
+    items: [
+      { label: "Corporate Action", href: "/corporate-action", icon: FileText },
       { label: "FCA Tracker", href: "/fca", icon: ShieldAlert },
     ],
   },
   {
+    id: "tools",
     label: "TOOLS",
-    items: [
-      { label: "Stock Screener", href: "/stock-screener", icon: RefreshCw },
-      { label: "Group Konglo", href: "/group-konglo", icon: Building2 },
-      { label: "Right Issue Simulator", href: "/tools/right-issue-simulator", icon: Layers3 },
-    ],
+    calculator: true,
+    items: [],
   },
   {
+    id: "settings",
     label: "PENGATURAN",
     items: [
       { label: "Settings", href: "/settings", icon: Settings },
@@ -140,12 +168,13 @@ export const menuSections = [
 ];
 
 export const calculatorMenuItems = [
-  { label: "Right Issue", href: "/calculator/right-issue", icon: Layers3 },
-  { label: "Private Placement", href: "/calculator/private-placement", icon: Building2 },
-  { label: "Capital Gain", href: "/calculator/capital-gain", icon: ChartNoAxesCombined },
-  { label: "Dividen", href: "/calculator/dividend", icon: Calculator },
-  { label: "Average Down", href: "/calculator/average-down", icon: RefreshCw },
   { label: "Lot Management", href: "/calculator/lot-management", icon: WalletCards },
+  { label: "Capital Gain", href: "/calculator/capital-gain", icon: ChartNoAxesCombined },
+  { label: "Average Down", href: "/calculator/average-down", icon: RefreshCw },
+  { label: "Dividen", href: "/calculator/dividend", icon: Calculator },
+  { label: "Right Issue", href: "/calculator/right-issue", icon: Layers3 },
+  { label: "Right Issue Simulator", href: "/tools/right-issue-simulator", icon: Layers3 },
+  { label: "Private Placement", href: "/calculator/private-placement", icon: Building2 },
 ] as const;
 
 export const accumulationRows = [
