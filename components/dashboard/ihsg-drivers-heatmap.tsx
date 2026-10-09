@@ -113,14 +113,6 @@ export function IhsgDriversHeatmap() {
         </div>
       ) : (
         <>
-          <dl className="mb-4 grid grid-cols-1 divide-y divide-gray-200 border-y border-gray-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-            {[{ name: "Dampak positif", value: payload.positiveChange }, { name: "Dampak negatif", value: payload.negativeChange }, { name: "Dampak bersih", value: payload.netChange }].map((item) => (
-              <div key={item.name} className="min-w-0 px-3 py-3 first:pl-0">
-                <dt className="text-xs text-gray-500">{item.name}</dt>
-                <dd className={cn("mt-1 text-base font-semibold tabular-nums", item.value > 0 ? "text-emerald-700" : item.value < 0 ? "text-red-700" : "text-gray-600")}>{formatCapitalizationChange(item.value)}</dd>
-              </div>
-            ))}
-          </dl>
           <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
             <div className="flex min-w-0 flex-col">
               <div aria-label="Heatmap dampak kapitalisasi saham" className="relative h-[360px] min-w-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50 sm:h-[440px] xl:h-auto xl:min-h-[400px] xl:flex-1">
