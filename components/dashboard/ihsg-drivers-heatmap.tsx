@@ -122,18 +122,20 @@ export function IhsgDriversHeatmap() {
             ))}
           </dl>
           <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
-            <div className="min-w-0">
-              <div aria-label="Heatmap dampak kapitalisasi saham" className="h-[360px] min-w-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50 p-1 sm:h-[440px]">
-                {chartRows.length ? <ResponsiveContainer width="100%" height="100%" minWidth={0} onResize={(width) => setChartWidth(width)}>
-                  <Treemap data={chartRows} dataKey="impact" nameKey="ticker" content={DriverTile} isAnimationActive={false} nodeGap={3} aspectRatio={1.1} />
-                </ResponsiveContainer> : <div className="flex h-full items-center justify-center px-4 text-center text-sm text-gray-500">Tidak ada saham {filter === "positive" ? "penopang" : filter === "negative" ? "penekan" : "yang bergerak"} pada sesi ini.</div>}
+            <div className="flex min-w-0 flex-col">
+              <div aria-label="Heatmap dampak kapitalisasi saham" className="relative h-[360px] min-w-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50 sm:h-[440px] xl:h-auto xl:min-h-[400px] xl:flex-1">
+                <div className="absolute inset-1">
+                  {chartRows.length ? <ResponsiveContainer width="100%" height="100%" minWidth={0} onResize={(width) => setChartWidth(width)}>
+                    <Treemap data={chartRows} dataKey="impact" nameKey="ticker" content={DriverTile} isAnimationActive={false} nodeGap={3} aspectRatio={1.1} />
+                  </ResponsiveContainer> : <div className="flex h-full items-center justify-center px-4 text-center text-sm text-gray-500">Tidak ada saham {filter === "positive" ? "penopang" : filter === "negative" ? "penekan" : "yang bergerak"} pada sesi ini.</div>}
+                </div>
               </div>
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] leading-5 text-gray-500">
                 <p>{chartRows.length} saham dengan dampak terbesar · luas = perubahan kapitalisasi absolut</p>
                 <div className="flex gap-3"><span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-sm bg-teal-700" />Naik</span><span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-sm bg-red-600" />Turun</span></div>
               </div>
             </div>
-            <div className="grid min-w-0 content-start gap-5 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="grid min-w-0 content-start gap-4 sm:grid-cols-2 xl:grid-cols-1">
               <DriverRanking title="Penopang terbesar" rows={rankIhsgDrivers(payload.rows, "positive")} />
               <DriverRanking title="Penekan terbesar" rows={rankIhsgDrivers(payload.rows, "negative")} />
             </div>
@@ -151,10 +153,9 @@ export function IhsgDriversHeatmap() {
 function DriverRanking({ title, rows }: { title: string; rows: IhsgDriver[] }) {
   return (
     <section aria-label={title} className="min-w-0">
-      <h3 className="border-b border-gray-200 pb-2 text-sm font-semibold text-gray-950">{title}</h3>
-      <p className="mt-1 text-[11px] text-gray-500">Perubahan kapitalisasi penuh</p>
+      <h3 className="border-b border-gray-200 pb-1.5 text-sm font-semibold text-gray-950">{title}</h3>
       {!rows.length ? <p className="py-4 text-xs text-gray-500">Tidak ada saham pada kategori ini.</p> : <ol className="divide-y divide-gray-100">
-        {rows.map((row, index) => <li key={row.ticker}><Link href={`/stocks/${row.ticker}`} className="flex min-w-0 items-center gap-2 py-2.5 hover:bg-gray-50" title={row.name}>
+        {rows.map((row, index) => <li key={row.ticker}><Link href={`/stocks/${row.ticker}`} className="flex min-w-0 items-center gap-2 py-2 hover:bg-gray-50" title={row.name}>
           <span className="w-4 shrink-0 text-xs tabular-nums text-gray-400">{index + 1}</span>
           <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-gray-900">{row.ticker}</span><span className="block text-[11px] text-gray-500">Rp {new Intl.NumberFormat("id-ID").format(row.price)}</span></span>
           <span className={cn("shrink-0 text-right tabular-nums", row.capitalizationChange > 0 ? "text-emerald-700" : "text-red-700")}><span className="block text-xs font-semibold">{formatCapitalizationChange(row.capitalizationChange)}</span><span className="block text-[11px]">{percent(row.changePercent)}</span></span>
