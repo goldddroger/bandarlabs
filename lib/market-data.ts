@@ -1,3 +1,5 @@
+import { previousSessionClose } from "@/lib/market-price-session";
+
 type MarketTone = "positive" | "negative" | "neutral" | "warning";
 
 export type MarketSummaryCard = {
@@ -5,14 +7,16 @@ export type MarketSummaryCard = {
   value: string;
   detail: string;
   tone: MarketTone;
-  source: "Yahoo Finance" | "Google Finance" | "Demo fallback" | "Unavailable";
+  source: "Yahoo Finance" | "Google Finance" | "Unavailable";
   updatedAt?: string;
+  sourceUrl?: string;
 };
 
 type QuoteRequest = {
   label: string;
   yahooSymbol: string;
   googleSymbol: string;
+  yield?: boolean;
 };
 
 type YahooChartResponse = {
@@ -23,7 +27,9 @@ type YahooChartResponse = {
         chartPreviousClose?: number;
         previousClose?: number;
         regularMarketTime?: number;
+        exchangeTimezoneName?: string;
       };
+      timestamp?: number[];
       indicators?: {
         quote?: Array<{
           close?: Array<number | null>;
@@ -40,28 +46,17 @@ const quoteRequests: QuoteRequest[] = [
     googleSymbol: "COMPOSITE:IDX",
   },
   {
+    label: "US 10-Year Yield",
+    yahooSymbol: "^TNX",
+    googleSymbol: "TNX:INDEXCBOE",
+    yield: true,
+  },
+  {
     label: "VIX",
     yahooSymbol: "^VIX",
     googleSymbol: "VIX:INDEXCBOE",
   },
 ];
-
-const fallbackQuotes: Record<string, MarketSummaryCard> = {
-  IHSG: {
-    label: "IHSG",
-    value: "7,247.60",
-    detail: "+0.48%",
-    tone: "positive",
-    source: "Demo fallback",
-  },
-  VIX: {
-    label: "VIX",
-    value: "16.21",
-    detail: "+1.83%",
-    tone: "warning",
-    source: "Demo fallback",
-  },
-};
 
 const numberFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
@@ -100,6 +95,7 @@ async function fetchYahooQuote(request: QuoteRequest): Promise<MarketSummaryCard
       "User-Agent": "BandarLab/1.0",
       Accept: "application/json",
     },
+    signal: AbortSignal.timeout(8_000),
   });
 
   if (!response.ok) return null;
@@ -108,13 +104,11 @@ async function fetchYahooQuote(request: QuoteRequest): Promise<MarketSummaryCard
   const result = payload.chart?.result?.[0];
   const meta = result?.meta;
   const price = meta?.regularMarketPrice;
-  const closes = (result?.indicators?.quote?.[0]?.close ?? [])
-    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-  const previousClose = closes.length >= 2
-    ? closes.at(-2)
-    : meta?.previousClose ?? meta?.chartPreviousClose;
+  const previousClose = meta?.previousClose ?? (meta?.regularMarketTime
+    ? previousSessionClose(result?.indicators?.quote?.[0]?.close ?? [], result?.timestamp ?? [], meta.regularMarketTime, meta.exchangeTimezoneName ?? "America/New_York")
+    : undefined);
 
-  if (typeof price !== "number" || typeof previousClose !== "number" || previousClose === 0) {
+  if (typeof price !== "number" || !Number.isFinite(price) || price <= 0 || typeof previousClose !== "number" || !Number.isFinite(previousClose) || previousClose <= 0) {
     return null;
   }
 
@@ -122,21 +116,25 @@ async function fetchYahooQuote(request: QuoteRequest): Promise<MarketSummaryCard
 
   return {
     label: request.label,
-    value: numberFormatter.format(price),
-    detail: formatPercent(changePercent),
-    tone: request.label === "VIX" && changePercent > 0 ? "warning" : toneFromChange(changePercent),
+    value: `${numberFormatter.format(price)}${request.yield ? "%" : ""}`,
+    detail: request.yield ? `${price > previousClose ? "+" : ""}${((price - previousClose) * 100).toFixed(2)} bps vs penutupan sebelumnya` : formatPercent(changePercent),
+    tone: (request.label === "VIX" || request.yield) && changePercent > 0 ? "warning" : toneFromChange(changePercent),
     source: "Yahoo Finance",
     updatedAt: formatTimestamp(meta?.regularMarketTime),
+    sourceUrl: `https://finance.yahoo.com/quote/${encodeURIComponent(request.yahooSymbol)}/`,
   };
 }
 
 async function fetchGoogleQuote(request: QuoteRequest): Promise<MarketSummaryCard | null> {
+  // Yahoo ^TNX is a percentage yield; no verified equivalent Google feed is configured.
+  if (request.yield) return null;
   const response = await fetch(`https://www.google.com/finance/quote/${request.googleSymbol}`, {
     next: { revalidate: 300 },
     headers: {
       "User-Agent": "Mozilla/5.0 BandarLab/1.0",
       Accept: "text/html",
     },
+    signal: AbortSignal.timeout(8_000),
   });
 
   if (!response.ok) return null;
@@ -147,17 +145,20 @@ async function fetchGoogleQuote(request: QuoteRequest): Promise<MarketSummaryCar
   const price = priceMatch ? Number(priceMatch[1]) : Number.NaN;
   const previousClose = previousCloseMatch ? Number(previousCloseMatch[1]) : Number.NaN;
 
-  if (!Number.isFinite(price)) return null;
+  if (!Number.isFinite(price) || price <= 0) return null;
 
   const changePercent =
     Number.isFinite(previousClose) && previousClose !== 0 ? ((price - previousClose) / previousClose) * 100 : 0;
 
   return {
     label: request.label,
-    value: numberFormatter.format(price),
-    detail: Number.isFinite(previousClose) ? formatPercent(changePercent) : "Google Finance",
-    tone: request.label === "VIX" && changePercent > 0 ? "warning" : toneFromChange(changePercent),
+    value: `${numberFormatter.format(price)}${request.yield ? "%" : ""}`,
+    detail: Number.isFinite(previousClose) && previousClose > 0
+      ? request.yield ? `${price > previousClose ? "+" : ""}${((price - previousClose) * 100).toFixed(2)} bps vs penutupan sebelumnya` : formatPercent(changePercent)
+      : "Perubahan belum tersedia",
+    tone: (request.label === "VIX" || request.yield) && changePercent > 0 ? "warning" : toneFromChange(changePercent),
     source: "Google Finance",
+    sourceUrl: `https://www.google.com/finance/quote/${request.googleSymbol}`,
   };
 }
 
@@ -173,31 +174,26 @@ async function getQuote(request: QuoteRequest) {
     const googleQuote = await fetchGoogleQuote(request);
     if (googleQuote) return googleQuote;
   } catch {
-    // Demo value is better than a broken dashboard for the MVP.
+    // Never substitute a fabricated quote when both providers fail.
   }
 
-  return fallbackQuotes[request.label];
+  return { label: request.label, value: "N/A", detail: "Data pasar belum tersedia", tone: "neutral", source: "Unavailable" } satisfies MarketSummaryCard;
 }
 
 export async function getDashboardMarketSummary(): Promise<MarketSummaryCard[]> {
-  const [ihsg, vix] = await Promise.all(quoteRequests.map(getQuote));
+  const [ihsg, treasury, vix] = await Promise.all(quoteRequests.map(getQuote));
 
   return [
     ihsg,
     {
       label: "Foreign Flow",
       value: "N/A",
-      detail: "Tidak tersedia di Yahoo/Google",
+      detail: "Data transaksi asing BEI belum tersambung",
       tone: "neutral",
       source: "Unavailable",
+      sourceUrl: "https://www.idx.co.id/id/data-pasar/laporan-statistik/digital-statistic/",
     },
-    {
-      label: "Advancers / Decliners",
-      value: "298 / 221",
-      detail: "Demo breadth",
-      tone: "neutral",
-      source: "Demo fallback",
-    },
+    treasury,
     vix,
   ];
 }

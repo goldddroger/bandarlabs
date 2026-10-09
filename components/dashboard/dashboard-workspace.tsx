@@ -9,6 +9,7 @@ import {
   CalendarDays,
   ChevronRight,
   CircleDollarSign,
+  ExternalLink,
   Radar,
   SearchCheck,
   TrendingDown,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import { DashboardAccumulationPreview } from "@/components/accumulation/dashboard-accumulation-preview";
 import { MarketMovers } from "@/components/dashboard/market-movers";
+import { IhsgDriversHeatmap } from "@/components/dashboard/ihsg-drivers-heatmap";
 import { SectorHeatmap } from "@/components/sector-rotation/sector-heatmap";
 import { useSelectedAccumulationRows } from "@/components/accumulation/accumulation-store";
 import {
@@ -221,10 +223,15 @@ export function DashboardWorkspace({ marketSummary }: { marketSummary: MarketSum
             </div>
             <p className="mt-3 truncate text-xl font-semibold text-gray-950">{item.value}</p>
             <p className={cn("mt-1 min-h-5 text-xs font-semibold leading-5", marketToneClass(item.tone))}>{item.detail}</p>
-            {item.updatedAt ? <p className="mt-2 truncate text-xs text-gray-400">Update {item.updatedAt}</p> : null}
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+              <p>{item.updatedAt ? `Update ${item.updatedAt}` : item.source === "Unavailable" ? "Belum ada data terverifikasi" : "Waktu sumber belum tersedia"}</p>
+              {item.sourceUrl ? <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-gray-600 hover:text-red-700">{item.label === "Foreign Flow" ? "Sumber BEI" : "Sumber"}<ExternalLink aria-hidden="true" className="size-3" /></a> : null}
+            </div>
           </div>
         ))}
       </section>
+
+      <IhsgDriversHeatmap />
 
       <MarketMovers />
 

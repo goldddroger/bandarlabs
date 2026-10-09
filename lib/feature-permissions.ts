@@ -57,7 +57,7 @@ export function permissionForPath(pathname: string): FeaturePermission | null {
     ["/api/axentraz", "broker_summary"], ["/api/ownership", "ownership"], ["/api/fca", "fca"],
     ["/api/portfolio", "portfolio"], ["/api/accumulation", "accumulation"], ["/api/journal", "journal"],
     ["/api/corporate-actions", "corporate_action"], ["/api/right-issue", "calculator"],
-    ["/api/private-placement", "calculator"], ["/api/market-movers", "dashboard"],
+    ["/api/private-placement", "calculator"], ["/api/market-movers", "dashboard"], ["/api/ihsg-drivers", "dashboard"],
     ["/api/stock-ca-research", "stocks"], ["/api/notifications", "notifications"],
   ];
   return [...apiRules, ...pageRules].find(([prefix]) => (
