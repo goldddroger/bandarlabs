@@ -25,7 +25,7 @@ test("portfolio history shares portfolio permission and activates only its own m
   assert.equal(getActiveSidebarHref("/portfolio"), "/portfolio");
   const visible = getVisibleSidebarSections({ ...member, permissions: ["portfolio"] }).flatMap((section) => section.items);
   assert.ok(visible.some((item) => item.href === "/portfolio/history"));
-  assert.equal(visible.find((item) => item.href === "/portfolio/history")?.label, "Performa Trading");
+  assert.equal(visible.find((item) => item.href === "/portfolio/history")?.label, "Scalping");
   assert.ok(!getVisibleSidebarSections(member).flatMap((section) => section.items).some((item) => item.href === "/portfolio/history"));
 });
 

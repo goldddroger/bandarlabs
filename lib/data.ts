@@ -129,7 +129,7 @@ export const menuSections: SidebarSection[] = [
     items: [
       { label: "Accumulation Radar", href: "/accumulation", icon: Radar },
       { label: "Portfolio Saya", href: "/portfolio", icon: WalletCards },
-      { label: "Performa Trading", href: "/portfolio/history", icon: History },
+      { label: "Scalping", href: "/portfolio/history", icon: History },
       { label: "Jurnal Riset", href: "/journal", icon: NotebookPen },
     ],
   },

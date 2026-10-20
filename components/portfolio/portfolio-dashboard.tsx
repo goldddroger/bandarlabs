@@ -389,7 +389,7 @@ export function PortfolioDashboard({ view = "positions" }: { view?: "positions" 
       <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="mb-2 text-sm text-gray-500">Portfolio Pribadi</p>
-          <h1 className="text-2xl font-semibold tracking-normal text-gray-950">{historyView ? "Performa Trading" : "Portfolio Saya"}</h1>
+          <h1 className="text-2xl font-semibold tracking-normal text-gray-950">{historyView ? "Scalping" : "Portfolio Saya"}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
             {historyView ? "Riwayat transaksi selesai dan hasil profit/loss setelah fee." : "Posisi saham aktif, modal, valuasi pasar, dan unrealized profit/loss."}
           </p>
@@ -411,7 +411,7 @@ export function PortfolioDashboard({ view = "positions" }: { view?: "positions" 
       </div>
 
       <nav aria-label="Halaman portfolio" className="mb-5 flex gap-1 border-b border-gray-200">
-        {([{ href: "/portfolio", label: "Posisi Aktif", icon: WalletCards, active: !historyView }, { href: "/portfolio/history", label: "Performa Trading", icon: History, active: historyView }]).map(({ href, label, icon: Icon, active }) => (
+        {([{ href: "/portfolio", label: "Posisi Aktif", icon: WalletCards, active: !historyView }, { href: "/portfolio/history", label: "Scalping", icon: History, active: historyView }]).map(({ href, label, icon: Icon, active }) => (
           <Link key={href} href={href} aria-current={active ? "page" : undefined} className={cn("inline-flex min-h-11 items-center gap-2 border-b-2 px-3 text-sm font-medium", active ? "border-red-600 text-red-700" : "border-transparent text-gray-500 hover:text-gray-900")}><Icon className="size-4 shrink-0" aria-hidden="true" />{label}</Link>
         ))}
       </nav>
