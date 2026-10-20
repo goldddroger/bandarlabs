@@ -6,6 +6,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   BriefcaseBusiness,
+  Calculator,
   Cloud,
   Download,
   History,
@@ -35,6 +36,7 @@ import {
 } from "@/lib/portfolio-store";
 import { cn } from "@/lib/utils";
 import { summarizeTrades } from "@/lib/portfolio-performance";
+import { AverageDownSimulator } from "@/components/portfolio/average-down-simulator";
 
 type LiveQuote = {
   ticker: string;
@@ -113,6 +115,7 @@ export function PortfolioDashboard({ view = "positions" }: { view?: "positions" 
   const [resolvedQuoteKey, setResolvedQuoteKey] = useState("");
   const [holdingModalOpen, setHoldingModalOpen] = useState(false);
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
+  const [averageDownHolding, setAverageDownHolding] = useState<PortfolioHolding | null>(null);
   const [holdingDraft, setHoldingDraft] = useState<HoldingDraft>(emptyHolding);
   const [tradeDraft, setTradeDraft] = useState<TradeDraft>(emptyTrade);
   const [tradeHistoryFilter, setTradeHistoryFilter] = useState<TradeHistoryFilter>(() => {
@@ -434,10 +437,13 @@ export function PortfolioDashboard({ view = "positions" }: { view?: "positions" 
         {historyView ? <MonthlyPerformance stats={monthlyStats} /> : null}
       </div>
 
-      {historyView ? <TradeHistorySection trades={portfolio.trades} filter={tradeHistoryFilter} onFilterChange={setTradeHistoryFilter} focus={tradeHistoryFocus} onAdd={openAddTrade} onEdit={editTrade} onDelete={deleteTrade} /> : <PositionsSection rows={positionRows} resolved={resolvedQuoteKey === tickerKey} onAdd={openAddHolding} onEdit={editHolding} onDelete={deleteHolding} />}
+      {historyView ? <TradeHistorySection trades={portfolio.trades} filter={tradeHistoryFilter} onFilterChange={setTradeHistoryFilter} focus={tradeHistoryFocus} onAdd={openAddTrade} onEdit={editTrade} onDelete={deleteTrade} /> : <PositionsSection rows={positionRows} resolved={resolvedQuoteKey === tickerKey} onAdd={openAddHolding} onEdit={editHolding} onDelete={deleteHolding} onAverageDown={setAverageDownHolding} />}
 
       {holdingModalOpen ? <HoldingModal draft={holdingDraft} onClose={() => setHoldingModalOpen(false)} onSave={saveHolding} /> : null}
       {tradeModalOpen ? <TradeModal draft={tradeDraft} onClose={() => setTradeModalOpen(false)} onSave={saveTrade} /> : null}
+      {averageDownHolding ? <PortfolioModal title={`Simulasi Avg Down ${averageDownHolding.ticker}`} description="Estimasi kebutuhan dana menuju BEP. Simulasi tidak mengubah posisi portfolio." onClose={() => setAverageDownHolding(null)}>
+        <AverageDownSimulator holding={averageDownHolding} marketPrice={quotes[averageDownHolding.ticker]?.source !== "Fallback" && Number.isFinite(quotes[averageDownHolding.ticker]?.price) && quotes[averageDownHolding.ticker]?.price > 0 ? quotes[averageDownHolding.ticker].price : undefined} source={quotes[averageDownHolding.ticker]?.source} updatedAt={quotes[averageDownHolding.ticker]?.updatedAt} onClose={() => setAverageDownHolding(null)} />
+      </PortfolioModal> : null}
       {confirmationDialog}
     </section>
   );
@@ -557,7 +563,7 @@ type PositionRow = {
   profitLossPercent: number;
 };
 
-function PositionsSection({ rows, resolved, onAdd, onEdit, onDelete }: { rows: PositionRow[]; resolved: boolean; onAdd: () => void; onEdit: (holding: PortfolioHolding) => void; onDelete: (id: string) => void }) {
+function PositionsSection({ rows, resolved, onAdd, onEdit, onDelete, onAverageDown }: { rows: PositionRow[]; resolved: boolean; onAdd: () => void; onEdit: (holding: PortfolioHolding) => void; onDelete: (id: string) => void; onAverageDown: (holding: PortfolioHolding) => void }) {
   return (
     <section className="mb-5 overflow-hidden rounded-lg border border-gray-200 bg-white">
       <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3">
@@ -574,17 +580,17 @@ function PositionsSection({ rows, resolved, onAdd, onEdit, onDelete }: { rows: P
           <div className="bandarlab-scrollbar hidden overflow-x-auto md:block">
             <table className="w-full min-w-[1120px] text-left text-sm">
               <thead className="bg-white text-xs uppercase text-gray-500"><tr>{["Saham", "Lot", "Avg. Beli", "Harga Saat Ini", "Modal", "Valuasi", "Unrealized P/L", "Aksi"].map((head) => <th key={head} className="px-4 py-3 font-semibold">{head}</th>)}</tr></thead>
-              <tbody className="divide-y divide-gray-100">{rows.map((row) => <PositionTableRow key={row.holding.id} row={row} onEdit={onEdit} onDelete={onDelete} />)}</tbody>
+              <tbody className="divide-y divide-gray-100">{rows.map((row) => <PositionTableRow key={row.holding.id} row={row} onEdit={onEdit} onDelete={onDelete} onAverageDown={onAverageDown} />)}</tbody>
             </table>
           </div>
-          <div className="divide-y divide-gray-200 md:hidden">{rows.map((row) => <PositionMobileRow key={row.holding.id} row={row} onEdit={onEdit} onDelete={onDelete} />)}</div>
+          <div className="divide-y divide-gray-200 md:hidden">{rows.map((row) => <PositionMobileRow key={row.holding.id} row={row} onEdit={onEdit} onDelete={onDelete} onAverageDown={onAverageDown} />)}</div>
         </>
       )}
     </section>
   );
 }
 
-function PositionTableRow({ row, onEdit, onDelete }: { row: PositionRow; onEdit: (holding: PortfolioHolding) => void; onDelete: (id: string) => void }) {
+function PositionTableRow({ row, onEdit, onDelete, onAverageDown }: { row: PositionRow; onEdit: (holding: PortfolioHolding) => void; onDelete: (id: string) => void; onAverageDown: (holding: PortfolioHolding) => void }) {
   return (
     <tr className="hover:bg-gray-50">
       <td className="px-4 py-4"><Link href={`/stocks/${row.holding.ticker}`} className="font-semibold text-brand-700 hover:underline">{row.holding.ticker}</Link><p className="mt-1 text-xs text-gray-500">{row.holding.note || formatDisplayDate(row.holding.purchasedAt)}</p></td>
@@ -594,16 +600,17 @@ function PositionTableRow({ row, onEdit, onDelete }: { row: PositionRow; onEdit:
       <td className="whitespace-nowrap px-4 py-4 text-gray-700">{formatCurrency(row.capital)}</td>
       <td className="whitespace-nowrap px-4 py-4 font-semibold text-gray-950">{formatCurrency(row.marketValue)}</td>
       <td className={cn("whitespace-nowrap px-4 py-4 font-semibold", row.profitLoss >= 0 ? "text-emerald-700" : "text-red-700")}>{formatCurrency(row.profitLoss)}<p className="mt-1 text-xs">{formatPercent(row.profitLossPercent)}</p></td>
-      <td className="px-4 py-4"><RowActions label={row.holding.ticker} onEdit={() => onEdit(row.holding)} onDelete={() => onDelete(row.holding.id)} /></td>
+      <td className="px-4 py-4"><div className="flex items-center justify-end gap-1"><button type="button" onClick={() => onAverageDown(row.holding)} title="Simulasi average down" aria-label={`Simulasi avg down ${row.holding.ticker}`} className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-xs font-medium text-brand-700 hover:bg-brand-50"><Calculator className="size-4" />Avg Down</button><RowActions label={row.holding.ticker} onEdit={() => onEdit(row.holding)} onDelete={() => onDelete(row.holding.id)} /></div></td>
     </tr>
   );
 }
 
-function PositionMobileRow({ row, onEdit, onDelete }: { row: PositionRow; onEdit: (holding: PortfolioHolding) => void; onDelete: (id: string) => void }) {
+function PositionMobileRow({ row, onEdit, onDelete, onAverageDown }: { row: PositionRow; onEdit: (holding: PortfolioHolding) => void; onDelete: (id: string) => void; onAverageDown: (holding: PortfolioHolding) => void }) {
   return (
     <article className="p-4">
       <div className="flex items-start justify-between gap-3"><div><Link href={`/stocks/${row.holding.ticker}`} className="font-semibold text-brand-700">{row.holding.ticker}</Link><p className="mt-1 text-xs text-gray-500">{row.holding.lots} lot · avg {formatCurrency(row.holding.averagePrice)}</p></div><RowActions label={row.holding.ticker} onEdit={() => onEdit(row.holding)} onDelete={() => onDelete(row.holding.id)} /></div>
       <div className="mt-4 grid grid-cols-2 gap-3"><MobileValue label="Modal" value={formatCompactCurrency(row.capital)} /><MobileValue label="Valuasi" value={formatCompactCurrency(row.marketValue)} /><MobileValue label="Harga saat ini" value={formatCurrency(row.currentPrice)} /><MobileValue label="Unrealized" value={`${formatCompactCurrency(row.profitLoss)} · ${formatPercent(row.profitLossPercent)}`} tone={row.profitLoss >= 0 ? "positive" : "negative"} /></div>
+      <Button type="button" variant="outline" onClick={() => onAverageDown(row.holding)} aria-label={`Simulasi avg down ${row.holding.ticker}`} className="mt-4 h-10 w-full text-sm"><Calculator className="size-4" />Simulasi Avg Down</Button>
     </article>
   );
 }
