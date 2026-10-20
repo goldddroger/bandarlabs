@@ -441,7 +441,7 @@ export function PortfolioDashboard({ view = "positions" }: { view?: "positions" 
 
       {holdingModalOpen ? <HoldingModal draft={holdingDraft} onClose={() => setHoldingModalOpen(false)} onSave={saveHolding} /> : null}
       {tradeModalOpen ? <TradeModal draft={tradeDraft} onClose={() => setTradeModalOpen(false)} onSave={saveTrade} /> : null}
-      {averageDownHolding ? <PortfolioModal title={`Simulasi Avg Down ${averageDownHolding.ticker}`} description="Estimasi kebutuhan dana menuju BEP. Simulasi tidak mengubah posisi portfolio." onClose={() => setAverageDownHolding(null)}>
+      {averageDownHolding ? <PortfolioModal title={`Simulasi Avg Down ${averageDownHolding.ticker}`} description="Target average dan kebutuhan dana tambahan. Tidak mengubah posisi portfolio." onClose={() => setAverageDownHolding(null)}>
         <AverageDownSimulator holding={averageDownHolding} marketPrice={quotes[averageDownHolding.ticker]?.source !== "Fallback" && Number.isFinite(quotes[averageDownHolding.ticker]?.price) && quotes[averageDownHolding.ticker]?.price > 0 ? quotes[averageDownHolding.ticker].price : undefined} source={quotes[averageDownHolding.ticker]?.source} updatedAt={quotes[averageDownHolding.ticker]?.updatedAt} onClose={() => setAverageDownHolding(null)} />
       </PortfolioModal> : null}
       {confirmationDialog}
