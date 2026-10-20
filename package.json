@@ -11,6 +11,7 @@
     "lint": "eslint",
     "test:capital-gain": "tsx --test tests/capital-gain.test.ts",
     "test:portfolio": "tsx --test tests/portfolio-performance.test.ts",
+    "test:notifications": "tsx --test tests/notification-identity.test.ts",
     "test:right-issue": "tsx --test tests/right-issue.test.ts",
     "test:hmetd-document": "tsx --test tests/hmetd-document.test.ts",
     "test:hmetd-buyer": "tsx --test tests/hmetd-buyer.test.ts",

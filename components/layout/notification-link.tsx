@@ -9,11 +9,12 @@ import {
   getBestEntryLastFiredKey,
   getBestEntrySnapshot,
   parseBestEntrySnapshot,
-  type BestEntryRecord,
 } from "@/lib/best-entry-store";
 import { getFcaWatchSnapshot, parseFcaWatchSnapshot, subscribeFcaWatch } from "@/lib/fca-watch-store";
-import { stockCaResearchChangeEvent } from "@/lib/stock-ca-research";
+import { stockCaResearchChangeEvent, type StockCaResearchNote } from "@/lib/stock-ca-research";
 import { useNotificationDatabaseSync } from "@/lib/notification-cloud-sync";
+import { bestEntryNotificationId, caNotificationId, fcaNotificationId } from "@/lib/notification-identity";
+import { useNotificationReadState } from "@/lib/notification-read-store";
 
 type QuoteMap = Record<
   string,
@@ -32,33 +33,27 @@ function subscribeBestEntry(onStoreChange: () => void) {
   };
 }
 
-function countReachedEntries(entries: BestEntryRecord[], quotes: QuoteMap) {
-  return entries.filter((entry) => {
-    const quote = quotes[entry.ticker];
-    return quote && quote.price <= entry.price;
-  }).length;
-}
-
 export function NotificationLink() {
   useNotificationDatabaseSync();
+  const { ready, isRead } = useNotificationReadState();
   const [quotes, setQuotes] = useState<QuoteMap>({});
-  const [caReminderCount, setCaReminderCount] = useState(0);
+  const [caReminders, setCaReminders] = useState<StockCaResearchNote[]>([]);
   const snapshot = useSyncExternalStore(subscribeBestEntry, getBestEntrySnapshot, () => "[]");
   const fcaSnapshot = useSyncExternalStore(subscribeFcaWatch, getFcaWatchSnapshot, () => "[]");
   const entries = useMemo(() => parseBestEntrySnapshot(snapshot), [snapshot]);
-  const fcaUnreadCount = useMemo(() => parseFcaWatchSnapshot(fcaSnapshot).filter((record) => record.alert?.unread).length, [fcaSnapshot]);
+  const fcaUnreadCount = parseFcaWatchSnapshot(fcaSnapshot).filter((record) => record.alert?.unread && !isRead(fcaNotificationId(record))).length;
   const tickers = useMemo(() => entries.map((entry) => entry.ticker).join(","), [entries]);
-  const reachedCount = countReachedEntries(entries, quotes) + fcaUnreadCount + caReminderCount;
+  const reachedCount = ready ? entries.filter((entry) => quotes[entry.ticker]?.price <= entry.price && !isRead(bestEntryNotificationId(entry))).length + fcaUnreadCount + caReminders.filter((note) => !isRead(caNotificationId(note))).length : 0;
 
   useEffect(() => {
     const controller = new AbortController();
     async function loadReminders() {
       try {
         const response = await fetch("/api/stock-ca-research?due=1", { signal: controller.signal });
-        const payload = response.ok ? await response.json() as { notes?: unknown[] } : { notes: [] };
-        if (!controller.signal.aborted) setCaReminderCount(payload.notes?.length ?? 0);
+        const payload = response.ok ? await response.json() as { notes?: StockCaResearchNote[] } : { notes: [] };
+        if (!controller.signal.aborted) setCaReminders(payload.notes ?? []);
       } catch {
-        if (!controller.signal.aborted) setCaReminderCount(0);
+        if (!controller.signal.aborted) setCaReminders([]);
       }
     }
     void loadReminders();
@@ -92,9 +87,10 @@ export function NotificationLink() {
 
   useEffect(() => {
     entries.forEach((entry) => {
+      if (!ready || isRead(bestEntryNotificationId(entry))) return;
       const quote = quotes[entry.ticker];
       if (!quote || quote.price > entry.price) return;
-      const firedValue = `${entry.price}:${quote.price}:${quote.updatedAt ?? "live"}`;
+      const firedValue = bestEntryNotificationId(entry);
       const firedKey = getBestEntryLastFiredKey(entry.ticker);
       if (window.localStorage.getItem(firedKey) === firedValue) return;
       window.localStorage.setItem(firedKey, firedValue);
@@ -105,17 +101,18 @@ export function NotificationLink() {
         });
       }
     });
-  }, [entries, quotes]);
+  }, [entries, quotes, ready, isRead]);
 
   return (
     <Link
       href="/notifikasi"
+      aria-label={reachedCount > 0 ? `Notifikasi, ${reachedCount} belum dibaca` : "Notifikasi"}
       className="relative inline-flex h-10 items-center justify-center gap-2 rounded-md border border-transparent px-3 text-sm font-medium text-gray-700 transition duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
     >
       <Bell className="size-5" />
       Notifikasi
       {reachedCount > 0 ? (
-        <span className="absolute -right-1 top-1 flex size-5 items-center justify-center rounded-full bg-red-600 text-[11px] font-bold text-white">
+        <span aria-live="polite" className="absolute -right-1 top-1 flex size-5 items-center justify-center rounded-full bg-red-600 text-[11px] font-bold text-white">
           {reachedCount > 9 ? "9+" : reachedCount}
         </span>
       ) : null}

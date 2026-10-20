@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { normalizeTicker } from "@/lib/stock-quotes";
 import { getRequestOwnerId, getRequestSession, unauthorizedResponseBody } from "@/lib/request-session";
+import { normalizeNotificationIds } from "@/lib/notification-identity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,6 +79,16 @@ export async function GET(request: Request) {
   if (!ownerId || !session) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
   const supabase = serverClient();
   if (!supabase) return NextResponse.json({ error: "Supabase notifikasi belum dikonfigurasi." }, { status: 503 });
+  if (new URL(request.url).searchParams.get("read") === "1") {
+    const readIds: string[] = [];
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await supabase.from("notification_read_receipts").select("notification_id").eq("owner_id", ownerId).order("notification_id").range(offset, offset + 999);
+      if (error) return NextResponse.json({ ownerId, error: "Status baca gagal dimuat. Jalankan migration notification_read_receipts." }, { status: 500 });
+      readIds.push(...(data ?? []).map((row) => row.notification_id));
+      if (!data || data.length < 1000) break;
+    }
+    return NextResponse.json({ ownerId, readIds }, { headers: { "Cache-Control": "private, no-store" } });
+  }
   const [bestResult, fcaResult, workspaceResult] = await Promise.all([
     supabase.from("best_entry_alerts").select("ticker,entry_price,last_fired_value,updated_at").eq("owner_id", ownerId).order("ticker"),
     supabase.from("fca_watch_records").select("ticker,company_name,watched_at,last_known_active,last_known_criteria,alert_type,alert_message,alert_created_at,alert_unread").eq("owner_id", ownerId).order("watched_at", { ascending: false }),
@@ -133,4 +144,20 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Notifikasi gagal disimpan. Jalankan migration notifikasi terbaru." }, { status: 500 });
   }
   return NextResponse.json({ success: true, counts: data });
+}
+
+export async function PATCH(request: Request) {
+  const ownerId = getRequestOwnerId(request);
+  if (!ownerId) return NextResponse.json(unauthorizedResponseBody(), { status: 401 });
+  const body = await request.json().catch(() => null) as { readIds?: unknown } | null;
+  const ids = normalizeNotificationIds(body?.readIds);
+  if (!ids) return NextResponse.json({ error: "Daftar notifikasi tidak valid." }, { status: 400 });
+  const supabase = serverClient();
+  if (!supabase) return NextResponse.json({ error: "Supabase notifikasi belum dikonfigurasi." }, { status: 503 });
+  const { error } = await supabase.from("notification_read_receipts").upsert(
+    ids.map((id) => ({ owner_id: ownerId, notification_id: id })),
+    { onConflict: "owner_id,notification_id", ignoreDuplicates: true },
+  );
+  if (error) return NextResponse.json({ error: "Status baca gagal disimpan. Jalankan migration notification_read_receipts." }, { status: 500 });
+  return NextResponse.json({ success: true });
 }

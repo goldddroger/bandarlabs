@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { calculatorMenuItems, menuSections } from "../lib/data";
 import { getActiveSidebarHref, getVisibleSidebarSections } from "../lib/sidebar-navigation";
-import type { AppSession } from "../lib/feature-permissions";
+import { permissionForPath, type AppSession } from "../lib/feature-permissions";
 
 const member: AppSession = {
   userId: "sidebar-test", username: "test", displayName: "Test", role: "member",
@@ -11,12 +11,22 @@ const member: AppSession = {
 
 test("groups follow the personal, research, corporate action and tools workflow", () => {
   assert.deepEqual(menuSections.map((section) => section.id), ["overview", "personal", "research", "corporate-actions", "tools", "settings"]);
-  assert.deepEqual(menuSections.find((section) => section.id === "personal")?.items.map((item) => item.href), ["/accumulation", "/portfolio", "/journal"]);
+  assert.deepEqual(menuSections.find((section) => section.id === "personal")?.items.map((item) => item.href), ["/accumulation", "/portfolio", "/portfolio/history", "/journal"]);
   const hrefs = [...menuSections.flatMap((section) => section.items), ...calculatorMenuItems].map((item) => item.href);
   assert.equal(new Set(hrefs).size, hrefs.length);
-  assert.equal(hrefs.length, 21);
+  assert.equal(hrefs.length, 22);
   const rightIssueIndex = calculatorMenuItems.findIndex((item) => item.href === "/calculator/right-issue");
   assert.equal(calculatorMenuItems[rightIssueIndex + 1].href, "/tools/right-issue-simulator");
+});
+
+test("portfolio history shares portfolio permission and activates only its own menu", () => {
+  assert.equal(permissionForPath("/portfolio/history"), "portfolio");
+  assert.equal(getActiveSidebarHref("/portfolio/history"), "/portfolio/history");
+  assert.equal(getActiveSidebarHref("/portfolio"), "/portfolio");
+  const visible = getVisibleSidebarSections({ ...member, permissions: ["portfolio"] }).flatMap((section) => section.items);
+  assert.ok(visible.some((item) => item.href === "/portfolio/history"));
+  assert.equal(visible.find((item) => item.href === "/portfolio/history")?.label, "Performa Trading");
+  assert.ok(!getVisibleSidebarSections(member).flatMap((section) => section.items).some((item) => item.href === "/portfolio/history"));
 });
 
 test("each route selects just its most specific menu", () => {

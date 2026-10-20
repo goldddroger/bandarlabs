@@ -13,10 +13,12 @@ import {
   getBestEntryStorageKey,
   parseBestEntrySnapshot,
 } from "@/lib/best-entry-store";
-import { getFcaWatchSnapshot, markFcaAlertsRead, parseFcaWatchSnapshot, subscribeFcaWatch } from "@/lib/fca-watch-store";
+import { getFcaWatchSnapshot, parseFcaWatchSnapshot, subscribeFcaWatch } from "@/lib/fca-watch-store";
 import { idxListedStocks } from "@/lib/idx-listed-stocks";
 import { stockCaResearchChangeEvent, type StockCaResearchNote } from "@/lib/stock-ca-research";
 import { cn } from "@/lib/utils";
+import { bestEntryNotificationId, caNotificationId, fcaNotificationId } from "@/lib/notification-identity";
+import { markNotificationsRead, useNotificationReadState } from "@/lib/notification-read-store";
 
 type QuoteMap = Record<
   string,
@@ -55,13 +57,17 @@ function formatDate(value: string) {
 
 export function NotificationCenter() {
   const { confirm, confirmationDialog } = useConfirmDialog();
+  const { ready, isRead } = useNotificationReadState();
+  const [filter, setFilter] = useState<"all" | "unread">("all");
   const [quotes, setQuotes] = useState<QuoteMap>({});
   const [caReminders, setCaReminders] = useState<StockCaResearchNote[]>([]);
   const snapshot = useSyncExternalStore(subscribeBestEntry, getBestEntrySnapshot, () => "[]");
   const fcaSnapshot = useSyncExternalStore(subscribeFcaWatch, getFcaWatchSnapshot, () => "[]");
   const entries = useMemo(() => parseBestEntrySnapshot(snapshot), [snapshot]);
   const fcaWatches = useMemo(() => parseFcaWatchSnapshot(fcaSnapshot), [fcaSnapshot]);
-  const fcaAlerts = fcaWatches.filter((record) => record.alert);
+  const allFcaAlerts = fcaWatches.filter((record) => record.alert);
+  const fcaAlerts = allFcaAlerts.filter((record) => filter === "all" || (record.alert?.unread && !isRead(fcaNotificationId(record))));
+  const visibleCaReminders = caReminders.filter((note) => filter === "all" || !isRead(caNotificationId(note)));
   const tickers = useMemo(() => entries.map((entry) => entry.ticker).join(","), [entries]);
 
   const rows = entries.map((entry) => {
@@ -78,10 +84,26 @@ export function NotificationCenter() {
       gapPercent,
       source: quote?.source,
       quoteUpdatedAt: quote?.updatedAt,
+      read: isRead(bestEntryNotificationId(entry)),
     };
   });
-  const reachedRows = rows.filter((row) => row.reached);
+  const allReachedRows = rows.filter((row) => row.reached);
+  const reachedRows = allReachedRows.filter((row) => filter === "all" || !row.read);
   const waitingRows = rows.filter((row) => !row.reached);
+  const unreadIds = [
+    ...allReachedRows.filter((row) => !row.read).map(bestEntryNotificationId),
+    ...allFcaAlerts.filter((record) => record.alert?.unread && !isRead(fcaNotificationId(record))).map(fcaNotificationId),
+    ...caReminders.filter((note) => !isRead(caNotificationId(note))).map(caNotificationId),
+  ];
+
+  async function acknowledge(ids: string[], showSuccess = false) {
+    try {
+      await markNotificationsRead(ids);
+      if (showSuccess) toast.success("Notifikasi ditandai sudah dibaca");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Status baca belum tersinkron.");
+    }
+  }
 
   useEffect(() => {
     if (!tickers) return;
@@ -123,11 +145,6 @@ export function NotificationCenter() {
     return () => { controller.abort(); window.removeEventListener(stockCaResearchChangeEvent, loadCaReminders); };
   }, []);
 
-  useEffect(() => {
-    const timeout = window.setTimeout(markFcaAlertsRead, 800);
-    return () => window.clearTimeout(timeout);
-  }, [fcaSnapshot]);
-
   async function deleteEntry(ticker: string) {
     const entry = entries.find((item) => item.ticker === ticker);
     const confirmed = await confirm({
@@ -154,8 +171,8 @@ export function NotificationCenter() {
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex">
           <div className="rounded-md border border-green-100 bg-green-50 px-3 py-2">
-            <p className="text-xs font-medium text-green-700">Siap Dicek</p>
-            <p className="mt-1 text-xl font-semibold text-green-800">{reachedRows.length}</p>
+            <p className="text-xs font-medium text-green-700">Belum Dibaca</p>
+            <p aria-live="polite" className="mt-1 text-xl font-semibold text-green-800">{ready ? unreadIds.length : "-"}</p>
           </div>
           <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
             <p className="text-xs font-medium text-gray-500">Dipantau</p>
@@ -163,7 +180,7 @@ export function NotificationCenter() {
           </div>
           <div className="rounded-md border border-amber-100 bg-amber-50 px-3 py-2">
             <p className="text-xs font-medium text-amber-700">Alert FCA</p>
-            <p className="mt-1 text-xl font-semibold text-amber-800">{fcaAlerts.length}</p>
+            <p className="mt-1 text-xl font-semibold text-amber-800">{allFcaAlerts.length}</p>
           </div>
           <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2">
             <p className="text-xs font-medium text-blue-700">Reminder CA</p>
@@ -172,17 +189,28 @@ export function NotificationCenter() {
         </div>
       </div>
 
-      {caReminders.length > 0 ? (
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div role="group" aria-label="Filter status notifikasi" className="inline-flex rounded-md border border-gray-200 bg-gray-50 p-1">
+          {([{ id: "all", label: "Semua" }, { id: "unread", label: "Belum dibaca" }] as const).map((item) => <button key={item.id} type="button" aria-pressed={filter === item.id} onClick={() => setFilter(item.id)} className={cn("min-h-9 rounded px-3 text-sm font-medium", filter === item.id ? "bg-white text-gray-950 shadow-sm" : "text-gray-600 hover:text-gray-950")}>{item.label}</button>)}
+        </div>
+        <button type="button" disabled={!ready || unreadIds.length === 0} onClick={() => void acknowledge(unreadIds, true)} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-gray-200 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"><CheckCircle2 className="size-4" aria-hidden="true" />Tandai semua dibaca</button>
+      </div>
+      {ready && filter === "unread" && unreadIds.length === 0 ? <p role="status" className="mb-6 rounded-md border border-gray-200 p-5 text-sm text-gray-600">Semua notifikasi sudah dibaca.</p> : null}
+
+      {visibleCaReminders.length > 0 ? (
         <div className="mb-6">
           <h2 className="mb-3 text-base font-semibold text-gray-950">Research Corporate Action Perlu Dicek</h2>
           <div className="grid gap-3">
-            {caReminders.map((reminder) => (
-              <Link key={reminder.id} href={`/stocks/${reminder.ticker}#corporate-action`} className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 hover:bg-blue-50">
+            {visibleCaReminders.map((reminder) => (
+              <div key={reminder.id} className={cn("rounded-lg border p-4", isRead(caNotificationId(reminder)) ? "border-gray-200 bg-white" : "border-blue-200 bg-blue-50/50")}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div><div className="flex flex-wrap items-center gap-2"><span className="text-lg font-semibold text-gray-950">{reminder.ticker}</span><span className="rounded bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">{reminder.actionType}</span></div><p className="mt-1 text-sm font-medium text-gray-800">{reminder.title}</p><p className="mt-1 text-xs text-gray-500">Reminder {new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "Asia/Jakarta" }).format(new Date(`${reminder.reminderDate}T00:00:00+07:00`))}</p></div>
-                  <span className="text-xs font-semibold text-blue-700">Buka research</span>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <ReadAction read={isRead(caNotificationId(reminder))} disabled={!ready} onRead={() => void acknowledge([caNotificationId(reminder)])} />
+                    <Link href={`/stocks/${reminder.ticker}#corporate-action`} onClick={() => void acknowledge([caNotificationId(reminder)])} className="inline-flex min-h-10 items-center text-xs font-semibold text-blue-700">Buka research</Link>
+                  </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </div>
@@ -193,10 +221,13 @@ export function NotificationCenter() {
           <div className="mb-3 flex items-center justify-between gap-3"><h2 className="text-base font-semibold text-gray-950">Perubahan FCA</h2><Link href="/fca" className="text-xs font-semibold text-red-700 hover:underline">Buka tracker</Link></div>
           <div className="grid gap-3">
             {fcaAlerts.map((record) => (
-              <div key={record.ticker} className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
+              <div key={record.ticker} className={cn("rounded-lg border p-4", !record.alert?.unread || isRead(fcaNotificationId(record)) ? "border-gray-200 bg-white" : "border-amber-200 bg-amber-50/50")}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div><div className="flex items-center gap-2"><Link href={`/stocks/${record.ticker}`} className="text-lg font-semibold text-gray-950 hover:text-red-700">{record.ticker}</Link><span className="rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700">FCA</span></div><p className="mt-1 text-sm text-gray-700">{record.alert?.message}</p><p className="mt-1 text-xs text-gray-500">{record.companyName}</p></div>
-                  <Link href="/fca" className="inline-flex h-9 items-center justify-center rounded-md border border-amber-200 bg-white px-3 text-sm font-semibold text-amber-800">Lihat riwayat</Link>
+                  <div><div className="flex items-center gap-2"><Link href={`/stocks/${record.ticker}`} onClick={() => void acknowledge([fcaNotificationId(record)])} className="text-lg font-semibold text-gray-950 hover:text-red-700">{record.ticker}</Link><span className="rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700">FCA</span></div><p className="mt-1 text-sm text-gray-700">{record.alert?.message}</p><p className="mt-1 text-xs text-gray-500">{record.companyName}</p></div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <ReadAction read={!record.alert?.unread || isRead(fcaNotificationId(record))} disabled={!ready} onRead={() => void acknowledge([fcaNotificationId(record)])} />
+                    <Link href="/fca" onClick={() => void acknowledge([fcaNotificationId(record)])} className="inline-flex h-9 items-center justify-center rounded-md border border-amber-200 bg-white px-3 text-sm font-semibold text-amber-800">Lihat riwayat</Link>
+                  </div>
                 </div>
               </div>
             ))}
@@ -225,13 +256,13 @@ export function NotificationCenter() {
               <h2 className="mb-3 text-base font-semibold text-gray-950">Harga Sudah Masuk Entry</h2>
               <div className="grid gap-3">
                 {reachedRows.map((row) => (
-                  <NotificationRow key={row.ticker} row={row} onDelete={deleteEntry} highlight />
+                  <NotificationRow key={row.ticker} row={row} onDelete={deleteEntry} onRead={() => void acknowledge([bestEntryNotificationId(row)])} readReady={ready} highlight={!row.read} />
                 ))}
               </div>
             </div>
           ) : null}
 
-          {entries.length > 0 ? <div>
+          {filter === "all" && entries.length > 0 ? <div>
             <h2 className="mb-3 text-base font-semibold text-gray-950">Pantauan Best Entry</h2>
             <div className="grid gap-3">
               {waitingRows.length > 0 ? (
@@ -253,6 +284,8 @@ export function NotificationCenter() {
 function NotificationRow({
   row,
   onDelete,
+  onRead,
+  readReady = false,
   highlight = false,
 }: {
   row: {
@@ -265,8 +298,11 @@ function NotificationRow({
     gapPercent: number | null;
     source?: string;
     quoteUpdatedAt?: string;
+    read: boolean;
   };
   onDelete: (ticker: string) => void;
+  onRead?: () => void;
+  readReady?: boolean;
   highlight?: boolean;
 }) {
   return (
@@ -279,7 +315,7 @@ function NotificationRow({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={`/stocks/${row.ticker}`} className="text-lg font-semibold text-gray-950 hover:text-red-700">
+            <Link href={`/stocks/${row.ticker}`} onClick={row.reached ? onRead : undefined} className="text-lg font-semibold text-gray-950 hover:text-red-700">
               {row.ticker}
             </Link>
             <span
@@ -307,9 +343,11 @@ function NotificationRow({
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {row.reached ? <ReadAction read={row.read} disabled={!readReady} onRead={() => onRead?.()} /> : null}
           <Link
             href={`/stocks/${row.ticker}`}
+            onClick={row.reached ? onRead : undefined}
             className="inline-flex size-10 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-700 transition duration-150 hover:bg-gray-50"
             aria-label={`Buka detail ${row.ticker}`}
           >
@@ -327,6 +365,11 @@ function NotificationRow({
       </div>
     </div>
   );
+}
+
+function ReadAction({ read, disabled, onRead }: { read: boolean; disabled: boolean; onRead: () => void }) {
+  if (read) return <span className="inline-flex items-center gap-1.5 text-xs text-gray-500"><CheckCircle2 className="size-3.5" aria-hidden="true" />Sudah dibaca</span>;
+  return <button type="button" disabled={disabled} onClick={onRead} className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"><CheckCircle2 className="size-3.5" aria-hidden="true" />Tandai dibaca</button>;
 }
 
 function Metric({ label, value, detail, positive = false }: { label: string; value: string; detail: string; positive?: boolean }) {

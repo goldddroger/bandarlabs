@@ -105,7 +105,8 @@ function getQuarterFromDate(value: string) {
   return Math.min(4, Math.max(1, Math.ceil(month / 3) || 1));
 }
 
-export function PortfolioDashboard() {
+export function PortfolioDashboard({ view = "positions" }: { view?: "positions" | "history" }) {
+  const historyView = view === "history";
   const { confirm, confirmationDialog } = useConfirmDialog();
   const portfolio = usePortfolioData();
   const [quotes, setQuotes] = useState<Record<string, LiveQuote>>({});
@@ -153,8 +154,8 @@ export function PortfolioDashboard() {
   }, []);
 
   const tickerKey = useMemo(
-    () => Array.from(new Set(portfolio.holdings.map((holding) => holding.ticker))).sort().join(","),
-    [portfolio.holdings],
+    () => historyView ? "" : Array.from(new Set(portfolio.holdings.map((holding) => holding.ticker))).sort().join(","),
+    [historyView, portfolio.holdings],
   );
 
   useEffect(() => {
@@ -197,11 +198,12 @@ export function PortfolioDashboard() {
   const currentMonth = getJakartaDate().slice(0, 7);
   const monthlyTrades = portfolio.trades.filter((trade) => trade.soldAt.startsWith(currentMonth));
   const monthlyStats = summarizeTrades(monthlyTrades);
+  const allTimeStats = summarizeTrades(portfolio.trades);
   const monthlyRealized = monthlyStats.realized;
   const winRate = monthlyStats.winRate;
 
   useEffect(() => {
-    if (portfolio.holdings.length === 0 || resolvedQuoteKey !== tickerKey) return;
+    if (historyView || portfolio.holdings.length === 0 || resolvedQuoteKey !== tickerKey) return;
     const today = getJakartaDate();
     const existing = portfolio.equityHistory.find((snapshot) => snapshot.date === today);
     if (existing && Math.round(existing.equity) === Math.round(totalEquity)) return;
@@ -211,7 +213,7 @@ export function PortfolioDashboard() {
       { date: today, equity: totalEquity },
     ].sort((first, second) => first.date.localeCompare(second.date));
     savePortfolio({ ...portfolio, equityHistory: nextHistory });
-  }, [portfolio, resolvedQuoteKey, tickerKey, totalEquity]);
+  }, [historyView, portfolio, resolvedQuoteKey, tickerKey, totalEquity]);
 
   function openAddHolding() {
     setHoldingDraft({ ...emptyHolding, purchasedAt: getJakartaDate() });
@@ -341,7 +343,7 @@ export function PortfolioDashboard() {
         requestId: Date.now(),
       });
       toast.success(exists ? `Trade ${ticker} berhasil diperbarui` : `Trade ${ticker} berhasil ditambahkan`, {
-        description: `${lots} lot dengan realized P/L ${formatCurrency(calculateRealizedGain(savedTrade))}. History bulan trade sudah ditampilkan.`,
+        description: `${lots} lot dengan realized P/L ${formatCurrency(calculateRealizedGain(savedTrade))}. Riwayat bulan transaksi sudah ditampilkan.`,
       });
     } catch {
       toast.error("Trade gagal disimpan", {
@@ -387,9 +389,9 @@ export function PortfolioDashboard() {
       <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="mb-2 text-sm text-gray-500">Portfolio Pribadi</p>
-          <h1 className="text-2xl font-semibold tracking-normal text-gray-950">Portfolio Saya</h1>
+          <h1 className="text-2xl font-semibold tracking-normal text-gray-950">{historyView ? "Performa Trading" : "Portfolio Saya"}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-            Nilai posisi aktif, unrealized profit/loss, serta performa trade yang sudah direalisasikan.
+            {historyView ? "Riwayat transaksi selesai dan hasil profit/loss setelah fee." : "Posisi saham aktif, modal, valuasi pasar, dan unrealized profit/loss."}
           </p>
           <span className={cn("mt-2 inline-flex items-center gap-1.5 text-xs font-medium", syncState === "error" ? "text-red-700" : "text-gray-500")}>
             <Cloud className="size-3.5" />
@@ -397,32 +399,42 @@ export function PortfolioDashboard() {
           </span>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex">
-          <Button type="button" variant="ghost" className="col-span-2 px-3 sm:col-span-1" onClick={exportPortfolioSql}>
+          <Button type="button" variant="ghost" className="px-3" onClick={exportPortfolioSql}>
             <Download className="size-4" /> Unduh SQL
           </Button>
-          <Button type="button" variant="outline" className="px-3" onClick={openAddTrade}>
+          {historyView ? <Button type="button" className="px-3" onClick={openAddTrade}>
             <History className="size-4" /> Catat trade
-          </Button>
-          <Button type="button" className="px-3" onClick={openAddHolding}>
+          </Button> : <Button type="button" className="px-3" onClick={openAddHolding}>
             <Plus className="size-4" /> Tambah posisi
-          </Button>
+          </Button>}
         </div>
       </div>
 
-      <div className="mb-5 grid overflow-hidden rounded-lg border border-gray-200 bg-white sm:grid-cols-2 xl:grid-cols-4">
-        <PortfolioMetric icon={WalletCards} label="Total Equity Saham" value={formatCompactCurrency(totalEquity)} detail={`${portfolio.holdings.length} posisi aktif`} />
-        <PortfolioMetric icon={BriefcaseBusiness} label="Modal Posisi" value={formatCompactCurrency(totalCapital)} detail="Berdasarkan harga rata-rata" />
-        <PortfolioMetric icon={unrealizedGain >= 0 ? ArrowUpRight : ArrowDownRight} label="Unrealized P/L" value={formatCompactCurrency(unrealizedGain)} detail={formatPercent(unrealizedPercent)} tone={unrealizedGain >= 0 ? "positive" : "negative"} />
-        <PortfolioMetric icon={TrendingUp} label="Realized Bulan Ini" value={formatCompactCurrency(monthlyRealized)} detail={`${monthlyTrades.length} trade · win rate ${winRate.toFixed(0)}%`} tone={monthlyRealized >= 0 ? "positive" : "negative"} />
+      <nav aria-label="Halaman portfolio" className="mb-5 flex gap-1 border-b border-gray-200">
+        {([{ href: "/portfolio", label: "Posisi Aktif", icon: WalletCards, active: !historyView }, { href: "/portfolio/history", label: "Performa Trading", icon: History, active: historyView }]).map(({ href, label, icon: Icon, active }) => (
+          <Link key={href} href={href} aria-current={active ? "page" : undefined} className={cn("inline-flex min-h-11 items-center gap-2 border-b-2 px-3 text-sm font-medium", active ? "border-red-600 text-red-700" : "border-transparent text-gray-500 hover:text-gray-900")}><Icon className="size-4 shrink-0" aria-hidden="true" />{label}</Link>
+        ))}
+      </nav>
+
+      <div className={cn("mb-5 grid overflow-hidden rounded-lg border border-gray-200 bg-white", historyView ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-3")}>
+        {historyView ? <>
+          <PortfolioMetric icon={TrendingUp} label="Realized Keseluruhan" value={formatCompactCurrency(allTimeStats.realized)} detail="Bersih setelah fee" tone={allTimeStats.realized >= 0 ? "positive" : "negative"} />
+          <PortfolioMetric icon={TrendingUp} label="Realized Bulan Ini" value={formatCompactCurrency(monthlyRealized)} detail={`${monthlyTrades.length} trade · win rate ${winRate.toFixed(0)}%`} tone={monthlyRealized >= 0 ? "positive" : "negative"} />
+          <PortfolioMetric icon={History} label="Total Trade Selesai" value={new Intl.NumberFormat("id-ID").format(allTimeStats.count)} detail={`${allTimeStats.tickerCount} saham · seluruh riwayat`} />
+          <PortfolioMetric icon={TrendingUp} label="Win Rate Keseluruhan" value={allTimeStats.count ? `${allTimeStats.winRate.toFixed(1)}%` : "-"} detail={`${allTimeStats.wins} win · ${allTimeStats.losses} loss · ${allTimeStats.breakeven} impas`} />
+        </> : <>
+          <PortfolioMetric icon={WalletCards} label="Total Equity Saham" value={formatCompactCurrency(totalEquity)} detail={`${portfolio.holdings.length} posisi aktif`} />
+          <PortfolioMetric icon={BriefcaseBusiness} label="Modal Posisi" value={formatCompactCurrency(totalCapital)} detail="Berdasarkan harga rata-rata" />
+          <PortfolioMetric icon={unrealizedGain >= 0 ? ArrowUpRight : ArrowDownRight} label="Unrealized P/L" value={formatCompactCurrency(unrealizedGain)} detail={formatPercent(unrealizedPercent)} tone={unrealizedGain >= 0 ? "positive" : "negative"} />
+        </>}
       </div>
 
-      <div className="mb-5 grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.5fr)]">
-        <PortfolioHistoryChart history={portfolio.equityHistory} trades={portfolio.trades} hasActivePositions={portfolio.holdings.length > 0} onClearEquity={clearEquityHistory} />
-        <MonthlyPerformance stats={monthlyStats} />
+      <div className={cn("mb-5 grid gap-5", historyView && "xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.5fr)]")}>
+        <PortfolioHistoryChart mode={historyView ? "trade" : "equity"} history={portfolio.equityHistory} trades={portfolio.trades} hasActivePositions={portfolio.holdings.length > 0} onClearEquity={clearEquityHistory} />
+        {historyView ? <MonthlyPerformance stats={monthlyStats} /> : null}
       </div>
 
-      <PositionsSection rows={positionRows} resolved={resolvedQuoteKey === tickerKey} onAdd={openAddHolding} onEdit={editHolding} onDelete={deleteHolding} />
-      <TradeHistorySection trades={portfolio.trades} filter={tradeHistoryFilter} onFilterChange={setTradeHistoryFilter} focus={tradeHistoryFocus} onAdd={openAddTrade} onEdit={editTrade} onDelete={deleteTrade} />
+      {historyView ? <TradeHistorySection trades={portfolio.trades} filter={tradeHistoryFilter} onFilterChange={setTradeHistoryFilter} focus={tradeHistoryFocus} onAdd={openAddTrade} onEdit={editTrade} onDelete={deleteTrade} /> : <PositionsSection rows={positionRows} resolved={resolvedQuoteKey === tickerKey} onAdd={openAddHolding} onEdit={editHolding} onDelete={deleteHolding} />}
 
       {holdingModalOpen ? <HoldingModal draft={holdingDraft} onClose={() => setHoldingModalOpen(false)} onSave={saveHolding} /> : null}
       {tradeModalOpen ? <TradeModal draft={tradeDraft} onClose={() => setTradeModalOpen(false)} onSave={saveTrade} /> : null}
@@ -448,8 +460,7 @@ function PortfolioMetric({ icon: Icon, label, value, detail, tone }: { icon: typ
 
 type PortfolioChartRow = { date: string; value: number; label: string };
 
-function PortfolioHistoryChart({ history, trades, hasActivePositions, onClearEquity }: { history: Array<{ date: string; equity: number }>; trades: RealizedTrade[]; hasActivePositions: boolean; onClearEquity: () => void }) {
-  const [mode, setMode] = useState<"equity" | "trade">("equity");
+function PortfolioHistoryChart({ mode, history, trades, hasActivePositions, onClearEquity }: { mode: "equity" | "trade"; history: Array<{ date: string; equity: number }>; trades: RealizedTrade[]; hasActivePositions: boolean; onClearEquity: () => void }) {
   const equityData: PortfolioChartRow[] = history.slice(-31).map((snapshot) => ({ date: snapshot.date, value: snapshot.equity, label: snapshot.date.slice(5).replace("-", "/") }));
   const tradeData = useMemo<PortfolioChartRow[]>(() => {
     const dailyGain = new Map<string, number>();
@@ -474,16 +485,12 @@ function PortfolioHistoryChart({ history, trades, hasActivePositions, onClearEqu
     <section className="min-w-0 rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-gray-950">Riwayat Performa</h2>
+          <h2 className="text-sm font-semibold text-gray-950">{mode === "equity" ? "Equity Harian" : "Grafik Realized P/L"}</h2>
           <p className="mt-1 text-xs text-gray-500">
-            {mode === "equity" ? hasActivePositions ? "Valuasi harian posisi aktif." : "Snapshot historis sebelum posisi aktif dihapus atau ditutup." : "Akumulasi realized P/L berdasarkan trade selesai."}
+            {mode === "equity" ? hasActivePositions ? "Valuasi harian posisi aktif." : "Snapshot historis sebelum posisi aktif dihapus atau ditutup." : "Akumulasi realized P/L seluruh riwayat trade selesai, setelah fee."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-grid grid-cols-2 rounded-md border border-gray-200 bg-gray-50 p-0.5" aria-label="Pilih grafik portfolio">
-            <button type="button" onClick={() => setMode("equity")} className={cn("h-8 rounded px-3 text-xs font-semibold transition", mode === "equity" ? "bg-white text-gray-950 shadow-sm" : "text-gray-500 hover:text-gray-900")}>Equity Harian</button>
-            <button type="button" onClick={() => setMode("trade")} className={cn("h-8 rounded px-3 text-xs font-semibold transition", mode === "trade" ? "bg-white text-gray-950 shadow-sm" : "text-gray-500 hover:text-gray-900")}>Realized Trade</button>
-          </div>
           {mode === "equity" && history.length ? <Button type="button" variant="ghost" className="h-9 px-2.5 text-xs text-gray-500 hover:text-red-700" onClick={onClearEquity} title="Hapus seluruh snapshot equity"><Trash2 className="size-4" />Reset</Button> : null}
         </div>
       </div>
@@ -642,19 +649,19 @@ function TradeHistorySection({ trades, filter, onFilterChange, focus, onAdd, onE
       : `Tahun ${filter.year}`;
 
   return (
-    <section ref={sectionRef} aria-label="History Trade" className="scroll-mt-24 overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <section ref={sectionRef} aria-label="Riwayat Transaksi" className="scroll-mt-24 overflow-hidden rounded-lg border border-gray-200 bg-white">
       <div className="border-b border-gray-200 bg-gray-50 px-4 py-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-gray-950">History Trade</h2>
-            <p className="mt-1 text-xs text-gray-500">Lookup realized gain berdasarkan bulan, kuartal, atau satu tahun.</p>
+            <h2 className="text-sm font-semibold text-gray-950">Riwayat Transaksi</h2>
+            <p className="mt-1 text-xs text-gray-500">Realisasi profit/loss bulanan, kuartalan, atau tahunan.</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <span className="rounded bg-white px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-200">{periodLabel}</span>
             </div>
           </div>
 
           <div className="grid min-w-0 gap-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] xl:min-w-[560px]">
-            <div className="inline-grid grid-cols-3 rounded-md border border-gray-200 bg-white p-0.5 sm:col-span-3" aria-label="Periode history trade">
+            <div className="inline-grid grid-cols-3 rounded-md border border-gray-200 bg-white p-0.5 sm:col-span-3" aria-label="Periode riwayat transaksi">
               {([['month', 'Bulanan'], ['quarter', 'Kuartal'], ['year', '1 Tahun']] as const).map(([mode, label]) => (
                 <button key={mode} type="button" aria-pressed={filter.mode === mode} onClick={() => onFilterChange({ ...filter, mode })} className={cn("h-8 rounded px-3 text-xs font-semibold transition", filter.mode === mode ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50 hover:text-gray-900")}>{label}</button>
               ))}
@@ -698,7 +705,7 @@ function TradeHistorySection({ trades, filter, onFilterChange, focus, onAdd, onE
         </div>
         <button type="button" onClick={() => onFilterChange({ mode: "month", month: currentMonth, quarter: getQuarterFromDate(today), year: today.slice(0, 4) })} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-red-700 hover:bg-red-50"><History className="size-3.5" aria-hidden="true" />Lihat bulan ini</button>
       </div>
-      <section aria-label="Statistik history trade" className="border-b border-gray-200 px-4 py-4">
+      <section aria-label="Statistik riwayat transaksi" className="border-b border-gray-200 px-4 py-4">
         <h3 className="text-xs font-semibold text-gray-900">Statistik {periodLabel}</h3>
         <dl className="mt-3 grid min-w-0 grid-cols-2 gap-x-4 sm:grid-cols-4">
           <TradeStatistic label="Total trade" value={new Intl.NumberFormat("id-ID").format(stats.count)} detail={`${stats.tickerCount} saham · ${new Intl.NumberFormat("id-ID").format(stats.totalLots)} lot`} />
