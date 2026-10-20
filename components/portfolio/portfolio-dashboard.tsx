@@ -34,6 +34,7 @@ import {
   usePortfolioData,
 } from "@/lib/portfolio-store";
 import { cn } from "@/lib/utils";
+import { summarizeTrades } from "@/lib/portfolio-performance";
 
 type LiveQuote = {
   ticker: string;
@@ -195,9 +196,9 @@ export function PortfolioDashboard() {
   const unrealizedPercent = totalCapital > 0 ? (unrealizedGain / totalCapital) * 100 : 0;
   const currentMonth = getJakartaDate().slice(0, 7);
   const monthlyTrades = portfolio.trades.filter((trade) => trade.soldAt.startsWith(currentMonth));
-  const monthlyRealized = monthlyTrades.reduce((total, trade) => total + calculateRealizedGain(trade), 0);
-  const winningTrades = monthlyTrades.filter((trade) => calculateRealizedGain(trade) > 0).length;
-  const winRate = monthlyTrades.length > 0 ? (winningTrades / monthlyTrades.length) * 100 : 0;
+  const monthlyStats = summarizeTrades(monthlyTrades);
+  const monthlyRealized = monthlyStats.realized;
+  const winRate = monthlyStats.winRate;
 
   useEffect(() => {
     if (portfolio.holdings.length === 0 || resolvedQuoteKey !== tickerKey) return;
@@ -417,7 +418,7 @@ export function PortfolioDashboard() {
 
       <div className="mb-5 grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.5fr)]">
         <PortfolioHistoryChart history={portfolio.equityHistory} trades={portfolio.trades} hasActivePositions={portfolio.holdings.length > 0} onClearEquity={clearEquityHistory} />
-        <MonthlyPerformance tradeCount={monthlyTrades.length} wins={winningTrades} winRate={winRate} realized={monthlyRealized} />
+        <MonthlyPerformance stats={monthlyStats} />
       </div>
 
       <PositionsSection rows={positionRows} resolved={resolvedQuoteKey === tickerKey} onAdd={openAddHolding} onEdit={editHolding} onDelete={deleteHolding} />
@@ -519,16 +520,16 @@ function PortfolioHistoryChart({ history, trades, hasActivePositions, onClearEqu
   );
 }
 
-function MonthlyPerformance({ tradeCount, wins, winRate, realized }: { tradeCount: number; wins: number; winRate: number; realized: number }) {
+function MonthlyPerformance({ stats }: { stats: ReturnType<typeof summarizeTrades> }) {
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
       <h2 className="text-sm font-semibold text-gray-950">Performa Bulan Ini</h2>
       <p className="mt-1 text-xs text-gray-500">Hanya menghitung trade yang sudah ditutup.</p>
       <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-1">
-        <PerformanceValue label="Total trade" value={String(tradeCount)} />
-        <PerformanceValue label="Win / Loss" value={`${wins} / ${tradeCount - wins}`} />
-        <PerformanceValue label="Win ratio" value={`${winRate.toFixed(1)}%`} />
-        <PerformanceValue label="Realized P/L" value={formatCompactCurrency(realized)} tone={realized >= 0 ? "positive" : "negative"} />
+        <PerformanceValue label="Total trade" value={String(stats.count)} />
+        <PerformanceValue label="Win / Loss / Impas" value={`${stats.wins} / ${stats.losses} / ${stats.breakeven}`} />
+        <PerformanceValue label="Win ratio" value={`${stats.winRate.toFixed(1)}%`} />
+        <PerformanceValue label="Realized P/L" value={formatCompactCurrency(stats.realized)} tone={stats.realized >= 0 ? "positive" : "negative"} />
       </div>
     </section>
   );
@@ -629,7 +630,11 @@ function TradeHistorySection({ trades, filter, onFilterChange, focus, onAdd, onE
       return trade.soldAt.startsWith(filter.year);
     })
     .sort((first, second) => second.soldAt.localeCompare(first.soldAt));
-  const periodRealized = sortedTrades.reduce((total, trade) => total + calculateRealizedGain(trade), 0);
+  const stats = summarizeTrades(sortedTrades);
+  const today = getJakartaDate();
+  const currentMonth = today.slice(0, 7);
+  const monthlyStats = summarizeTrades(trades.filter((trade) => trade.soldAt.startsWith(currentMonth)));
+  const monthLabel = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${currentMonth}-01T00:00:00Z`));
   const periodLabel = filter.mode === "month"
     ? new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${filter.month}-01T00:00:00Z`))
     : filter.mode === "quarter"
@@ -637,7 +642,7 @@ function TradeHistorySection({ trades, filter, onFilterChange, focus, onAdd, onE
       : `Tahun ${filter.year}`;
 
   return (
-    <section ref={sectionRef} className="scroll-mt-24 overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <section ref={sectionRef} aria-label="History Trade" className="scroll-mt-24 overflow-hidden rounded-lg border border-gray-200 bg-white">
       <div className="border-b border-gray-200 bg-gray-50 px-4 py-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
@@ -645,15 +650,13 @@ function TradeHistorySection({ trades, filter, onFilterChange, focus, onAdd, onE
             <p className="mt-1 text-xs text-gray-500">Lookup realized gain berdasarkan bulan, kuartal, atau satu tahun.</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <span className="rounded bg-white px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-200">{periodLabel}</span>
-              <span className="rounded bg-white px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-200">{sortedTrades.length} trade</span>
-              <span className={cn("rounded px-2 py-1 text-xs font-semibold", periodRealized >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>{formatCompactCurrency(periodRealized)}</span>
             </div>
           </div>
 
           <div className="grid min-w-0 gap-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] xl:min-w-[560px]">
             <div className="inline-grid grid-cols-3 rounded-md border border-gray-200 bg-white p-0.5 sm:col-span-3" aria-label="Periode history trade">
               {([['month', 'Bulanan'], ['quarter', 'Kuartal'], ['year', '1 Tahun']] as const).map(([mode, label]) => (
-                <button key={mode} type="button" onClick={() => onFilterChange({ ...filter, mode })} className={cn("h-8 rounded px-3 text-xs font-semibold transition", filter.mode === mode ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50 hover:text-gray-900")}>{label}</button>
+                <button key={mode} type="button" aria-pressed={filter.mode === mode} onClick={() => onFilterChange({ ...filter, mode })} className={cn("h-8 rounded px-3 text-xs font-semibold transition", filter.mode === mode ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50 hover:text-gray-900")}>{label}</button>
               ))}
             </div>
 
@@ -662,8 +665,9 @@ function TradeHistorySection({ trades, filter, onFilterChange, focus, onAdd, onE
                 <input
                   type="month"
                   value={filter.month}
-                  onChange={(event) => {
+                    onChange={(event) => {
                     const month = event.target.value;
+                      if (!month) return;
                     onFilterChange({ ...filter, month, year: month.slice(0, 4), quarter: getQuarterFromDate(`${month}-01`) });
                   }}
                   aria-label="Filter bulan trade"
@@ -686,10 +690,60 @@ function TradeHistorySection({ trades, filter, onFilterChange, focus, onAdd, onE
           </div>
         </div>
       </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-3" aria-label="Ringkasan trade bulan ini">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+          <span className="font-medium text-gray-900">Bulan ini · {monthLabel}</span>
+          <span className="text-gray-600">{monthlyStats.count} trade</span>
+          <span className={cn("font-semibold tabular-nums", monthlyStats.realized < 0 ? "text-red-700" : "text-emerald-700")}>{formatCurrency(monthlyStats.realized)}</span>
+        </div>
+        <button type="button" onClick={() => onFilterChange({ mode: "month", month: currentMonth, quarter: getQuarterFromDate(today), year: today.slice(0, 4) })} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-red-700 hover:bg-red-50"><History className="size-3.5" aria-hidden="true" />Lihat bulan ini</button>
+      </div>
+      <section aria-label="Statistik history trade" className="border-b border-gray-200 px-4 py-4">
+        <h3 className="text-xs font-semibold text-gray-900">Statistik {periodLabel}</h3>
+        <dl className="mt-3 grid min-w-0 grid-cols-2 gap-x-4 sm:grid-cols-4">
+          <TradeStatistic label="Total trade" value={new Intl.NumberFormat("id-ID").format(stats.count)} detail={`${stats.tickerCount} saham · ${new Intl.NumberFormat("id-ID").format(stats.totalLots)} lot`} />
+          <TradeStatistic label="Win rate" value={stats.count ? `${stats.winRate.toFixed(1)}%` : "-"} detail={`${stats.wins} win · ${stats.losses} loss · ${stats.breakeven} impas`} />
+          <TradeStatistic label="Realized P/L" value={formatCurrency(stats.realized)} detail="Bersih setelah fee" amount={stats.realized} />
+          <TradeStatistic label="Profit factor" value={stats.profitFactor === null ? "-" : `${stats.profitFactor.toFixed(2)}x`} detail={stats.count > 0 && stats.totalLoss === 0 ? "Belum ada loss" : "Total profit / total loss"} />
+          <TradeStatistic label="Total profit" value={formatCurrency(stats.totalProfit)} detail="Akumulasi trade profit" amount={stats.totalProfit} />
+          <TradeStatistic label="Total loss" value={formatCurrency(-stats.totalLoss)} detail="Akumulasi trade loss" amount={-stats.totalLoss} />
+          <TradeStatistic label="Total fee" value={formatCurrency(stats.totalFees)} detail="Fee beli + fee jual" />
+          <TradeStatistic label="Rata-rata P/L" value={formatCurrency(stats.averageGain)} detail="Bersih per trade" amount={stats.averageGain} />
+        </dl>
+      </section>
       {sortedTrades.length === 0 ? <EmptyState icon={History} title="Belum ada trade pada periode ini" description="Ubah periode atau catat transaksi yang sudah ditutup untuk melihat realized gain." action="Catat trade" onAction={onAdd} /> : (
-        <div className="bandarlab-scrollbar overflow-x-auto"><table className="w-full min-w-[920px] text-left text-sm"><thead className="bg-white text-xs uppercase text-gray-500"><tr>{["Tanggal Jual", "Saham", "Lot", "Harga Beli", "Harga Jual", "Realized P/L", "Hasil", "Aksi"].map((head) => <th key={head} className="px-4 py-3 font-semibold">{head}</th>)}</tr></thead><tbody className="divide-y divide-gray-100">{sortedTrades.map((trade) => { const gain = calculateRealizedGain(trade); return <tr key={trade.id} className={cn("transition duration-300 hover:bg-gray-50", trade.id === focus.tradeId && "bg-red-50/70")}><td className="whitespace-nowrap px-4 py-4 text-gray-600">{formatDisplayDate(trade.soldAt)}</td><td className="px-4 py-4"><Link href={`/stocks/${trade.ticker}`} className="font-semibold text-red-700 hover:underline">{trade.ticker}</Link></td><td className="px-4 py-4 font-semibold text-gray-900">{trade.lots}</td><td className="whitespace-nowrap px-4 py-4 text-gray-700">{formatCurrency(trade.buyPrice)}</td><td className="whitespace-nowrap px-4 py-4 text-gray-700">{formatCurrency(trade.sellPrice)}</td><td className={cn("whitespace-nowrap px-4 py-4 font-semibold", gain >= 0 ? "text-emerald-700" : "text-red-700")}>{formatCurrency(gain)}</td><td className="px-4 py-4"><span className={cn("rounded px-2 py-1 text-xs font-semibold", gain > 0 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>{gain > 0 ? "WIN" : "LOSS"}</span></td><td className="px-4 py-4"><RowActions label={`trade ${trade.ticker}`} onEdit={() => onEdit(trade)} onDelete={() => onDelete(trade.id)} /></td></tr>; })}</tbody></table></div>
+        <div className="bandarlab-scrollbar overflow-x-auto">
+          <table className="w-full min-w-[920px] text-left text-sm">
+            <thead className="bg-white text-xs uppercase text-gray-500"><tr>{["Tanggal Jual", "Saham", "Lot", "Harga Beli", "Harga Jual", "Realized P/L", "Hasil", "Aksi"].map((head) => <th key={head} className="px-4 py-3 font-semibold">{head}</th>)}</tr></thead>
+            <tbody className="divide-y divide-gray-100">{sortedTrades.map((trade) => {
+              const gain = calculateRealizedGain(trade);
+              return (
+                <tr key={trade.id} className={cn("transition duration-300 hover:bg-gray-50", trade.id === focus.tradeId && "bg-red-50/70")}>
+                  <td className="whitespace-nowrap px-4 py-4 text-gray-600">{formatDisplayDate(trade.soldAt)}</td>
+                  <td className="px-4 py-4"><Link href={`/stocks/${trade.ticker}`} className="font-semibold text-red-700 hover:underline">{trade.ticker}</Link></td>
+                  <td className="px-4 py-4 font-semibold text-gray-900">{new Intl.NumberFormat("id-ID").format(trade.lots)}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-gray-700">{formatCurrency(trade.buyPrice)}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-gray-700">{formatCurrency(trade.sellPrice)}</td>
+                  <td className={cn("whitespace-nowrap px-4 py-4 font-semibold", gain > 0 ? "text-emerald-700" : gain < 0 ? "text-red-700" : "text-gray-700")}>{formatCurrency(gain)}</td>
+                  <td className="px-4 py-4"><span className={cn("rounded px-2 py-1 text-xs font-semibold", gain > 0 ? "bg-emerald-50 text-emerald-700" : gain < 0 ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600")}>{gain > 0 ? "WIN" : gain < 0 ? "LOSS" : "IMPAS"}</span></td>
+                  <td className="px-4 py-4"><RowActions label={`trade ${trade.ticker}`} onEdit={() => onEdit(trade)} onDelete={() => onDelete(trade.id)} /></td>
+                </tr>
+              );
+            })}</tbody>
+          </table>
+        </div>
       )}
     </section>
+  );
+}
+
+function TradeStatistic({ label, value, detail, amount }: { label: string; value: string; detail: string; amount?: number }) {
+  return (
+    <div className="min-w-0 border-b border-gray-100 py-3">
+      <dt className="text-xs text-gray-500">{label}</dt>
+      <dd className={cn("mt-1 break-words text-sm font-semibold tabular-nums text-gray-950 sm:text-base", amount !== undefined && amount > 0 && "text-emerald-700", amount !== undefined && amount < 0 && "text-red-700")}>{value}</dd>
+      <dd className="mt-1 text-[11px] leading-5 text-gray-500">{detail}</dd>
+    </div>
   );
 }
 
