@@ -139,7 +139,7 @@ export function ShareholderOwnershipSection({ ticker, onePercentRows, fivePercen
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0"><h2 className="text-base font-semibold text-gray-950">Struktur Kepemilikan</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-gray-600">Bandingkan laporan kepemilikan 1%–5% antarbulan untuk melihat investor yang sedang akumulasi, distribusi, baru masuk, keluar, atau stabil.</p></div>
             <div className="grid grid-cols-2 rounded-md border border-gray-200 bg-gray-50 p-1" aria-label="Ambang kepemilikan">
-              {([1, 5] as const).map((value) => <button key={value} type="button" onClick={() => changeThreshold(value)} className={cn("h-9 rounded px-4 text-sm font-semibold transition", threshold === value ? "bg-red-600 text-white shadow-sm" : "text-gray-600 hover:bg-white")}>{value}%+</button>)}
+              {([1, 5] as const).map((value) => <button key={value} type="button" onClick={() => changeThreshold(value)} className={cn("h-9 rounded px-4 text-sm font-semibold transition", threshold === value ? "bg-brand-600 text-white shadow-sm" : "text-gray-600 hover:bg-white")}>{value}%+</button>)}
             </div>
           </div>
 

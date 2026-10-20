@@ -200,12 +200,12 @@ export function BestEntryAlert({
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
               placeholder={entry ? formatPrice(entry.price) : "Contoh 172"}
-              className="h-10 min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-950 outline-none transition duration-150 placeholder:text-gray-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+              className="h-10 min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-950 outline-none transition duration-150 placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             />
             <button
               type="button"
               onClick={handleSave}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-600 bg-red-600 px-3 text-sm font-semibold text-white transition duration-150 hover:bg-red-700"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-brand-600 bg-brand-600 px-3 text-sm font-semibold text-white transition duration-150 hover:bg-brand-700"
             >
               <Save className="size-4" />
               Simpan

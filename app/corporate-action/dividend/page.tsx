@@ -14,7 +14,7 @@ export default function DividendPage() {
             <ChevronRight className="size-4" />
             <span className="font-medium text-gray-900">Dividen Tunai</span>
           </nav>
-          <h1 className="text-3xl font-semibold tracking-normal text-red-600">Dividen Tunai</h1>
+          <h1 className="text-3xl font-semibold tracking-normal text-brand-600">Dividen Tunai</h1>
           <p className="mt-2 text-sm leading-6 text-gray-600">
             Dokumen keterbukaan informasi terkait pembagian dividen tunai emiten di BEI.
           </p>

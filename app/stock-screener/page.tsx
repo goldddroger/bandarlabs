@@ -8,7 +8,7 @@ const screenerSources = [
     href: "https://neobdm.tech/new-market-summary/",
     label: "Ringkasan pasar",
     icon: BarChart3,
-    accent: "bg-red-50 text-red-700",
+    accent: "bg-brand-50 text-brand-700",
   },
   {
     name: "Stockbit Screener",
@@ -70,7 +70,7 @@ export default function StockScreenerPage() {
                   href={source.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-gray-950 px-4 text-sm font-semibold text-white transition-colors hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 sm:w-auto"
+                  className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-gray-950 px-4 text-sm font-semibold text-white transition-colors hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 sm:w-auto"
                 >
                   Buka alat
                   <ExternalLink className="size-4" aria-hidden="true" />

@@ -7,7 +7,7 @@ export function ScenarioComparison({ calculation }: { calculation: RightIssueSce
   const money = (value: number | null) => value === null ? "-" : formatCurrency(value, 2);
   return <section aria-label="Tabel perbandingan skenario" className="mt-6">
     <h3 className="text-base font-semibold text-gray-950">Dampak Ekonomi per Strategi</h3>
-    <div role="region" aria-label="Tabel strategi dapat digulir" tabIndex={0} className="relative mt-3 max-w-full overflow-x-auto rounded-md border border-gray-200 focus-visible:outline-red-500">
+    <div role="region" aria-label="Tabel strategi dapat digulir" tabIndex={0} className="relative mt-3 max-w-full overflow-x-auto rounded-md border border-gray-200 focus-visible:outline-brand-500">
       <table className="w-full min-w-[1080px] text-sm">
         <caption className="sr-only">Perbandingan empat strategi berdasarkan asumsi harga setelah ex-date; nilai akhir mencakup saham dan hasil jual.</caption>
         <thead className="bg-gray-50 text-xs text-gray-500"><tr>{["Strategi", "Dana tebus", "Saham setelah", "Hasil jual rights", "Economic cost / saham", "Nilai akhir saham + kas", "Profit / loss", "P/L %"].map((heading, index) => <th key={heading} scope="col" className={`border-b border-gray-200 px-4 py-3 font-medium ${index === 0 ? "sticky left-0 z-10 w-40 bg-gray-50 text-left sm:w-60" : "text-right"}`}>{heading}</th>)}</tr></thead>

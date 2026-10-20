@@ -419,7 +419,7 @@ export function OwnershipTracker() {
                   onBlur={() => window.setTimeout(() => setShowSuggestions(false), 150)}
                   autoComplete="off"
                   placeholder="Cari ticker atau nama emiten"
-                  className="h-11 w-full rounded-md border border-gray-300 bg-white pl-10 pr-3 text-sm text-gray-950 placeholder:text-gray-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  className="h-11 w-full rounded-md border border-gray-300 bg-white pl-10 pr-3 text-sm text-gray-950 placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                 />
                 {showSuggestions && suggestions.length > 0 ? (
                   <div className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg">
@@ -464,7 +464,7 @@ export function OwnershipTracker() {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-semibold text-gray-950">{selectedTicker}</h2>
-              <Link href={`/stocks/${selectedTicker}`} className="text-sm font-semibold text-red-700 hover:underline">Buka saham</Link>
+              <Link href={`/stocks/${selectedTicker}`} className="text-sm font-semibold text-brand-700 hover:underline">Buka saham</Link>
             </div>
             <p className="mt-1 truncate text-sm text-gray-600">{companyName}</p>
           </div>
@@ -496,7 +496,7 @@ export function OwnershipTracker() {
                     key={value}
                     type="button"
                     onClick={() => { setThreshold(value); setPage(1); }}
-                    className={cn("h-8 rounded px-4 text-sm font-semibold transition", threshold === value ? "bg-white text-red-700 shadow-sm" : "text-gray-600 hover:text-gray-950")}
+                    className={cn("h-8 rounded px-4 text-sm font-semibold transition", threshold === value ? "bg-white text-brand-700 shadow-sm" : "text-gray-600 hover:text-gray-950")}
                   >
                     {value}%+
                   </button>

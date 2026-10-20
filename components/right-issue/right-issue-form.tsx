@@ -9,7 +9,7 @@ export function RightIssueForm({ draft, onChange }: Props) {
   function field(key: keyof RightIssueDraft, label: string, options: { prefix?: string; suffix?: string; integer?: boolean; placeholder?: string } = {}) {
     return <label className="grid min-w-0 gap-1.5 text-sm font-medium text-gray-700" htmlFor={`ri-${key}`}>
       <span>{label}</span>
-      <span className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-gray-300 bg-white px-3 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-100">
+      <span className="flex h-11 min-w-0 items-center gap-2 rounded-md border border-gray-300 bg-white px-3 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100">
         {options.prefix ? <span className="shrink-0 text-xs text-gray-500">{options.prefix}</span> : null}
         <input id={`ri-${key}`} value={draft[key]} inputMode={options.integer ? "numeric" : "decimal"} autoComplete="off" placeholder={options.placeholder ?? "0"} onChange={(event) => onChange(key, formatSimulationInput(event.target.value, options.integer))} className="w-full min-w-0 bg-transparent text-sm tabular-nums text-gray-950 outline-none" />
         {options.suffix ? <span className="shrink-0 text-xs text-gray-500">{options.suffix}</span> : null}
@@ -20,7 +20,7 @@ export function RightIssueForm({ draft, onChange }: Props) {
     <fieldset className="py-5">
       <legend className="float-left mb-4 w-full text-base font-semibold text-gray-950">Posisi Saya</legend>
       <div className="clear-both grid gap-4 sm:grid-cols-2">
-        <label htmlFor="ri-ticker" className="grid gap-1.5 text-sm font-medium text-gray-700">Ticker<input id="ri-ticker" value={draft.ticker} placeholder="Contoh WMPP" maxLength={12} onChange={(event) => onChange("ticker", event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} className="h-11 min-w-0 rounded-md border border-gray-300 px-3 text-sm text-gray-950 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100" /></label>
+        <label htmlFor="ri-ticker" className="grid gap-1.5 text-sm font-medium text-gray-700">Ticker<input id="ri-ticker" value={draft.ticker} placeholder="Contoh WMPP" maxLength={12} onChange={(event) => onChange("ticker", event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} className="h-11 min-w-0 rounded-md border border-gray-300 px-3 text-sm text-gray-950 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100" /></label>
         {field("ownedShares", "Jumlah saham", { suffix: "saham", integer: true, placeholder: "3.000.000" })}
         {field("averageBuy", "Average buy", { prefix: "Rp", placeholder: "27" })}
         {field("cumPrice", "Harga saham cum-right (asumsi)", { prefix: "Rp", placeholder: "30" })}

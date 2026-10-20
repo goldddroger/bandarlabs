@@ -20,7 +20,7 @@ export function DashboardAccumulationPreview() {
         <p className="text-sm font-medium text-gray-600">{selectedRows.length} saham dipantau</p>
         <Link
           href="/accumulation"
-          className="inline-flex items-center gap-1 text-sm font-semibold text-red-600 transition duration-150 hover:text-red-700"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-brand-600 transition duration-150 hover:text-brand-700"
         >
           Kelola
           <ArrowUpRight className="size-4" />
@@ -41,7 +41,7 @@ export function DashboardAccumulationPreview() {
             {selectedRows.slice(0, 6).map((row) => (
               <tr key={row.stock} className="border-t border-gray-100 transition duration-150 hover:bg-gray-50">
                 <td className="px-4 py-3">
-                  <Link href={`/stocks/${row.stock}`} className="font-semibold text-red-700 hover:underline">
+                  <Link href={`/stocks/${row.stock}`} className="font-semibold text-brand-700 hover:underline">
                     {row.stock}
                   </Link>
                 </td>
@@ -62,7 +62,7 @@ export function DashboardAccumulationPreview() {
                       row.trend === "uptrend"
                         ? "bg-green-50 text-green-700"
                         : row.trend === "downtrend"
-                          ? "bg-red-50 text-red-700"
+                          ? "bg-brand-50 text-brand-700"
                           : "bg-gray-100 text-gray-600",
                     )}
                   >

@@ -32,7 +32,7 @@ export function CorporateActionSidebar() {
                 key={label}
                 className={cn(
                   "flex h-8 items-center justify-between rounded-md px-2 text-left text-sm text-gray-700 transition duration-150 hover:bg-gray-50",
-                  active && "bg-red-50 font-semibold text-red-700 hover:bg-red-50",
+                  active && "bg-brand-50 font-semibold text-brand-700 hover:bg-brand-50",
                 )}
                 type="button"
               >
@@ -40,7 +40,7 @@ export function CorporateActionSidebar() {
                 <span
                   className={cn(
                     "rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600",
-                    active && "bg-red-100 text-red-700",
+                    active && "bg-brand-100 text-brand-700",
                   )}
                 >
                   {count}
@@ -76,7 +76,7 @@ export function CorporateActionSidebar() {
             <Button type="button" className="h-9 px-3 text-xs">
               Terapkan Filter
             </Button>
-            <button className="text-sm font-medium text-red-600 hover:text-red-700" type="reset">
+            <button className="text-sm font-medium text-brand-600 hover:text-brand-700" type="reset">
               Reset
             </button>
           </div>

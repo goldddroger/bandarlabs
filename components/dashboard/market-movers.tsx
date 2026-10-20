@@ -57,7 +57,7 @@ export function MarketMovers() {
   }
 
   if (loading && !payload) {
-    return <div className="mb-5 flex min-h-48 items-center justify-center rounded-lg border border-gray-200 bg-white text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-red-600" />Memindai pergerakan saham IDX...</div>;
+    return <div className="mb-5 flex min-h-48 items-center justify-center rounded-lg border border-gray-200 bg-white text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-brand-600" />Memindai pergerakan saham IDX...</div>;
   }
 
   if (error && !payload) {

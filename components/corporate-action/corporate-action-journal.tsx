@@ -54,7 +54,7 @@ function movementPercent(event: CorporateActionEvent, quote?: CorporateActionQuo
 
 function noteStatusClass(status: FollowUpStatus) {
   if (status === "Selesai") return "bg-emerald-50 text-emerald-700";
-  if (status === "Berdampak besar") return "bg-red-50 text-red-700";
+  if (status === "Berdampak besar") return "bg-brand-50 text-brand-700";
   if (status === "Perlu dipantau") return "bg-amber-50 text-amber-700";
   return "bg-gray-100 text-gray-700";
 }
@@ -205,7 +205,7 @@ export function CorporateActionJournal({
   }
 
   if (loading) {
-    return <div className="flex min-h-[55vh] items-center justify-center text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-red-600" />Menyinkronkan corporate action...</div>;
+    return <div className="flex min-h-[55vh] items-center justify-center text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-brand-600" />Menyinkronkan corporate action...</div>;
   }
 
   if (error) {
@@ -241,7 +241,7 @@ export function CorporateActionJournal({
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
-              <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} onClick={() => setActiveTab(tab.id)} className={cn("flex h-11 items-center gap-2 border-b-2 px-4 text-sm font-medium", activeTab === tab.id ? "border-red-600 text-red-700" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-900")}>
+              <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} onClick={() => setActiveTab(tab.id)} className={cn("flex h-11 items-center gap-2 border-b-2 px-4 text-sm font-medium", activeTab === tab.id ? "border-brand-600 text-brand-700" : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-900")}>
                 <Icon className="size-4" />{tab.label}
               </button>
             );
@@ -263,7 +263,7 @@ export function CorporateActionJournal({
 function SummaryMetric({ label, value, detail, icon: Icon }: { label: string; value: string; detail: string; icon: typeof CalendarDays }) {
   return (
     <div className="flex min-w-0 items-start gap-3 border-b border-gray-200 p-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-red-50 text-red-700"><Icon className="size-4" /></span>
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700"><Icon className="size-4" /></span>
       <div className="min-w-0"><p className="text-xs font-medium text-gray-500">{label}</p><p className="mt-1 truncate text-base font-semibold text-gray-950">{value}</p><p className="mt-0.5 text-xs text-gray-500">{detail}</p></div>
     </div>
   );
@@ -300,12 +300,12 @@ function AgendaView({ events, quotes, onAddNote, onDeleteEvent }: { events: Corp
 function AgendaRow({ event, quote, onAddNote, onDeleteEvent }: { event: CorporateActionEvent; quote?: CorporateActionQuoteMap[string]; onAddNote: (eventId: string) => void; onDeleteEvent: (event: CorporateActionEvent) => void }) {
   return (
     <tr className="align-top hover:bg-gray-50">
-      <td className="px-4 py-4"><Link href={`/stocks/${event.ticker}`} className="font-semibold text-red-700 hover:underline">{event.ticker}</Link><p className="mt-1 max-w-48 text-xs leading-5 text-gray-500">{event.company}</p></td>
+      <td className="px-4 py-4"><Link href={`/stocks/${event.ticker}`} className="font-semibold text-brand-700 hover:underline">{event.ticker}</Link><p className="mt-1 max-w-48 text-xs leading-5 text-gray-500">{event.company}</p></td>
       <td className="px-4 py-4"><span className="font-semibold text-gray-900">{event.actionType}</span><p className="mt-1 max-w-sm text-xs leading-5 text-gray-600">{event.topic}</p><RightIssueActionLink event={event} /></td>
       <td className="whitespace-nowrap px-4 py-4 text-gray-700">{formatDate(event.eventDate)}</td>
       <td className="px-4 py-4"><MovementValue movement={movementPercent(event, quote)} /><p className="mt-1 whitespace-nowrap text-xs text-gray-500">{formatCurrency(event.announcementPrice)} → {formatCurrency(quote?.price ?? null)}</p><p className="mt-0.5 text-[11px] text-gray-400">{quote?.source ?? "Menunggu quote"}</p></td>
       <td className="px-4 py-4"><StateBadge state={event.state} /></td>
-      <td className="px-4 py-4"><div className="flex items-center justify-end gap-1"><button type="button" onClick={() => onAddNote(event.id)} className="h-8 rounded-md px-2 text-xs font-semibold text-red-700 hover:bg-red-50">Tambah catatan</button><button type="button" onClick={() => onDeleteEvent(event)} className="flex size-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-700" aria-label={`Hapus agenda ${event.ticker}`} title="Hapus agenda"><Trash2 className="size-4" /></button></div></td>
+      <td className="px-4 py-4"><div className="flex items-center justify-end gap-1"><button type="button" onClick={() => onAddNote(event.id)} className="h-8 rounded-md px-2 text-xs font-semibold text-brand-700 hover:bg-brand-50">Tambah catatan</button><button type="button" onClick={() => onDeleteEvent(event)} className="flex size-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-700" aria-label={`Hapus agenda ${event.ticker}`} title="Hapus agenda"><Trash2 className="size-4" /></button></div></td>
     </tr>
   );
 }
@@ -313,11 +313,11 @@ function AgendaRow({ event, quote, onAddNote, onDeleteEvent }: { event: Corporat
 function AgendaCard({ event, quote, onAddNote, onDeleteEvent }: { event: CorporateActionEvent; quote?: CorporateActionQuoteMap[string]; onAddNote: (eventId: string) => void; onDeleteEvent: (event: CorporateActionEvent) => void }) {
   return (
     <article className="p-4">
-      <div className="flex items-start justify-between gap-3"><div><Link href={`/stocks/${event.ticker}`} className="font-semibold text-red-700 hover:underline">{event.ticker}</Link><p className="mt-1 text-xs text-gray-500">{event.company}</p></div><StateBadge state={event.state} /></div>
+      <div className="flex items-start justify-between gap-3"><div><Link href={`/stocks/${event.ticker}`} className="font-semibold text-brand-700 hover:underline">{event.ticker}</Link><p className="mt-1 text-xs text-gray-500">{event.company}</p></div><StateBadge state={event.state} /></div>
       <p className="mt-3 text-sm font-semibold text-gray-900">{event.actionType} · {formatDate(event.eventDate)}</p>
       <p className="mt-1 text-sm leading-6 text-gray-600">{event.topic}</p>
       <RightIssueActionLink event={event} />
-      <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-100 pt-3"><MovementValue movement={movementPercent(event, quote)} /><div className="flex items-center gap-1"><button type="button" onClick={() => onAddNote(event.id)} className="h-8 rounded-md px-2 text-xs font-semibold text-red-700 hover:bg-red-50">Tambah catatan</button><button type="button" onClick={() => onDeleteEvent(event)} className="flex size-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-700" aria-label={`Hapus agenda ${event.ticker}`}><Trash2 className="size-4" /></button></div></div>
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-100 pt-3"><MovementValue movement={movementPercent(event, quote)} /><div className="flex items-center gap-1"><button type="button" onClick={() => onAddNote(event.id)} className="h-8 rounded-md px-2 text-xs font-semibold text-brand-700 hover:bg-brand-50">Tambah catatan</button><button type="button" onClick={() => onDeleteEvent(event)} className="flex size-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-700" aria-label={`Hapus agenda ${event.ticker}`}><Trash2 className="size-4" /></button></div></div>
     </article>
   );
 }
@@ -351,7 +351,7 @@ function TimelineView({ events, selectedEventId, onEventChange }: { events: Corp
         <RightIssueActionLink event={event} />
       </aside>
       <div className="rounded-lg border border-gray-200 bg-white p-4 sm:p-6">
-        <div className="mb-5 flex items-center justify-between gap-3"><div><h2 className="text-base font-semibold text-gray-950">Timeline {event.ticker}</h2><p className="mt-1 text-xs text-gray-500">Jejak berdasarkan data corporate action.</p></div><Link href={`/stocks/${event.ticker}`} className="flex items-center gap-1 text-xs font-semibold text-red-700 hover:underline">Detail saham <ChevronRight className="size-3.5" /></Link></div>
+        <div className="mb-5 flex items-center justify-between gap-3"><div><h2 className="text-base font-semibold text-gray-950">Timeline {event.ticker}</h2><p className="mt-1 text-xs text-gray-500">Jejak berdasarkan data corporate action.</p></div><Link href={`/stocks/${event.ticker}`} className="flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">Detail saham <ChevronRight className="size-3.5" /></Link></div>
         {stages.map((stage, index) => (
           <div key={stage.title} className="grid grid-cols-[24px_minmax(0,1fr)] gap-3">
             <div className="flex flex-col items-center"><span className={cn("mt-0.5 flex size-6 items-center justify-center rounded-full border", stage.complete ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-300 bg-white text-gray-400")}>{stage.complete ? <CheckCircle2 className="size-4" /> : <Clock3 className="size-3.5" />}</span>{index < stages.length - 1 ? <span className="min-h-12 w-px flex-1 bg-gray-200" /> : null}</div>
@@ -374,7 +374,7 @@ function NotesView({ events, notes, onAdd, onEdit, onDelete }: { events: Corpora
             return (
               <article key={note.id} className="p-4 sm:p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div><div className="flex flex-wrap items-center gap-2">{event ? <Link href={`/stocks/${event.ticker}`} className="font-semibold text-red-700 hover:underline">{event.ticker}</Link> : <span className="font-semibold text-gray-700">Agenda dihapus</span>}<span className="text-sm font-medium text-gray-700">{event?.actionType}</span><span className={cn("rounded px-2 py-1 text-xs font-semibold", noteStatusClass(note.status))}>{note.status}</span></div><p className="mt-1 text-xs text-gray-500">Diperbarui {formatDateTime(note.updatedAt)}</p></div>
+                  <div><div className="flex flex-wrap items-center gap-2">{event ? <Link href={`/stocks/${event.ticker}`} className="font-semibold text-brand-700 hover:underline">{event.ticker}</Link> : <span className="font-semibold text-gray-700">Agenda dihapus</span>}<span className="text-sm font-medium text-gray-700">{event?.actionType}</span><span className={cn("rounded px-2 py-1 text-xs font-semibold", noteStatusClass(note.status))}>{note.status}</span></div><p className="mt-1 text-xs text-gray-500">Diperbarui {formatDateTime(note.updatedAt)}</p></div>
                   <div className="flex gap-1 self-end sm:self-auto"><button type="button" onClick={() => onEdit(note)} className="flex size-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100" aria-label={`Edit catatan ${event?.ticker ?? "emiten"}`}><Pencil className="size-4" /></button><button type="button" onClick={() => onDelete(note)} className="flex size-9 items-center justify-center rounded-md text-gray-500 hover:bg-red-50 hover:text-red-700" aria-label={`Hapus catatan ${event?.ticker ?? "emiten"}`}><Trash2 className="size-4" /></button></div>
                 </div>
                 <div className="mt-4 grid gap-4 lg:grid-cols-3"><NoteField label="Pesan manajemen" value={note.keyMessage} /><NoteField label="Keputusan" value={note.decision} /><NoteField label="Tindak lanjut" value={note.followUp} /></div>
@@ -395,7 +395,7 @@ function DocumentsView({ events }: { events: CorporateActionEvent[] }) {
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
       <div className="border-b border-gray-200 px-4 py-3"><h2 className="text-sm font-semibold text-gray-950">Dokumen corporate action</h2><p className="mt-1 text-xs text-gray-500">Metadata dari database; dokumen resmi tetap diperiksa melalui IDX.</p></div>
-      {events.length === 0 ? <EmptyState text="Belum ada dokumen corporate action di database." /> : <div className="divide-y divide-gray-200">{events.map((event) => <div key={event.id} className="grid gap-3 px-4 py-4 sm:grid-cols-[90px_minmax(0,1fr)_auto] sm:items-center"><Link href={`/stocks/${event.ticker}`} className="font-semibold text-red-700 hover:underline">{event.ticker}</Link><div><p className="text-sm font-medium text-gray-900">{event.documentLabel}</p><p className="mt-1 text-xs text-gray-500">{event.actionType} · {formatDate(event.eventDate)}{event.documentNumber ? ` · ${event.documentNumber}` : ""}</p></div><a href="https://www.idx.co.id/id/perusahaan-tercatat/keterbukaan-informasi/" target="_blank" rel="noreferrer" className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-gray-300 px-3 text-xs font-semibold text-gray-700 hover:bg-gray-50">Cari di IDX <ExternalLink className="size-3.5" /></a></div>)}</div>}
+      {events.length === 0 ? <EmptyState text="Belum ada dokumen corporate action di database." /> : <div className="divide-y divide-gray-200">{events.map((event) => <div key={event.id} className="grid gap-3 px-4 py-4 sm:grid-cols-[90px_minmax(0,1fr)_auto] sm:items-center"><Link href={`/stocks/${event.ticker}`} className="font-semibold text-brand-700 hover:underline">{event.ticker}</Link><div><p className="text-sm font-medium text-gray-900">{event.documentLabel}</p><p className="mt-1 text-xs text-gray-500">{event.actionType} · {formatDate(event.eventDate)}{event.documentNumber ? ` · ${event.documentNumber}` : ""}</p></div><a href="https://www.idx.co.id/id/perusahaan-tercatat/keterbukaan-informasi/" target="_blank" rel="noreferrer" className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-gray-300 px-3 text-xs font-semibold text-gray-700 hover:bg-gray-50">Cari di IDX <ExternalLink className="size-3.5" /></a></div>)}</div>}
     </div>
   );
 }

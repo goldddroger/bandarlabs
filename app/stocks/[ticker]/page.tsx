@@ -213,7 +213,7 @@ export default async function StockDetailPage({ params }: { params: Promise<{ ti
               <p className="text-sm font-semibold text-gray-950">Corporate action {stock.ticker}</p>
               <p className="mt-1 text-xs text-gray-500">Pencocokan berdasarkan ticker pada dokumen yang tersedia.</p>
             </div>
-            <Link href="/corporate-action" className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-xs font-semibold text-red-700 hover:bg-red-50 sm:w-auto">
+            <Link href="/corporate-action" className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-brand-200 bg-white px-3 text-xs font-semibold text-brand-700 hover:bg-brand-50 sm:w-auto">
               <NotebookPen className="size-4" /> Buka jurnal CA
             </Link>
           </div>
@@ -221,7 +221,7 @@ export default async function StockDetailPage({ params }: { params: Promise<{ ti
             <div className="divide-y divide-gray-200">
               {corporateActions.map((action) => (
                 <div key={action.number} className="grid gap-2 px-4 py-4 sm:grid-cols-[180px_minmax(0,1fr)_140px] sm:items-start">
-                  <p className="text-sm font-semibold text-red-700">{action.number}</p>
+                  <p className="text-sm font-semibold text-brand-700">{action.number}</p>
                   <p className="text-sm leading-6 text-gray-700">{action.subject}</p>
                   <p className="text-xs font-medium text-gray-500 sm:text-right">{action.date}</p>
                 </div>
@@ -257,7 +257,7 @@ export default async function StockDetailPage({ params }: { params: Promise<{ ti
               href={stockbitUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-red-600 bg-red-600 px-4 text-sm font-semibold text-white transition duration-150 hover:bg-red-700 md:w-auto"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-brand-600 bg-brand-600 px-4 text-sm font-semibold text-white transition duration-150 hover:bg-brand-700 md:w-auto"
             >
               Buka Stockbit <ArrowUpRight className="size-4" />
             </a>

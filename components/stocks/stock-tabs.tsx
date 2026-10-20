@@ -38,7 +38,7 @@ export function StockTabs() {
           className={cn(
             "flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors",
             activeTab === tab.id
-              ? "border-red-600 text-red-700"
+              ? "border-brand-600 text-brand-700"
               : "border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-950",
           )}
         >

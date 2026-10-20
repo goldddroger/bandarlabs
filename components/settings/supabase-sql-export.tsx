@@ -252,7 +252,7 @@ export function SupabaseSqlExport() {
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-red-50 text-red-700">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700">
             <Database className="size-5" />
           </div>
           <div>
@@ -272,7 +272,7 @@ export function SupabaseSqlExport() {
             value={ownerId}
             onChange={(event) => setOwnerId(event.target.value)}
             placeholder="00000000-0000-4000-8000-000000000000"
-            className="mt-2 h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-950 placeholder:text-gray-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+            className="mt-2 h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-950 placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
           <p className="mt-2 text-xs leading-5 text-gray-500">
             UID tersedia di Supabase Dashboard pada menu Authentication, lalu Users.
@@ -297,7 +297,7 @@ export function SupabaseSqlExport() {
 
       <aside className="space-y-4">
         <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <FileCode2 className="size-5 text-red-700" />
+          <FileCode2 className="size-5 text-brand-700" />
           <h3 className="mt-3 text-sm font-semibold text-gray-950">Urutan migrasi</h3>
           <ol className="mt-3 space-y-2 text-sm leading-5 text-gray-600">
             <li>1. Jalankan migration schema.</li>

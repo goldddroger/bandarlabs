@@ -136,15 +136,15 @@ export function OwnershipImportDialog({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={reading || importing}
-            className="flex min-h-32 w-full flex-col items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50 px-5 py-6 text-center transition hover:border-red-300 hover:bg-red-50/40 disabled:opacity-60"
+            className="flex min-h-32 w-full flex-col items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50 px-5 py-6 text-center transition hover:border-brand-300 hover:bg-brand-50/40 disabled:opacity-60"
           >
-            {reading ? <Loader2 className="size-7 animate-spin text-red-600" /> : <FileSpreadsheet className="size-7 text-red-600" />}
+            {reading ? <Loader2 className="size-7 animate-spin text-brand-600" /> : <FileSpreadsheet className="size-7 text-brand-600" />}
             <span className="mt-3 text-sm font-semibold text-gray-950">{reading ? "Membaca workbook..." : fileName || "Pilih file Excel"}</span>
             <span className="mt-1 text-xs text-gray-500">File .xlsx laporan bulanan BEI/KSEI</span>
           </button>
 
           {parseError ? (
-            <div className="mt-4 flex gap-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div className="mt-4 flex gap-3 rounded-md border border-brand-200 bg-brand-50 p-3 text-sm text-brand-700">
               <AlertCircle className="mt-0.5 size-4 shrink-0" />
               <span>{parseError}</span>
             </div>

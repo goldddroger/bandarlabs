@@ -75,10 +75,10 @@ function ConfirmDialog({
         ) : null}
 
         <footer className="flex flex-col-reverse gap-2 px-4 py-4 sm:flex-row sm:justify-end sm:px-5 sm:py-5">
-          <button ref={cancelButtonRef} type="button" className="inline-flex h-10 w-full items-center justify-center rounded-md border border-red-200 bg-white px-4 text-sm font-semibold text-red-700 transition hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 sm:w-auto" onClick={onCancel}>
+          <button ref={cancelButtonRef} type="button" className="inline-flex h-10 w-full items-center justify-center rounded-md border border-brand-200 bg-white px-4 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 sm:w-auto" onClick={onCancel}>
             {options.cancelLabel ?? "Batal"}
           </button>
-          <Button type="button" className="w-full sm:w-auto" onClick={onConfirm}>
+          <Button type="button" variant="destructive" className="w-full sm:w-auto" onClick={onConfirm}>
             <Trash2 className="size-4" />
             {options.confirmLabel ?? "Hapus"}
           </Button>

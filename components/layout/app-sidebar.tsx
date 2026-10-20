@@ -36,12 +36,12 @@ function SidebarContent({ session, onNavigate }: { session: AppSession | null; o
         className="flex h-20 items-center gap-3 border-b border-gray-200 px-5"
         onClick={onNavigate}
       >
-        <span className="flex size-12 items-center justify-center rounded-lg bg-red-600 text-white">
+        <span className="flex size-12 items-center justify-center rounded-lg bg-brand-600 text-white">
           <BarChart3 className="size-7" strokeWidth={2.4} />
         </span>
         <span>
           <span className="block text-2xl font-bold leading-6 text-gray-950">
-            Bandar<span className="text-red-600">Lab</span>
+            Bandar<span className="text-brand-600">Lab</span>
           </span>
           <span className="mt-1 block text-xs text-gray-500">Indonesian Stock Intelligence</span>
         </span>
@@ -67,11 +67,11 @@ function SidebarContent({ session, onNavigate }: { session: AppSession | null; o
                     aria-current={active ? "page" : undefined}
                     className={cn(
                       "relative flex min-h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-gray-700 transition duration-150 hover:bg-gray-50 hover:text-gray-950",
-                      active && "bg-red-50 text-red-700 hover:bg-red-50 hover:text-red-700",
+                      active && "bg-brand-50 text-brand-700 hover:bg-brand-50 hover:text-brand-700",
                     )}
                   >
-                    {active ? <span className="absolute left-0 top-2 h-6 w-1 rounded-r bg-red-600" /> : null}
-                    <Icon aria-hidden="true" className={cn("size-5 shrink-0 text-gray-500", active && "text-red-600")} />
+                    {active ? <span className="absolute left-0 top-2 h-6 w-1 rounded-r bg-brand-600" /> : null}
+                    <Icon aria-hidden="true" className={cn("size-5 shrink-0 text-gray-500", active && "text-brand-600")} />
                     <span className="min-w-0 flex-1">{item.label}</span>
                     {external ? (
                       <ExternalLink className="size-3.5 text-gray-400" aria-hidden="true" />
@@ -91,7 +91,7 @@ function SidebarContent({ session, onNavigate }: { session: AppSession | null; o
                       calculatorActive && "bg-gray-100 text-gray-950",
                     )}
                   >
-                    <Calculator aria-hidden="true" className={cn("size-5 shrink-0 text-gray-500", calculatorActive && "text-red-600")} />
+                    <Calculator aria-hidden="true" className={cn("size-5 shrink-0 text-gray-500", calculatorActive && "text-brand-600")} />
                     <span className="flex-1">Kalkulator Saham</span>
                     <ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 text-gray-400 transition-transform duration-200", calculatorExpanded && "rotate-180")} />
                   </button>
@@ -108,10 +108,10 @@ function SidebarContent({ session, onNavigate }: { session: AppSession | null; o
                             aria-current={active ? "page" : undefined}
                             className={cn(
                               "flex min-h-10 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-gray-600 transition duration-150 hover:bg-gray-50 hover:text-gray-950",
-                              active && "bg-red-50 font-semibold text-red-700 hover:bg-red-50 hover:text-red-700",
+                              active && "bg-brand-50 font-semibold text-brand-700 hover:bg-brand-50 hover:text-brand-700",
                             )}
                           >
-                            <Icon aria-hidden="true" className={cn("size-4 shrink-0 text-gray-400", active && "text-red-600")} />
+                            <Icon aria-hidden="true" className={cn("size-4 shrink-0 text-gray-400", active && "text-brand-600")} />
                             <span>{item.label}</span>
                           </Link>
                         );
@@ -156,7 +156,7 @@ export function AppSidebar({ session, mobileOpen, onMobileClose }: { session: Ap
         inert={!mobileOpen}
       >
         <button
-          className="absolute right-3 top-3 inline-flex size-10 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-red-500"
+          className="absolute right-3 top-3 inline-flex size-10 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-brand-500"
           type="button"
           aria-label="Tutup menu"
           onClick={onMobileClose}

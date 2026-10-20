@@ -20,7 +20,7 @@ export function FinancialPeriodComparison({ reports, selected }: { reports: Fina
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="flex items-center gap-2"><TrendingUp className="size-5 text-red-600" /><h3 className="font-semibold text-gray-950">Tren antarkuartal</h3></div>
+            <div className="flex items-center gap-2"><TrendingUp className="size-5 text-brand-600" /><h3 className="font-semibold text-gray-950">Tren antarkuartal</h3></div>
             <p className="mt-1 text-sm leading-6 text-gray-500">Pendapatan dan laba ditampilkan sebagai angka kuartal tunggal. Q2 dihitung dari H1 dikurangi Q1.</p>
           </div>
           <span className="w-fit rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">{comparison.history.length} periode {selected.ticker}</span>
@@ -33,7 +33,7 @@ export function FinancialPeriodComparison({ reports, selected }: { reports: Fina
                 <XAxis dataKey="label" tick={{ fill: "#6b7280", fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis tickFormatter={(value) => `${Number(value).toLocaleString("id-ID", { maximumFractionDigits: 0 })} M`} tick={{ fill: "#9ca3af", fontSize: 11 }} axisLine={false} tickLine={false} width={68} />
                 <Tooltip content={<TrendTooltip currency={selected.currency} />} />
-                <Line type="monotone" dataKey="revenueBillions" name="Pendapatan" stroke="#dc2626" strokeWidth={2.5} dot={{ r: 3, fill: "#dc2626" }} connectNulls={false} />
+                <Line type="monotone" dataKey="revenueBillions" name="Pendapatan" stroke="var(--color-brand-600)" strokeWidth={2.5} dot={{ r: 3, fill: "var(--color-brand-600)" }} connectNulls={false} />
                 <Line type="monotone" dataKey="profitBillions" name="Laba bersih" stroke="#0f766e" strokeWidth={2.5} dot={{ r: 3, fill: "#0f766e" }} connectNulls={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -82,8 +82,8 @@ export function FinancialPeriodComparison({ reports, selected }: { reports: Fina
       </section>
 
       <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-        <div className="flex items-start gap-3 border-b border-gray-100 px-4 py-4 sm:px-5"><FileSearch className="mt-0.5 size-5 text-red-600" /><div><h3 className="font-semibold text-gray-950">Perubahan penting dari PDF</h3><p className="mt-1 text-sm text-gray-500">Temuan yang benar-benar memiliki bukti halaman dari dokumen pendamping empat periode terakhir.</p></div></div>
-        {comparison.documentFindings.length ? <div className="divide-y divide-gray-100">{comparison.documentFindings.map((finding) => <article key={finding.id} className="px-4 py-4 sm:px-5"><div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><h4 className="font-semibold text-gray-950">{finding.title}</h4><span className="w-fit shrink-0 rounded bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">{formatQuarter(finding.periodEnd)}</span></div><p className="mt-2 text-sm leading-6 text-gray-600">{finding.summary}</p><p className="mt-2 text-xs font-medium text-red-700">{finding.source}</p></article>)}</div> : <ComparisonEmpty title="Belum ada temuan PDF terstruktur" description="Upload PDF laporan atau penjelasan perubahan material bersama Excel agar bukti halaman muncul di sini." />}
+        <div className="flex items-start gap-3 border-b border-gray-100 px-4 py-4 sm:px-5"><FileSearch className="mt-0.5 size-5 text-brand-600" /><div><h3 className="font-semibold text-gray-950">Perubahan penting dari PDF</h3><p className="mt-1 text-sm text-gray-500">Temuan yang benar-benar memiliki bukti halaman dari dokumen pendamping empat periode terakhir.</p></div></div>
+        {comparison.documentFindings.length ? <div className="divide-y divide-gray-100">{comparison.documentFindings.map((finding) => <article key={finding.id} className="px-4 py-4 sm:px-5"><div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><h4 className="font-semibold text-gray-950">{finding.title}</h4><span className="w-fit shrink-0 rounded bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">{formatQuarter(finding.periodEnd)}</span></div><p className="mt-2 text-sm leading-6 text-gray-600">{finding.summary}</p><p className="mt-2 text-xs font-medium text-brand-700">{finding.source}</p></article>)}</div> : <ComparisonEmpty title="Belum ada temuan PDF terstruktur" description="Upload PDF laporan atau penjelasan perubahan material bersama Excel agar bukti halaman muncul di sini." />}
       </section>
     </div>
   );

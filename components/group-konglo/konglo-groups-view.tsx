@@ -179,7 +179,7 @@ export function KongloGroupsView({ groups, stockLookup }: { groups: KongloGroupV
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Cari group atau ticker..."
-              className="h-10 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+              className="h-10 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             />
           </label>
           <div className="grid grid-cols-3 rounded-md border border-gray-200 bg-gray-50 p-1 text-sm font-semibold">
@@ -194,7 +194,7 @@ export function KongloGroupsView({ groups, stockLookup }: { groups: KongloGroupV
                 onClick={() => setMode(value as FilterMode)}
                 className={cn(
                   "h-8 rounded px-3 transition duration-150",
-                  mode === value ? "bg-white text-red-700 shadow-sm" : "text-gray-600 hover:text-gray-950",
+                  mode === value ? "bg-white text-brand-700 shadow-sm" : "text-gray-600 hover:text-gray-950",
                 )}
               >
                 {label}
@@ -204,7 +204,7 @@ export function KongloGroupsView({ groups, stockLookup }: { groups: KongloGroupV
           <button
             type="button"
             onClick={openAddModal}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-600 bg-red-600 px-4 text-sm font-semibold text-white transition duration-150 hover:bg-red-700"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-brand-600 bg-brand-600 px-4 text-sm font-semibold text-white transition duration-150 hover:bg-brand-700"
           >
             <Plus className="size-4" />
             Tambah Group
@@ -260,7 +260,7 @@ export function KongloGroupsView({ groups, stockLookup }: { groups: KongloGroupV
                   <button
                     type="button"
                     onClick={() => openEditModal(group)}
-                    className="inline-flex size-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 transition duration-150 hover:bg-gray-50 hover:text-red-700"
+                    className="inline-flex size-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 transition duration-150 hover:bg-gray-50 hover:text-brand-700"
                     aria-label={`Edit ${group.name}`}
                   >
                     <Edit3 className="size-4" />
@@ -327,7 +327,7 @@ function GroupModal({ group, onClose, onSave }: { group: SavedGroup; onClose: ()
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Contoh: Konglo Baru"
-              className="h-10 rounded-md border border-gray-200 px-3 text-sm text-gray-950 transition duration-150 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+              className="h-10 rounded-md border border-gray-200 px-3 text-sm text-gray-950 transition duration-150 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             />
           </label>
           <label className="grid gap-2 text-sm font-medium text-gray-700">
@@ -337,7 +337,7 @@ function GroupModal({ group, onClose, onSave }: { group: SavedGroup; onClose: ()
               onChange={(event) => setTickerText(event.target.value)}
               placeholder="Contoh: BRPT, TPIA, BREN"
               rows={4}
-              className="resize-none rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-950 transition duration-150 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+              className="resize-none rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-950 transition duration-150 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             />
           </label>
           <label className="grid gap-2 text-sm font-medium text-gray-700">
@@ -347,7 +347,7 @@ function GroupModal({ group, onClose, onSave }: { group: SavedGroup; onClose: ()
               onChange={(event) => setDescription(event.target.value)}
               placeholder="Opsional, tidak ditampilkan di tabel utama."
               rows={3}
-              className="resize-none rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-950 transition duration-150 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+              className="resize-none rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-950 transition duration-150 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             />
           </label>
         </div>
@@ -361,7 +361,7 @@ function GroupModal({ group, onClose, onSave }: { group: SavedGroup; onClose: ()
           </button>
           <button
             type="submit"
-            className="inline-flex h-10 items-center justify-center rounded-md border border-red-600 bg-red-600 px-4 text-sm font-semibold text-white transition duration-150 hover:bg-red-700"
+            className="inline-flex h-10 items-center justify-center rounded-md border border-brand-600 bg-brand-600 px-4 text-sm font-semibold text-white transition duration-150 hover:bg-brand-700"
           >
             Simpan
           </button>
@@ -383,7 +383,7 @@ function TickerCloud({ tickers }: { tickers: KongloGroupViewRow["tickers"] }) {
           key={stock.ticker}
           href={`/stocks/${stock.ticker}`}
           title={stock.name}
-          className="inline-flex h-7 items-center rounded-full border border-gray-200 bg-white px-2.5 text-xs font-semibold text-gray-800 transition duration-150 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+          className="inline-flex h-7 items-center rounded-full border border-gray-200 bg-white px-2.5 text-xs font-semibold text-gray-800 transition duration-150 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
         >
           {stock.ticker}
         </Link>

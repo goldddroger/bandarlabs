@@ -88,7 +88,7 @@ export default async function StocksPage({
                 name="q"
                 defaultValue={q}
                 placeholder="Ticker, nama emiten, sektor, industri..."
-                className="h-10 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 hover:border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                className="h-10 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 hover:border-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
             </span>
           </label>
@@ -98,7 +98,7 @@ export default async function StocksPage({
               id="stock-sector"
               name="sector"
               defaultValue={sector}
-              className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 transition duration-150 hover:border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+              className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 transition duration-150 hover:border-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             >
               <option value="all">Semua Sektor</option>
               {sectors.map((sectorName) => (
@@ -108,7 +108,7 @@ export default async function StocksPage({
               ))}
             </select>
           </label>
-          <button className="h-10 rounded-md border border-red-600 bg-red-600 px-4 text-sm font-semibold text-white transition duration-150 hover:bg-red-700" type="submit">
+          <button className="h-10 rounded-md border border-brand-600 bg-brand-600 px-4 text-sm font-semibold text-white transition duration-150 hover:bg-brand-700" type="submit">
             Terapkan
           </button>
         </div>
@@ -125,7 +125,7 @@ export default async function StocksPage({
 
       <div className="grid gap-3 md:hidden">
         {visibleStocks.map((stock) => (
-          <Link key={stock.ticker} href={`/stocks/${stock.ticker}`} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition duration-150 hover:border-red-200 hover:bg-red-50">
+          <Link key={stock.ticker} href={`/stocks/${stock.ticker}`} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition duration-150 hover:border-brand-200 hover:bg-brand-50">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="font-semibold text-gray-950">{stock.ticker}</p>
@@ -162,7 +162,7 @@ export default async function StocksPage({
             {visibleStocks.map((stock) => (
               <tr key={stock.ticker} className="border-t border-gray-100 transition duration-150 hover:bg-gray-50">
                 <td className="px-4 py-3">
-                  <Link href={`/stocks/${stock.ticker}`} className="font-semibold text-gray-950 underline-offset-4 hover:text-red-700 hover:underline">
+                  <Link href={`/stocks/${stock.ticker}`} className="font-semibold text-gray-950 underline-offset-4 hover:text-brand-700 hover:underline">
                     {stock.ticker}
                   </Link>
                 </td>

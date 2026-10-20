@@ -37,7 +37,7 @@ export function StockAccumulationSnapshot({
             <p className="mt-1 text-sm text-gray-600">Skor profil saat ini {fallbackScore}/100. Tambahkan saham untuk menyimpan status, harga masuk, dan tanggal pantauan.</p>
           </div>
         </div>
-        <Link href="/accumulation" className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-4 text-sm font-semibold text-red-700 hover:bg-red-50 sm:w-auto">
+        <Link href="/accumulation" className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-brand-200 bg-white px-4 text-sm font-semibold text-brand-700 hover:bg-brand-50 sm:w-auto">
           Kelola radar <ArrowRight className="size-4" />
         </Link>
       </div>
@@ -54,7 +54,7 @@ export function StockAccumulationSnapshot({
           <p className="text-sm font-semibold text-gray-950">Status di Accumulation Radar</p>
           <p className="mt-1 text-xs text-gray-500">Mulai dipantau {row.addedAt}</p>
         </div>
-        <span className="w-fit rounded bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">{signalLabel(row.signalType)}</span>
+        <span className="w-fit rounded bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">{signalLabel(row.signalType)}</span>
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-5">
         <RadarMetric label="Skor" value={`${row.score}/100`} detail={scoreLabel(row.score)} />
@@ -69,7 +69,7 @@ export function StockAccumulationSnapshot({
         />
       </div>
       <div className="border-t border-gray-200 px-4 py-3 text-right">
-        <Link href="/accumulation" className="inline-flex items-center gap-1 text-xs font-semibold text-red-700 hover:underline">Edit status radar <ArrowRight className="size-3.5" /></Link>
+        <Link href="/accumulation" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">Edit status radar <ArrowRight className="size-3.5" /></Link>
       </div>
     </div>
   );

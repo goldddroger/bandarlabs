@@ -124,7 +124,7 @@ function Field({
   return (
     <label className="grid gap-2 text-sm font-medium text-gray-700">
       <span>{label}</span>
-      <span className="flex h-11 items-center rounded-md border border-gray-200 bg-white px-3 transition duration-150 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-100">
+      <span className="flex h-11 items-center rounded-md border border-gray-200 bg-white px-3 transition duration-150 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100">
         {prefix ? <span className="mr-2 text-sm font-semibold text-gray-500">{prefix}</span> : null}
         <input
           value={value}
@@ -339,7 +339,7 @@ export function CapitalGainCalculator({ initialMode = "rightIssue", showModeNavi
                   className={cn(
                     "inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-md px-3 py-2 text-center text-sm font-semibold leading-5 transition duration-150",
                     mode === value
-                      ? "bg-red-600 text-white shadow-sm"
+                      ? "bg-brand-600 text-white shadow-sm"
                       : "text-gray-600 hover:bg-white hover:text-gray-950",
                   )}
                 >
@@ -484,7 +484,7 @@ export function CapitalGainCalculator({ initialMode = "rightIssue", showModeNavi
 
         <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-md bg-red-50 text-red-700">
+            <span className="flex size-10 items-center justify-center rounded-md bg-brand-50 text-brand-700">
               <Calculator className="size-5" />
             </span>
             <div>

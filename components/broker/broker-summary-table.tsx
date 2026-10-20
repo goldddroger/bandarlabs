@@ -23,7 +23,7 @@ export function BrokerSummaryTable() {
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div className="h-2 w-28 rounded-full bg-gray-100">
-                    <div className="h-2 rounded-full bg-red-600" style={{ width: `${row.consistency}%` }} />
+                    <div className="h-2 rounded-full bg-brand-600" style={{ width: `${row.consistency}%` }} />
                   </div>
                   <span className="text-gray-700">{row.consistency}%</span>
                 </div>

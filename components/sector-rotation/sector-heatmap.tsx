@@ -95,7 +95,7 @@ export function SectorHeatmap() {
     <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
       <div className="flex flex-col gap-4 border-b border-gray-200 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-red-50 text-red-700"><Grid2X2 className="size-4" /></span>
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700"><Grid2X2 className="size-4" /></span>
           <div><h2 className="text-base font-semibold text-gray-950">Heatmap Sektor IDX</h2><p className="mt-1 text-xs leading-5 text-gray-500">Rata-rata perubahan harian saham perwakilan setiap sektor.</p></div>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -104,7 +104,7 @@ export function SectorHeatmap() {
         </div>
       </div>
 
-      {loading ? <div className="flex min-h-80 items-center justify-center text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-red-600" />Memuat pergerakan sektor...</div> : null}
+      {loading ? <div className="flex min-h-80 items-center justify-center text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-brand-600" />Memuat pergerakan sektor...</div> : null}
       {!loading && error && Object.keys(quotes).length === 0 ? <div className="flex min-h-64 flex-col items-center justify-center px-5 text-center"><p className="text-sm font-semibold text-gray-900">Heatmap belum tersedia</p><p className="mt-1 text-xs text-gray-500">{error}</p><button type="button" onClick={() => void loadQuotes()} className="mt-3 inline-flex h-9 items-center gap-2 rounded-md border border-gray-200 px-3 text-xs font-semibold text-gray-700 hover:bg-gray-50"><RefreshCw className="size-4" />Coba Lagi</button></div> : null}
 
       {!loading && Object.keys(quotes).length > 0 ? (
@@ -116,7 +116,7 @@ export function SectorHeatmap() {
               <div className="mt-4 flex flex-wrap gap-1.5">
                 {sector.tickers.map((ticker) => {
                   const quote = quotes[ticker];
-                  return <Link key={ticker} href={`/stocks/${ticker}`} className="rounded bg-white/75 px-2 py-1 text-[11px] font-semibold text-gray-700 ring-1 ring-black/5 hover:bg-white hover:text-red-700">{ticker} {quote ? formatPercent(quote.changePercent) : "-"}</Link>;
+                  return <Link key={ticker} href={`/stocks/${ticker}`} className="rounded bg-white/75 px-2 py-1 text-[11px] font-semibold text-gray-700 ring-1 ring-black/5 hover:bg-white hover:text-brand-700">{ticker} {quote ? formatPercent(quote.changePercent) : "-"}</Link>;
                 })}
               </div>
             </article>
@@ -126,7 +126,7 @@ export function SectorHeatmap() {
 
       <footer className="flex flex-col gap-3 border-t border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <p>Data Yahoo Finance. Rata-rata sederhana saham perwakilan, bukan rekomendasi jual atau beli.</p>
-        <a href="https://neobdm.tech/rotation-chart/" target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-3 font-semibold text-gray-700 hover:border-red-200 hover:text-red-700">Buka Rotation Chart NeoBDM <ArrowUpRight className="size-3.5" /></a>
+        <a href="https://neobdm.tech/rotation-chart/" target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-3 font-semibold text-gray-700 hover:border-brand-200 hover:text-brand-700">Buka Rotation Chart NeoBDM <ArrowUpRight className="size-3.5" /></a>
       </footer>
     </section>
   );

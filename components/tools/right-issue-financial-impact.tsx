@@ -94,7 +94,7 @@ export function RightIssueFinancialImpact({ inputs, onChange, newShares, exercis
   const ready = number(inputs.equity) > 0 && number(inputs.outstandingShares) > 0 && newShares > 0 && exercisePrice > 0;
   const update = (key: keyof FinancialImpactInputs, value: string) => onChange({ ...inputs, [key]: value });
   return <section className="mt-6 border-t border-gray-200 pt-5">
-    <div className="flex items-start gap-3"><Landmark className="mt-0.5 size-5 shrink-0 text-red-600" /><div><h3 className="text-base font-semibold text-gray-950">Financial Impact Projection</h3><p className="mt-1 text-sm leading-6 text-gray-600">Masukkan angka laporan terakhir dalam rupiah dan lembar saham. Proyeksi memakai dana bruto {offeringName} serta asumsi yang dapat kamu ubah.</p></div></div>
+    <div className="flex items-start gap-3"><Landmark className="mt-0.5 size-5 shrink-0 text-brand-600" /><div><h3 className="text-base font-semibold text-gray-950">Financial Impact Projection</h3><p className="mt-1 text-sm leading-6 text-gray-600">Masukkan angka laporan terakhir dalam rupiah dan lembar saham. Proyeksi memakai dana bruto {offeringName} serta asumsi yang dapat kamu ubah.</p></div></div>
     <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <Input label="Ekuitas saat ini" prefix="Rp" value={inputs.equity} onChange={(value) => update("equity", value)} />
       <Input label="Total utang berbunga" prefix="Rp" value={inputs.debt} onChange={(value) => update("debt", value)} />
@@ -120,7 +120,7 @@ export function RightIssueFinancialImpact({ inputs, onChange, newShares, exercis
 }
 
 function Input({ label, value, prefix, suffix, onChange }: { label: string; value: string; prefix?: string; suffix?: string; onChange: (value: string) => void }) {
-  return <label className="grid gap-1.5 text-xs font-medium text-gray-600"><span>{label}</span><span className="flex h-10 items-center rounded-md border border-gray-200 bg-white px-3 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-100">{prefix ? <span className="mr-2 text-gray-400">{prefix}</span> : null}<input inputMode="decimal" value={value} onChange={(event) => onChange(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm text-gray-900 outline-none" placeholder="0" />{suffix ? <span className="ml-2 text-gray-400">{suffix}</span> : null}</span></label>;
+  return <label className="grid gap-1.5 text-xs font-medium text-gray-600"><span>{label}</span><span className="flex h-10 items-center rounded-md border border-gray-200 bg-white px-3 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100">{prefix ? <span className="mr-2 text-gray-400">{prefix}</span> : null}<input inputMode="decimal" value={value} onChange={(event) => onChange(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm text-gray-900 outline-none" placeholder="0" />{suffix ? <span className="ml-2 text-gray-400">{suffix}</span> : null}</span></label>;
 }
 
 function Impact({ label, before, after, positive }: { label: string; before: string; after: string; positive: boolean }) {

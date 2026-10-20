@@ -85,8 +85,8 @@ export function FcaImportDialog({ open, onClose, onImported }: { open: boolean; 
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
           <input ref={inputRef} type="file" accept=".xlsx" className="sr-only" onChange={chooseFile} />
-          <button type="button" onClick={() => inputRef.current?.click()} disabled={reading || importing} className="flex min-h-28 w-full flex-col items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50 px-5 py-5 text-center hover:border-red-300 hover:bg-red-50/40">
-            {reading ? <Loader2 className="size-7 animate-spin text-red-600" /> : <FileSpreadsheet className="size-7 text-red-600" />}
+          <button type="button" onClick={() => inputRef.current?.click()} disabled={reading || importing} className="flex min-h-28 w-full flex-col items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50 px-5 py-5 text-center hover:border-brand-300 hover:bg-brand-50/40">
+            {reading ? <Loader2 className="size-7 animate-spin text-brand-600" /> : <FileSpreadsheet className="size-7 text-brand-600" />}
             <span className="mt-2 text-sm font-semibold text-gray-950">{reading ? "Membaca workbook..." : fileName || "Pilih file Excel FCA"}</span>
             <span className="mt-1 text-xs text-gray-500">Kolom kode saham, tanggal masuk/keluar, dan kriteria</span>
           </button>
@@ -97,7 +97,7 @@ export function FcaImportDialog({ open, onClose, onImported }: { open: boolean; 
               <dl className="grid grid-cols-2 gap-4 border-y border-gray-200 py-4 sm:grid-cols-4">
                 <div><dt className="text-xs text-gray-500">Tanggal sumber</dt><dd className="mt-1 text-sm font-semibold">{parsed.sourceDate}</dd></div>
                 <div><dt className="text-xs text-gray-500">Total episode</dt><dd className="mt-1 text-sm font-semibold">{parsed.rows.length}</dd></div>
-                <div><dt className="text-xs text-gray-500">Masih aktif</dt><dd className="mt-1 text-sm font-semibold text-red-700">{activeCount}</dd></div>
+                <div><dt className="text-xs text-gray-500">Masih aktif</dt><dd className="mt-1 text-sm font-semibold text-brand-700">{activeCount}</dd></div>
                 <div><dt className="text-xs text-gray-500">Sudah keluar</dt><dd className="mt-1 text-sm font-semibold text-green-700">{parsed.rows.length - activeCount}</dd></div>
               </dl>
               <div className="overflow-x-auto rounded-md border border-gray-200"><table className="w-full min-w-[560px] text-left text-xs"><thead className="bg-gray-50 text-gray-500"><tr><th className="px-3 py-2">Ticker</th><th className="px-3 py-2">Perusahaan</th><th className="px-3 py-2">Masuk</th><th className="px-3 py-2">Keluar</th><th className="px-3 py-2">Kriteria</th></tr></thead><tbody>{parsed.rows.slice(0, 6).map((row) => <tr key={`${row.ticker}-${row.entered_at}`} className="border-t border-gray-100"><td className="px-3 py-2 font-semibold">{row.ticker}</td><td className="max-w-52 truncate px-3 py-2">{row.company_name}</td><td className="px-3 py-2">{row.entered_at}</td><td className="px-3 py-2">{row.exited_at ?? "Aktif"}</td><td className="px-3 py-2">{row.criteria.join(", ")}</td></tr>)}</tbody></table></div>

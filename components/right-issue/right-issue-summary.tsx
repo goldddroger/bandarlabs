@@ -15,7 +15,7 @@ export function RightIssueSummary({ calculation, draft, errors, incomplete }: { 
     ["Intrinsic value per HMETD", c ? formatCurrency(c.theoreticalRightsValue, 2) : "-"],
   ];
   return <section aria-label="Ringkasan Right Issue" className="min-w-0 self-start border-y border-gray-200 xl:sticky xl:top-24">
-    <div className="flex items-center gap-2 border-b border-gray-200 py-4"><Calculator className="size-5 text-red-600" /><h2 className="text-base font-semibold text-gray-950">Ringkasan Right Issue</h2></div>
+    <div className="flex items-center gap-2 border-b border-gray-200 py-4"><Calculator className="size-5 text-brand-600" /><h2 className="text-base font-semibold text-gray-950">Ringkasan Right Issue</h2></div>
     {errors.length ? <div role="alert" className="my-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-800">{errors.map((error) => <p key={error}>{error}</p>)}</div> : null}
     {incomplete ? <p className="py-4 text-sm leading-6 text-gray-500">Isi jumlah saham, average buy, harga cum-right, rasio, dan harga pelaksanaan untuk melihat hasil.</p> : null}
     <dl className="divide-y divide-gray-100">{metrics.map(([label, value]) => <div key={label} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-3 py-3"><dt className="text-sm text-gray-600">{label}</dt><dd className="break-words text-right text-sm font-semibold tabular-nums text-gray-950">{value}</dd></div>)}</dl>

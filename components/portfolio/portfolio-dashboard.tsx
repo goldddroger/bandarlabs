@@ -412,7 +412,7 @@ export function PortfolioDashboard({ view = "positions" }: { view?: "positions" 
 
       <nav aria-label="Halaman portfolio" className="mb-5 flex gap-1 border-b border-gray-200">
         {([{ href: "/portfolio", label: "Posisi Aktif", icon: WalletCards, active: !historyView }, { href: "/portfolio/history", label: "Scalping", icon: History, active: historyView }]).map(({ href, label, icon: Icon, active }) => (
-          <Link key={href} href={href} aria-current={active ? "page" : undefined} className={cn("inline-flex min-h-11 items-center gap-2 border-b-2 px-3 text-sm font-medium", active ? "border-red-600 text-red-700" : "border-transparent text-gray-500 hover:text-gray-900")}><Icon className="size-4 shrink-0" aria-hidden="true" />{label}</Link>
+          <Link key={href} href={href} aria-current={active ? "page" : undefined} className={cn("inline-flex min-h-11 items-center gap-2 border-b-2 px-3 text-sm font-medium", active ? "border-brand-600 text-brand-700" : "border-transparent text-gray-500 hover:text-gray-900")}><Icon className="size-4 shrink-0" aria-hidden="true" />{label}</Link>
         ))}
       </nav>
 
@@ -491,7 +491,7 @@ function PortfolioHistoryChart({ mode, history, trades, hasActivePositions, onCl
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {mode === "equity" && history.length ? <Button type="button" variant="ghost" className="h-9 px-2.5 text-xs text-gray-500 hover:text-red-700" onClick={onClearEquity} title="Hapus seluruh snapshot equity"><Trash2 className="size-4" />Reset</Button> : null}
+          {mode === "equity" && history.length ? <Button type="button" variant="ghost" className="h-9 px-2.5 text-xs text-gray-500 hover:text-brand-700" onClick={onClearEquity} title="Hapus seluruh snapshot equity"><Trash2 className="size-4" />Reset</Button> : null}
         </div>
       </div>
       {chartData.length === 0 ? (
@@ -502,22 +502,22 @@ function PortfolioHistoryChart({ mode, history, trades, hasActivePositions, onCl
         <div>
           <div className="mb-2 flex items-baseline justify-between gap-3">
             <p className="text-xs text-gray-500">{mode === "equity" ? hasActivePositions ? "Equity terakhir" : "Snapshot terakhir" : "Kumulatif realized"}</p>
-            <p className={cn("text-sm font-semibold text-gray-950", mode === "trade" && latestValue >= 0 && "text-emerald-700", mode === "trade" && latestValue < 0 && "text-red-700")}>{formatCurrency(latestValue)}</p>
+            <p className={cn("text-sm font-semibold text-gray-950", mode === "trade" && latestValue >= 0 && "text-emerald-700", mode === "trade" && latestValue < 0 && "text-brand-700")}>{formatCurrency(latestValue)}</p>
           </div>
           <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id={`portfolioHistoryFill-${mode}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={mode === "equity" ? "#dc2626" : "#059669"} stopOpacity={0.22} />
-                    <stop offset="100%" stopColor={mode === "equity" ? "#dc2626" : "#059669"} stopOpacity={0.02} />
+                    <stop offset="0%" stopColor={mode === "equity" ? "var(--color-brand-600)" : "#059669"} stopOpacity={0.22} />
+                    <stop offset="100%" stopColor={mode === "equity" ? "var(--color-brand-600)" : "#059669"} stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
                 <YAxis width={68} tickFormatter={(value) => Math.abs(value) >= 1_000_000 ? `${(value / 1_000_000).toFixed(0)}jt` : `${(value / 1_000).toFixed(0)}rb`} tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
                 <Tooltip formatter={(value) => [formatCurrency(Number(value)), mode === "equity" ? "Equity" : "Kumulatif realized"]} labelFormatter={(label) => `Tanggal ${label}`} />
-                <Area type="monotone" dataKey="value" stroke={mode === "equity" ? "#dc2626" : "#059669"} strokeWidth={2} fill={`url(#portfolioHistoryFill-${mode})`} dot={{ r: 3, fill: mode === "equity" ? "#dc2626" : "#059669" }} />
+                <Area type="monotone" dataKey="value" stroke={mode === "equity" ? "var(--color-brand-600)" : "#059669"} strokeWidth={2} fill={`url(#portfolioHistoryFill-${mode})`} dot={{ r: 3, fill: mode === "equity" ? "var(--color-brand-600)" : "#059669" }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -587,7 +587,7 @@ function PositionsSection({ rows, resolved, onAdd, onEdit, onDelete }: { rows: P
 function PositionTableRow({ row, onEdit, onDelete }: { row: PositionRow; onEdit: (holding: PortfolioHolding) => void; onDelete: (id: string) => void }) {
   return (
     <tr className="hover:bg-gray-50">
-      <td className="px-4 py-4"><Link href={`/stocks/${row.holding.ticker}`} className="font-semibold text-red-700 hover:underline">{row.holding.ticker}</Link><p className="mt-1 text-xs text-gray-500">{row.holding.note || formatDisplayDate(row.holding.purchasedAt)}</p></td>
+      <td className="px-4 py-4"><Link href={`/stocks/${row.holding.ticker}`} className="font-semibold text-brand-700 hover:underline">{row.holding.ticker}</Link><p className="mt-1 text-xs text-gray-500">{row.holding.note || formatDisplayDate(row.holding.purchasedAt)}</p></td>
       <td className="whitespace-nowrap px-4 py-4 font-semibold text-gray-900">{row.holding.lots}</td>
       <td className="whitespace-nowrap px-4 py-4 text-gray-700">{formatCurrency(row.holding.averagePrice)}</td>
       <td className="whitespace-nowrap px-4 py-4 text-gray-700">{formatCurrency(row.currentPrice)}<p className="mt-1 text-xs text-gray-500">{row.quote?.source ?? "Harga beli fallback"}</p></td>
@@ -602,7 +602,7 @@ function PositionTableRow({ row, onEdit, onDelete }: { row: PositionRow; onEdit:
 function PositionMobileRow({ row, onEdit, onDelete }: { row: PositionRow; onEdit: (holding: PortfolioHolding) => void; onDelete: (id: string) => void }) {
   return (
     <article className="p-4">
-      <div className="flex items-start justify-between gap-3"><div><Link href={`/stocks/${row.holding.ticker}`} className="font-semibold text-red-700">{row.holding.ticker}</Link><p className="mt-1 text-xs text-gray-500">{row.holding.lots} lot · avg {formatCurrency(row.holding.averagePrice)}</p></div><RowActions label={row.holding.ticker} onEdit={() => onEdit(row.holding)} onDelete={() => onDelete(row.holding.id)} /></div>
+      <div className="flex items-start justify-between gap-3"><div><Link href={`/stocks/${row.holding.ticker}`} className="font-semibold text-brand-700">{row.holding.ticker}</Link><p className="mt-1 text-xs text-gray-500">{row.holding.lots} lot · avg {formatCurrency(row.holding.averagePrice)}</p></div><RowActions label={row.holding.ticker} onEdit={() => onEdit(row.holding)} onDelete={() => onDelete(row.holding.id)} /></div>
       <div className="mt-4 grid grid-cols-2 gap-3"><MobileValue label="Modal" value={formatCompactCurrency(row.capital)} /><MobileValue label="Valuasi" value={formatCompactCurrency(row.marketValue)} /><MobileValue label="Harga saat ini" value={formatCurrency(row.currentPrice)} /><MobileValue label="Unrealized" value={`${formatCompactCurrency(row.profitLoss)} · ${formatPercent(row.profitLossPercent)}`} tone={row.profitLoss >= 0 ? "positive" : "negative"} /></div>
     </article>
   );
@@ -703,7 +703,7 @@ function TradeHistorySection({ trades, filter, onFilterChange, focus, onAdd, onE
           <span className="text-gray-600">{monthlyStats.count} trade</span>
           <span className={cn("font-semibold tabular-nums", monthlyStats.realized < 0 ? "text-red-700" : "text-emerald-700")}>{formatCurrency(monthlyStats.realized)}</span>
         </div>
-        <button type="button" onClick={() => onFilterChange({ mode: "month", month: currentMonth, quarter: getQuarterFromDate(today), year: today.slice(0, 4) })} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-red-700 hover:bg-red-50"><History className="size-3.5" aria-hidden="true" />Lihat bulan ini</button>
+        <button type="button" onClick={() => onFilterChange({ mode: "month", month: currentMonth, quarter: getQuarterFromDate(today), year: today.slice(0, 4) })} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-brand-700 hover:bg-brand-50"><History className="size-3.5" aria-hidden="true" />Lihat bulan ini</button>
       </div>
       <section aria-label="Statistik riwayat transaksi" className="border-b border-gray-200 px-4 py-4">
         <h3 className="text-xs font-semibold text-gray-900">Statistik {periodLabel}</h3>
@@ -725,9 +725,9 @@ function TradeHistorySection({ trades, filter, onFilterChange, focus, onAdd, onE
             <tbody className="divide-y divide-gray-100">{sortedTrades.map((trade) => {
               const gain = calculateRealizedGain(trade);
               return (
-                <tr key={trade.id} className={cn("transition duration-300 hover:bg-gray-50", trade.id === focus.tradeId && "bg-red-50/70")}>
+                <tr key={trade.id} className={cn("transition duration-300 hover:bg-gray-50", trade.id === focus.tradeId && "bg-brand-50/70")}>
                   <td className="whitespace-nowrap px-4 py-4 text-gray-600">{formatDisplayDate(trade.soldAt)}</td>
-                  <td className="px-4 py-4"><Link href={`/stocks/${trade.ticker}`} className="font-semibold text-red-700 hover:underline">{trade.ticker}</Link></td>
+                  <td className="px-4 py-4"><Link href={`/stocks/${trade.ticker}`} className="font-semibold text-brand-700 hover:underline">{trade.ticker}</Link></td>
                   <td className="px-4 py-4 font-semibold text-gray-900">{new Intl.NumberFormat("id-ID").format(trade.lots)}</td>
                   <td className="whitespace-nowrap px-4 py-4 text-gray-700">{formatCurrency(trade.buyPrice)}</td>
                   <td className="whitespace-nowrap px-4 py-4 text-gray-700">{formatCurrency(trade.sellPrice)}</td>
@@ -748,7 +748,7 @@ function TradeStatistic({ label, value, detail, amount }: { label: string; value
   return (
     <div className="min-w-0 border-b border-gray-100 py-3">
       <dt className="text-xs text-gray-500">{label}</dt>
-      <dd className={cn("mt-1 break-words text-sm font-semibold tabular-nums text-gray-950 sm:text-base", amount !== undefined && amount > 0 && "text-emerald-700", amount !== undefined && amount < 0 && "text-red-700")}>{value}</dd>
+      <dd className={cn("mt-1 break-words text-sm font-semibold tabular-nums text-gray-950 sm:text-base", amount !== undefined && amount > 0 && "text-emerald-700", amount !== undefined && amount < 0 && "text-brand-700")}>{value}</dd>
       <dd className="mt-1 text-[11px] leading-5 text-gray-500">{detail}</dd>
     </div>
   );

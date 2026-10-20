@@ -175,7 +175,7 @@ function StockTickerLink({ ticker, className }: { ticker: string; className?: st
     <Link
       href={`/stocks/${ticker}`}
       className={cn(
-        "inline-flex w-fit items-center rounded-md font-semibold text-gray-950 underline-offset-4 transition duration-150 hover:text-red-700 hover:underline focus-visible:ring-2 focus-visible:ring-red-500",
+        "inline-flex w-fit items-center rounded-md font-semibold text-gray-950 underline-offset-4 transition duration-150 hover:text-brand-700 hover:underline focus-visible:ring-2 focus-visible:ring-brand-500",
         className,
       )}
     >
@@ -417,7 +417,7 @@ function TrackRecordModal({ target, onClose }: { target: TrackRecordTarget; onCl
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 id="track-record-title" className="text-lg font-semibold text-gray-950">Track Record {target.ticker}</h2>
-              <span className="rounded bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">{target.status}</span>
+              <span className="rounded bg-brand-50 px-2 py-1 text-xs font-semibold text-brand-700">{target.status}</span>
             </div>
             <p className="mt-1 truncate text-sm text-gray-600">{target.name} · {target.source}</p>
           </div>
@@ -458,7 +458,7 @@ function TrackRecordModal({ target, onClose }: { target: TrackRecordTarget; onCl
                         <YAxis domain={["auto", "auto"]} width={54} tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
                         <Tooltip formatter={(value, name) => [`Rp ${formatStockPrice(Number(value))}`, name === "entry" ? "Harga masuk" : "Close"]} labelFormatter={(date) => formatHistoryDate(String(date))} />
                         <Line type="monotone" dataKey="entry" stroke="#9ca3af" strokeDasharray="5 5" dot={false} strokeWidth={1.5} />
-                        <Line type="monotone" dataKey="close" stroke="#dc2626" dot={{ r: 2.5 }} activeDot={{ r: 4 }} strokeWidth={2} />
+                        <Line type="monotone" dataKey="close" stroke="var(--color-brand-600)" dot={{ r: 2.5 }} activeDot={{ r: 4 }} strokeWidth={2} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -494,12 +494,12 @@ function TrackRecordModal({ target, onClose }: { target: TrackRecordTarget; onCl
 }
 
 function TrackMetric({ label, value, detail, tone }: { label: string; value: string; detail?: string; tone?: number }) {
-  return <div className="border-b border-gray-200 p-3 last:border-b-0 sm:border-r xl:border-b-0 xl:last:border-r-0"><p className="text-xs text-gray-500">{label}</p><p className={cn("mt-1 text-base font-semibold text-gray-950", typeof tone === "number" && tone > 0 && "text-green-700", typeof tone === "number" && tone < 0 && "text-red-700")}>{value}</p>{detail ? <p className="mt-1 text-xs text-gray-500">{detail}</p> : null}</div>;
+  return <div className="border-b border-gray-200 p-3 last:border-b-0 sm:border-r xl:border-b-0 xl:last:border-r-0"><p className="text-xs text-gray-500">{label}</p><p className={cn("mt-1 text-base font-semibold text-gray-950", typeof tone === "number" && tone > 0 && "text-green-700", typeof tone === "number" && tone < 0 && "text-brand-700")}>{value}</p>{detail ? <p className="mt-1 text-xs text-gray-500">{detail}</p> : null}</div>;
 }
 
 function ConditionBadge({ condition }: { condition: string }) {
   const Icon = condition === "Naik" ? TrendingUp : condition === "Turun" ? TrendingDown : History;
-  return <span className={cn("inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold", condition === "Naik" ? "bg-green-50 text-green-700" : condition === "Turun" ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600")}><Icon className="size-3.5" />{condition}</span>;
+  return <span className={cn("inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold", condition === "Naik" ? "bg-green-50 text-green-700" : condition === "Turun" ? "bg-brand-50 text-brand-700" : "bg-gray-100 text-gray-600")}><Icon className="size-3.5" />{condition}</span>;
 }
 
 function RecommendationTable({
@@ -537,7 +537,7 @@ function RecommendationTable({
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <button
-                    className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-blue-50 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-red-500"
+                    className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-blue-50 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-brand-500"
                     type="button"
                     aria-label={`Track record ${row.stock}`}
                     onClick={() => onHistory({
@@ -553,7 +553,7 @@ function RecommendationTable({
                     <History className="size-4" />
                   </button>
                   <button
-                    className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-red-500"
+                    className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-brand-500"
                     type="button"
                     aria-label={`Edit rekomendasi ${row.stock}`}
                     onClick={() => onEdit(row)}
@@ -561,7 +561,7 @@ function RecommendationTable({
                     <Pencil className="size-4" />
                   </button>
                   <button
-                    className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-red-500"
+                    className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-brand-500"
                     type="button"
                     aria-label={`Hapus rekomendasi ${row.stock}`}
                     onClick={() => onDelete(row.id)}
@@ -683,7 +683,7 @@ function RecommendationTable({
                   <td className="px-3 py-3 align-top">
                     <div className="flex justify-end gap-0.5">
                       <button
-                        className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-blue-50 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-red-500"
+                        className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-blue-50 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-brand-500"
                         type="button"
                         aria-label={`Track record ${row.stock}`}
                         onClick={() => onHistory({
@@ -699,7 +699,7 @@ function RecommendationTable({
                         <History className="size-4" />
                       </button>
                       <button
-                        className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-red-500"
+                        className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-brand-500"
                         type="button"
                         aria-label={`Edit rekomendasi ${row.stock}`}
                         onClick={() => onEdit(row)}
@@ -707,7 +707,7 @@ function RecommendationTable({
                         <Pencil className="size-4" />
                       </button>
                       <button
-                        className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-red-500"
+                        className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-brand-500"
                         type="button"
                         aria-label={`Hapus rekomendasi ${row.stock}`}
                         onClick={() => onDelete(row.id)}
@@ -1161,12 +1161,12 @@ export function AccumulationRadar() {
   }
 
   if (!cloudReady) {
-    return <div className="flex min-h-[45vh] items-center justify-center text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-red-600" />Menyinkronkan watchlist dari Supabase...</div>;
+    return <div className="flex min-h-[45vh] items-center justify-center text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-brand-600" />Menyinkronkan watchlist dari Supabase...</div>;
   }
 
   return (
     <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
-      {cloudError ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><strong>Sinkronisasi database bermasalah.</strong> {cloudError}</div> : null}
+      {cloudError ? <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-700"><strong>Sinkronisasi database bermasalah.</strong> {cloudError}</div> : null}
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
@@ -1206,7 +1206,7 @@ export function AccumulationRadar() {
             {stockUniverse.length} saham tersedia dari daftar Indonesia. Radar membedakan saham yang sudah masuk fase accumulation dan saham siap pantau.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
+            <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">
               {selectedRows.length} aktif
             </span>
             <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
@@ -1255,7 +1255,7 @@ export function AccumulationRadar() {
                 </p>
               </div>
               <button
-                className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-red-500"
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-brand-500"
                 type="button"
                 aria-label="Tutup modal tambah saham"
                 onClick={() => { setModalOpen(false); setEditingWatchlistTicker(null); }}
@@ -1273,21 +1273,21 @@ export function AccumulationRadar() {
                         Cari Saham
                         <span className="relative block">
                           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-                          <input id="accumulation-stock-search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Contoh: AHAP, JATI, BBCA..." className="h-11 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-red-500 focus:ring-2 focus:ring-red-100" autoFocus />
+                          <input id="accumulation-stock-search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Contoh: AHAP, JATI, BBCA..." className="h-11 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100" autoFocus />
                         </span>
                       </label>
                       <div className="mt-3 flex flex-wrap justify-between gap-2 text-xs text-gray-500">
                         <span>{visibleAvailableStocks.length} saham tersedia</span>
-                        <span className="font-semibold text-red-600">{validCheckedStocks.length} dipilih</span>
+                        <span className="font-semibold text-brand-600">{validCheckedStocks.length} dipilih</span>
                       </div>
                     </div>
                     <div className="bandarlab-scrollbar grid max-h-[420px] overflow-y-auto overscroll-contain p-2 sm:grid-cols-2">
                       {visibleAvailableStocks.map((stock) => {
                         const checked = validCheckedStocks.includes(stock.stock);
                         return (
-                          <label key={stock.stock} className={cn("flex min-h-14 cursor-pointer items-start gap-3 rounded-md px-3 py-2 text-sm hover:bg-gray-50", checked && "bg-red-50 hover:bg-red-50")}>
-                            <input type="checkbox" checked={checked} onChange={() => toggleCheckedStock(stock.stock)} className="mt-1 size-4 rounded border-gray-300 accent-red-600" />
-                            <span className="min-w-0"><span className={cn("block font-semibold text-gray-950", checked && "text-red-700")}>{stock.stock}</span><span className="block truncate text-xs text-gray-500">{stock.name}</span></span>
+                          <label key={stock.stock} className={cn("flex min-h-14 cursor-pointer items-start gap-3 rounded-md px-3 py-2 text-sm hover:bg-gray-50", checked && "bg-brand-50 hover:bg-brand-50")}>
+                            <input type="checkbox" checked={checked} onChange={() => toggleCheckedStock(stock.stock)} className="mt-1 size-4 rounded border-gray-300 accent-brand-600" />
+                            <span className="min-w-0"><span className={cn("block font-semibold text-gray-950", checked && "text-brand-700")}>{stock.stock}</span><span className="block truncate text-xs text-gray-500">{stock.name}</span></span>
                           </label>
                         );
                       })}
@@ -1301,7 +1301,7 @@ export function AccumulationRadar() {
                     <legend className="mb-2 text-sm font-semibold text-gray-900">Jenis watchlist</legend>
                     <div className="grid grid-cols-3 gap-2">
                       {watchlistCategories.map((category) => (
-                        <button key={category.value} type="button" onClick={() => setWatchlistForm((current) => ({ ...current, watchlistCategory: category.value }))} className={cn("min-h-16 rounded-md border px-2 py-2 text-left transition", watchlistForm.watchlistCategory === category.value ? "border-red-500 bg-red-50 text-red-700" : "border-gray-200 hover:bg-gray-50")}>
+                        <button key={category.value} type="button" onClick={() => setWatchlistForm((current) => ({ ...current, watchlistCategory: category.value }))} className={cn("min-h-16 rounded-md border px-2 py-2 text-left transition", watchlistForm.watchlistCategory === category.value ? "border-brand-500 bg-brand-50 text-brand-700" : "border-gray-200 hover:bg-gray-50")}>
                           <span className="block text-sm font-semibold">{category.label}</span><span className="mt-0.5 block text-[11px] leading-4 text-gray-500">{category.description}</span>
                         </button>
                       ))}
@@ -1312,7 +1312,7 @@ export function AccumulationRadar() {
                     <legend className="mb-2 text-sm font-semibold text-gray-900">Alasan pemantauan <span className="font-normal text-gray-500">(bisa lebih dari satu)</span></legend>
                     <div className="flex flex-wrap gap-2">
                       {watchlistTheses.map((thesis) => (
-                        <button key={thesis.value} type="button" onClick={() => toggleThesis(thesis.value)} className={cn("rounded-full border px-3 py-1.5 text-xs font-medium transition", watchlistForm.thesisTags.includes(thesis.value) ? "border-red-500 bg-red-50 text-red-700" : "border-gray-200 text-gray-600 hover:border-gray-300")}>
+                        <button key={thesis.value} type="button" onClick={() => toggleThesis(thesis.value)} className={cn("rounded-full border px-3 py-1.5 text-xs font-medium transition", watchlistForm.thesisTags.includes(thesis.value) ? "border-brand-500 bg-brand-50 text-brand-700" : "border-gray-200 text-gray-600 hover:border-gray-300")}>
                           {thesis.label}
                         </button>
                       ))}
@@ -1364,7 +1364,7 @@ export function AccumulationRadar() {
                 </p>
               </div>
               <button
-                className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-red-500"
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-brand-500"
                 type="button"
                 aria-label="Tutup modal rekomendasi eksternal"
                 onClick={() => setRecommendationModalOpen(false)}
@@ -1384,7 +1384,7 @@ export function AccumulationRadar() {
                     setRecommendationForm((currentForm) => ({ ...currentForm, stock: event.target.value.toUpperCase() }))
                   }
                   placeholder="Contoh: LAPD"
-                  className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 hover:border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 hover:border-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                 />
                 <datalist id="external-stock-options">
                   {stockUniverse.map((stock) => (
@@ -1402,7 +1402,7 @@ export function AccumulationRadar() {
                   value={recommendationForm.source}
                   onChange={(event) => setRecommendationForm((currentForm) => ({ ...currentForm, source: event.target.value }))}
                   placeholder="Pak Frans / Jejak Bandar / Pak Dhani"
-                  className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 hover:border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 hover:border-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                 />
               </label>
 
@@ -1417,7 +1417,7 @@ export function AccumulationRadar() {
                       status: event.target.value as RadarSignalType,
                     }))
                   }
-                  className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 transition duration-150 hover:border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 transition duration-150 hover:border-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                 >
                   <option value="accumulation">Accumulation</option>
                   <option value="watchlist">Siap Pantau</option>
@@ -1436,7 +1436,7 @@ export function AccumulationRadar() {
                       trend: event.target.value as RecommendationRow["trend"],
                     }))
                   }
-                  className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 transition duration-150 hover:border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 transition duration-150 hover:border-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                 >
                   <option value="Uptrend">Uptrend</option>
                   <option value="Sideways">Sideways</option>
@@ -1451,7 +1451,7 @@ export function AccumulationRadar() {
                   value={recommendationForm.monitoredAt}
                   onChange={(event) => setRecommendationForm((currentForm) => ({ ...currentForm, monitoredAt: event.target.value }))}
                   placeholder="Contoh: 17 Agustus 2026"
-                  className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 hover:border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 hover:border-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                 />
               </label>
 
@@ -1462,7 +1462,7 @@ export function AccumulationRadar() {
                   value={recommendationForm.note}
                   onChange={(event) => setRecommendationForm((currentForm) => ({ ...currentForm, note: event.target.value }))}
                   placeholder="Tulis alasan pemantauan, area harga, atau kondisi yang perlu dicek lagi."
-                  className="min-h-24 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 hover:border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  className="min-h-24 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 hover:border-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                 />
               </label>
             </div>
@@ -1496,7 +1496,7 @@ export function AccumulationRadar() {
         <div className="grid grid-cols-3 border-b border-gray-200 bg-gray-50 p-1.5">
           {watchlistCategories.map((category) => {
             const count = selectedRows.filter((row) => row.watchlistCategory === category.value).length;
-            return <button key={category.value} type="button" onClick={() => setActiveWatchlistCategory(category.value)} className={cn("min-w-0 rounded-md px-2 py-2.5 text-sm font-semibold transition", activeWatchlistCategory === category.value ? "bg-white text-red-700 shadow-sm ring-1 ring-gray-200" : "text-gray-500 hover:text-gray-900")}><span className="block truncate">{category.label}</span><span className="mt-0.5 block text-xs font-normal">{count} saham</span></button>;
+            return <button key={category.value} type="button" onClick={() => setActiveWatchlistCategory(category.value)} className={cn("min-w-0 rounded-md px-2 py-2.5 text-sm font-semibold transition", activeWatchlistCategory === category.value ? "bg-white text-brand-700 shadow-sm ring-1 ring-gray-200" : "text-gray-500 hover:text-gray-900")}><span className="block truncate">{category.label}</span><span className="mt-0.5 block text-xs font-normal">{count} saham</span></button>;
           })}
         </div>
         <div className="flex flex-col gap-4 border-b border-gray-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1513,7 +1513,7 @@ export function AccumulationRadar() {
               id="radar-status-filter"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-              className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 transition duration-150 hover:border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+              className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 transition duration-150 hover:border-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             >
               <option value="all">Semua Status</option>
               <option value="accumulation">Accumulation</option>
@@ -1537,7 +1537,7 @@ export function AccumulationRadar() {
                    <div className="flex shrink-0 gap-1">
                     <button className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 hover:bg-amber-50 hover:text-amber-700" type="button" aria-label={`Edit rencana ${row.stock}`} onClick={() => openEditWatchlist(row)}><Pencil className="size-4" /></button>
                     <button
-                      className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-blue-50 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-red-500"
+                      className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-blue-50 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-brand-500"
                       type="button"
                       aria-label={`Track record ${row.stock}`}
                       onClick={() => setTrackRecordTarget({
@@ -1553,7 +1553,7 @@ export function AccumulationRadar() {
                       <History className="size-4" />
                     </button>
                     <button
-                      className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-red-500"
+                      className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-brand-500"
                       type="button"
                       aria-label={`Hapus ${row.stock} dari radar`}
                       onClick={() => removeStock(row.stock)}
@@ -1572,7 +1572,7 @@ export function AccumulationRadar() {
                     value={row.signalType}
                     onChange={(event) => updateStockStatus(row.stock, event.target.value as RadarSignalType)}
                     className={cn(
-                      "h-8 rounded-full border px-2.5 text-xs font-semibold transition duration-150 focus:ring-2 focus:ring-red-100",
+                      "h-8 rounded-full border px-2.5 text-xs font-semibold transition duration-150 focus:ring-2 focus:ring-brand-100",
                       signalBadgeClass(row.signalType),
                     )}
                   >
@@ -1586,7 +1586,7 @@ export function AccumulationRadar() {
                       row.trend === "uptrend"
                         ? "bg-green-50 text-green-700"
                         : row.trend === "downtrend"
-                          ? "bg-red-50 text-red-700"
+                          ? "bg-brand-50 text-brand-700"
                           : "bg-gray-100 text-gray-600",
                     )}
                   >
@@ -1618,7 +1618,7 @@ export function AccumulationRadar() {
                   </div>
                 </div>
                 <div className="mt-3 rounded-md border border-gray-100 bg-gray-50 p-2.5">
-                  <div className="flex flex-wrap items-center gap-1.5"><span className="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-gray-700 ring-1 ring-gray-200">{lifecycleLabel(row.lifecycle)}</span>{row.thesisTags.slice(0, 2).map((tag) => <span key={tag} className="rounded-full bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">{thesisLabel(tag)}</span>)}</div>
+                  <div className="flex flex-wrap items-center gap-1.5"><span className="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-gray-700 ring-1 ring-gray-200">{lifecycleLabel(row.lifecycle)}</span>{row.thesisTags.slice(0, 2).map((tag) => <span key={tag} className="rounded-full bg-brand-50 px-2 py-1 text-[11px] font-medium text-brand-700">{thesisLabel(tag)}</span>)}</div>
                   {planTriggerSummary(row) ? <p className="mt-2 text-xs font-medium text-gray-700">{planTriggerSummary(row)}</p> : null}
                   {row.reviewDate ? <p className="mt-2 text-xs text-gray-500">Review {row.reviewDate}</p> : null}
                 </div>
@@ -1661,7 +1661,7 @@ export function AccumulationRadar() {
                       value={row.signalType}
                       onChange={(event) => updateStockStatus(row.stock, event.target.value as RadarSignalType)}
                       className={cn(
-                        "h-8 rounded-full border px-2.5 text-xs font-semibold transition duration-150 focus:ring-2 focus:ring-red-100",
+                        "h-8 rounded-full border px-2.5 text-xs font-semibold transition duration-150 focus:ring-2 focus:ring-brand-100",
                         signalBadgeClass(row.signalType),
                       )}
                     >
@@ -1671,7 +1671,7 @@ export function AccumulationRadar() {
                     </select>
                   </td>
                   <td className="max-w-64 px-4 py-3">
-                    <div className="flex flex-wrap gap-1"><span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-700">{lifecycleLabel(row.lifecycle)}</span>{row.thesisTags.slice(0, 2).map((tag) => <span key={tag} className="rounded-full bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">{thesisLabel(tag)}</span>)}</div>
+                    <div className="flex flex-wrap gap-1"><span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-700">{lifecycleLabel(row.lifecycle)}</span>{row.thesisTags.slice(0, 2).map((tag) => <span key={tag} className="rounded-full bg-brand-50 px-2 py-1 text-[11px] font-medium text-brand-700">{thesisLabel(tag)}</span>)}</div>
                     {planTriggerSummary(row) ? <span className="mt-1.5 block text-xs font-medium text-gray-700">{planTriggerSummary(row)}</span> : null}
                     {row.reviewDate ? <span className="mt-1.5 block text-xs text-gray-500">Review {row.reviewDate}</span> : null}
                   </td>
@@ -1711,7 +1711,7 @@ export function AccumulationRadar() {
                         row.trend === "uptrend"
                           ? "bg-green-50 text-green-700"
                           : row.trend === "downtrend"
-                            ? "bg-red-50 text-red-700"
+                            ? "bg-brand-50 text-brand-700"
                             : "bg-gray-100 text-gray-600",
                       )}
                     >
@@ -1723,7 +1723,7 @@ export function AccumulationRadar() {
                     <div className="flex justify-end gap-1">
                       <button className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 hover:bg-amber-50 hover:text-amber-700" type="button" aria-label={`Edit rencana ${row.stock}`} onClick={() => openEditWatchlist(row)}><Pencil className="size-4" /></button>
                       <button
-                        className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-blue-50 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-red-500"
+                        className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-blue-50 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-brand-500"
                         type="button"
                         aria-label={`Track record ${row.stock}`}
                         onClick={() => setTrackRecordTarget({
@@ -1739,7 +1739,7 @@ export function AccumulationRadar() {
                         <History className="size-4" />
                       </button>
                       <button
-                        className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-red-500"
+                        className="inline-flex size-9 items-center justify-center rounded-md text-gray-500 transition duration-150 hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-brand-500"
                         type="button"
                         aria-label={`Hapus ${row.stock} dari radar`}
                         onClick={() => removeStock(row.stock)}

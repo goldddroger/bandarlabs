@@ -218,12 +218,12 @@ export function NotificationCenter() {
 
       {fcaAlerts.length > 0 ? (
         <div className="mb-6">
-          <div className="mb-3 flex items-center justify-between gap-3"><h2 className="text-base font-semibold text-gray-950">Perubahan FCA</h2><Link href="/fca" className="text-xs font-semibold text-red-700 hover:underline">Buka tracker</Link></div>
+          <div className="mb-3 flex items-center justify-between gap-3"><h2 className="text-base font-semibold text-gray-950">Perubahan FCA</h2><Link href="/fca" className="text-xs font-semibold text-brand-700 hover:underline">Buka tracker</Link></div>
           <div className="grid gap-3">
             {fcaAlerts.map((record) => (
               <div key={record.ticker} className={cn("rounded-lg border p-4", !record.alert?.unread || isRead(fcaNotificationId(record)) ? "border-gray-200 bg-white" : "border-amber-200 bg-amber-50/50")}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div><div className="flex items-center gap-2"><Link href={`/stocks/${record.ticker}`} onClick={() => void acknowledge([fcaNotificationId(record)])} className="text-lg font-semibold text-gray-950 hover:text-red-700">{record.ticker}</Link><span className="rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700">FCA</span></div><p className="mt-1 text-sm text-gray-700">{record.alert?.message}</p><p className="mt-1 text-xs text-gray-500">{record.companyName}</p></div>
+                  <div><div className="flex items-center gap-2"><Link href={`/stocks/${record.ticker}`} onClick={() => void acknowledge([fcaNotificationId(record)])} className="text-lg font-semibold text-gray-950 hover:text-brand-700">{record.ticker}</Link><span className="rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700">FCA</span></div><p className="mt-1 text-sm text-gray-700">{record.alert?.message}</p><p className="mt-1 text-xs text-gray-500">{record.companyName}</p></div>
                   <div className="flex flex-wrap items-center gap-3">
                     <ReadAction read={!record.alert?.unread || isRead(fcaNotificationId(record))} disabled={!ready} onRead={() => void acknowledge([fcaNotificationId(record)])} />
                     <Link href="/fca" onClick={() => void acknowledge([fcaNotificationId(record)])} className="inline-flex h-9 items-center justify-center rounded-md border border-amber-200 bg-white px-3 text-sm font-semibold text-amber-800">Lihat riwayat</Link>
@@ -244,7 +244,7 @@ export function NotificationCenter() {
           </p>
           <Link
             href="/fca"
-            className="mt-4 inline-flex h-10 items-center justify-center rounded-md border border-red-600 bg-red-600 px-4 text-sm font-semibold text-white transition duration-150 hover:bg-red-700"
+            className="mt-4 inline-flex h-10 items-center justify-center rounded-md border border-brand-600 bg-brand-600 px-4 text-sm font-semibold text-white transition duration-150 hover:bg-brand-700"
           >
             Buka FCA Tracker
           </Link>
@@ -315,7 +315,7 @@ function NotificationRow({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={`/stocks/${row.ticker}`} onClick={row.reached ? onRead : undefined} className="text-lg font-semibold text-gray-950 hover:text-red-700">
+            <Link href={`/stocks/${row.ticker}`} onClick={row.reached ? onRead : undefined} className="text-lg font-semibold text-gray-950 hover:text-brand-700">
               {row.ticker}
             </Link>
             <span

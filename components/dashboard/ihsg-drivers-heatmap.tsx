@@ -91,7 +91,7 @@ export function IhsgDriversHeatmap() {
       <header className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <Grid2X2 aria-hidden="true" className="size-4 shrink-0 text-red-600" />
+            <Grid2X2 aria-hidden="true" className="size-4 shrink-0 text-brand-600" />
             <h2 id="ihsg-drivers-heading" className="text-base font-semibold text-gray-950">Penggerak IHSG</h2>
             <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800">Estimasi</span>
           </div>
@@ -134,7 +134,7 @@ export function IhsgDriversHeatmap() {
           </div>
           <footer className="mt-4 flex flex-col gap-2 text-xs leading-5 text-gray-500 sm:flex-row sm:justify-between">
             <p className="max-w-3xl">Harga: Yahoo Finance. Jumlah saham: BEI {dateLabel(payload.sharesAsOf)}. {payload.excludedStocks} saham tidak tercakup atau sesi tidak cocok. Estimasi tidak menyesuaikan free float, batas bobot, maupun perubahan jumlah saham setelah tanggal sumber.</p>
-            <a href="https://www.idx.co.id/id/produk/indeks/" target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 self-start font-medium text-gray-700 hover:text-red-700">Metodologi BEI <ExternalLink aria-hidden="true" className="size-3" /></a>
+            <a href="https://www.idx.co.id/id/produk/indeks/" target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 self-start font-medium text-gray-700 hover:text-brand-700">Metodologi BEI <ExternalLink aria-hidden="true" className="size-3" /></a>
           </footer>
         </>
       )}

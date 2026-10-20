@@ -295,10 +295,10 @@ export function BrokerSummaryLookup() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-1 rounded-lg border border-gray-200 bg-gray-100 p-1.5">
-        <button type="button" onClick={() => setMode("axentraz")} className={cn("inline-flex h-10 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold", mode === "axentraz" ? "bg-red-600 text-white shadow-sm" : "text-gray-600 hover:bg-white")}>
+        <button type="button" onClick={() => setMode("axentraz")} className={cn("inline-flex h-10 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold", mode === "axentraz" ? "bg-brand-600 text-white shadow-sm" : "text-gray-600 hover:bg-white")}>
           <Database className="size-4" /> Axentraz API
         </button>
-        <button type="button" onClick={() => setMode("stockbit")} className={cn("inline-flex h-10 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold", mode === "stockbit" ? "bg-red-600 text-white shadow-sm" : "text-gray-600 hover:bg-white")}>
+        <button type="button" onClick={() => setMode("stockbit")} className={cn("inline-flex h-10 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold", mode === "stockbit" ? "bg-brand-600 text-white shadow-sm" : "text-gray-600 hover:bg-white")}>
           <ExternalLink className="size-4" /> Stockbit
         </button>
       </div>
@@ -323,7 +323,7 @@ export function BrokerSummaryLookup() {
                       {filteredBrokers.map((broker) => {
                         const selected = brokerCodes.includes(broker.broker_code);
                         const disabled = !selected && brokerCodes.length >= maxSelectedBrokers;
-                        return <button key={broker.broker_code} type="button" role="option" aria-selected={selected} disabled={disabled} onClick={() => toggleBroker(broker.broker_code)} className={cn("flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40", selected && "bg-red-50")}><span className={cn("mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border", selected ? "border-red-600 bg-red-600 text-white" : "border-gray-300 bg-white")}>{selected ? <Check className="size-3" /> : null}</span><span className="min-w-0"><strong className="block text-xs text-gray-950">{broker.broker_code}</strong><span className="block truncate text-[11px] font-normal text-gray-500">{broker.broker_name}</span></span></button>;
+                        return <button key={broker.broker_code} type="button" role="option" aria-selected={selected} disabled={disabled} onClick={() => toggleBroker(broker.broker_code)} className={cn("flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40", selected && "bg-brand-50")}><span className={cn("mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border", selected ? "border-brand-600 bg-brand-600 text-white" : "border-gray-300 bg-white")}>{selected ? <Check className="size-3" /> : null}</span><span className="min-w-0"><strong className="block text-xs text-gray-950">{broker.broker_code}</strong><span className="block truncate text-[11px] font-normal text-gray-500">{broker.broker_name}</span></span></button>;
                       })}
                       {filteredBrokers.length === 0 ? <p className="px-3 py-8 text-center text-xs font-normal text-gray-500">Broker tidak ditemukan.</p> : null}
                     </div>
@@ -338,11 +338,11 @@ export function BrokerSummaryLookup() {
                 Sampai tanggal
                 <input type="date" value={to} min={from || undefined} onChange={(event) => setTo(event.target.value)} className="mt-1.5 h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-sm font-normal text-gray-950" />
               </label>
-              <button type="submit" disabled={brokerCodes.length === 0 || loadingBrokers || loadingDetail} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-red-600 px-5 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500">
+              <button type="submit" disabled={brokerCodes.length === 0 || loadingBrokers || loadingDetail} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500">
                 {loadingDetail ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
                 {loadingDetail ? `Menggabungkan ${brokerCodes.length}` : "Tampilkan"}
               </button>
-              {selectedBrokers.length ? <div className="flex flex-wrap gap-1.5 lg:col-span-4">{selectedBrokers.map((broker) => <span key={broker.broker_code} className="inline-flex h-7 items-center gap-1.5 rounded-md border border-red-100 bg-red-50 pl-2.5 pr-1.5 text-xs font-semibold text-red-700" title={broker.broker_name}>{broker.broker_code}<button type="button" onClick={() => toggleBroker(broker.broker_code)} className="inline-flex size-5 items-center justify-center rounded text-red-500 hover:bg-red-100" aria-label={`Hapus broker ${broker.broker_code}`}><X className="size-3.5" /></button></span>)}</div> : null}
+              {selectedBrokers.length ? <div className="flex flex-wrap gap-1.5 lg:col-span-4">{selectedBrokers.map((broker) => <span key={broker.broker_code} className="inline-flex h-7 items-center gap-1.5 rounded-md border border-brand-100 bg-brand-50 pl-2.5 pr-1.5 text-xs font-semibold text-brand-700" title={broker.broker_name}>{broker.broker_code}<button type="button" onClick={() => toggleBroker(broker.broker_code)} className="inline-flex size-5 items-center justify-center rounded text-red-500 hover:bg-red-100" aria-label={`Hapus broker ${broker.broker_code}`}><X className="size-3.5" /></button></span>)}</div> : null}
             </form>
           </section>
 
@@ -354,7 +354,7 @@ export function BrokerSummaryLookup() {
             </section>
           ) : null}
 
-          {loadingDetail && !detail ? <section className="flex min-h-64 items-center justify-center rounded-lg border border-gray-200 bg-white text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-red-600" />Menggabungkan aktivitas {brokerCodes.length} broker...</section> : null}
+          {loadingDetail && !detail ? <section className="flex min-h-64 items-center justify-center rounded-lg border border-gray-200 bg-white text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-brand-600" />Menggabungkan aktivitas {brokerCodes.length} broker...</section> : null}
 
           {detail ? (
             <>
@@ -403,13 +403,13 @@ export function BrokerSummaryLookup() {
                       {visibleTransactions.map((transaction, index) => (
                         <tr key={`${transaction.date}-${transaction.symbol}-${index}`} className="border-t border-gray-100 hover:bg-gray-50/70">
                           <td className="whitespace-nowrap px-3 py-3 text-gray-600">{formatDate(transaction.date)}</td>
-                          <td className="max-w-52 px-3 py-3"><Link href={`/stocks/${transaction.symbol}`} className="font-semibold text-gray-950 hover:text-red-700">{transaction.symbol}</Link><span className="mt-0.5 block truncate text-xs text-gray-500">{transaction.symbol_name}</span></td>
+                          <td className="max-w-52 px-3 py-3"><Link href={`/stocks/${transaction.symbol}`} className="font-semibold text-gray-950 hover:text-brand-700">{transaction.symbol}</Link><span className="mt-0.5 block truncate text-xs text-gray-500">{transaction.symbol_name}</span></td>
                           <td className="px-3 py-3"><SideBadge side={transaction.side} /></td>
                           <td className="whitespace-nowrap px-3 py-3 text-gray-700">{formatNumber(transaction.buy_lot)}</td>
                           <td className="whitespace-nowrap px-3 py-3 text-emerald-700">{formatCurrency(transaction.buy_value)}</td>
                           <td className="whitespace-nowrap px-3 py-3 text-gray-700">{formatNumber(Number(transaction.buy_avg_price))}</td>
                           <td className="whitespace-nowrap px-3 py-3 text-gray-700">{formatNumber(transaction.sell_lot)}</td>
-                          <td className="whitespace-nowrap px-3 py-3 text-red-700">{formatCurrency(transaction.sell_value)}</td>
+                          <td className="whitespace-nowrap px-3 py-3 text-brand-700">{formatCurrency(transaction.sell_value)}</td>
                           <td className="whitespace-nowrap px-3 py-3 text-gray-700">{formatNumber(Number(transaction.sell_avg_price))}</td>
                           <td className={cn("whitespace-nowrap px-3 py-3 font-semibold", transaction.net_lot >= 0 ? "text-emerald-700" : "text-red-700")}>{transaction.net_lot > 0 ? "+" : ""}{formatNumber(transaction.net_lot)}</td>
                           <td className={cn("whitespace-nowrap px-3 py-3 font-semibold", transaction.net_value >= 0 ? "text-emerald-700" : "text-red-700")}>{formatCurrency(transaction.net_value)}</td>
@@ -429,7 +429,7 @@ export function BrokerSummaryLookup() {
                       <p className="mt-2 truncate text-xs text-gray-500">{transaction.symbol_name}</p>
                       <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
                         <span><span className="block text-gray-500">Buy</span><strong className="mt-1 block text-emerald-700">{formatNumber(transaction.buy_lot)} lot</strong></span>
-                        <span><span className="block text-gray-500">Sell</span><strong className="mt-1 block text-red-700">{formatNumber(transaction.sell_lot)} lot</strong></span>
+                        <span><span className="block text-gray-500">Sell</span><strong className="mt-1 block text-brand-700">{formatNumber(transaction.sell_lot)} lot</strong></span>
                         <span><span className="block text-gray-500">Net value</span><strong className={cn("mt-1 block", transaction.net_value >= 0 ? "text-emerald-700" : "text-red-700")}>{formatCurrency(transaction.net_value)}</strong></span>
                       </div>
                     </article>
@@ -455,7 +455,7 @@ export function BrokerSummaryLookup() {
 }
 
 function SideBadge({ side }: { side: "buy" | "sell" }) {
-  return <span className={cn("rounded px-2 py-1 text-xs font-semibold", side === "buy" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>{side === "buy" ? "Net Buy" : "Net Sell"}</span>;
+  return <span className={cn("rounded px-2 py-1 text-xs font-semibold", side === "buy" ? "bg-emerald-50 text-emerald-700" : "bg-brand-50 text-brand-700")}>{side === "buy" ? "Net Buy" : "Net Sell"}</span>;
 }
 
 function Metric({ label, value, detail, tone, icon: Icon }: { label: string; value: string; detail: string; tone?: "positive" | "negative"; icon: typeof Building2 }) {
@@ -485,7 +485,7 @@ function StockbitLookup() {
         <label className="text-sm font-semibold text-gray-800" htmlFor="broker-summary-ticker">Kode ticker</label>
         <div className="mt-2 flex flex-col gap-2 sm:flex-row">
           <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" /><input id="broker-summary-ticker" list="idx-ticker-list" value={ticker} onChange={(event) => setTicker(normalizeTicker(event.target.value))} placeholder="Contoh: LAPD" autoComplete="off" className="h-11 w-full rounded-md border border-gray-300 bg-white pl-10 pr-3 text-sm font-semibold uppercase text-gray-950 placeholder:font-normal placeholder:normal-case placeholder:text-gray-400" /><datalist id="idx-ticker-list">{idxListedStocks.map((stock) => <option key={stock.ticker} value={stock.ticker}>{stock.name}</option>)}</datalist></div>
-          <button type="submit" disabled={!normalizedTicker} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-red-600 px-5 text-sm font-semibold text-white hover:bg-red-700 disabled:bg-gray-200 disabled:text-gray-500">Buka Stockbit <ArrowUpRight className="size-4" /></button>
+          <button type="submit" disabled={!normalizedTicker} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-gray-200 disabled:text-gray-500">Buka Stockbit <ArrowUpRight className="size-4" /></button>
         </div>
         <div className="mt-3 min-h-10 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-600">{normalizedTicker ? selectedStock ? <span><strong className="text-gray-900">{selectedStock.ticker}</strong> · {selectedStock.name}</span> : <span>Ticker <strong className="text-gray-900">{normalizedTicker}</strong> belum ada di snapshot lokal.</span> : <span>Masukkan ticker saham Indonesia.</span>}</div>
       </form>

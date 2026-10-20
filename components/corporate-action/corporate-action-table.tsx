@@ -57,7 +57,7 @@ export function CorporateActionTable() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Cari emiten / kode / judul..."
-              className="h-10 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm transition duration-150 placeholder:text-gray-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+              className="h-10 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm transition duration-150 placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             />
           </span>
         </label>
@@ -65,7 +65,7 @@ export function CorporateActionTable() {
 
       <div className="bandarlab-scrollbar overflow-x-auto rounded-lg border border-gray-200">
         <table className="min-w-[820px] w-full border-collapse text-left text-sm">
-          <thead className="sticky top-0 z-10 bg-red-600 text-white">
+          <thead className="sticky top-0 z-10 bg-brand-600 text-white">
             <tr>
               <SortableHead active={sortKey === "number"} onClick={() => toggleSort("number")}>
                 Nomor Surat
@@ -83,13 +83,13 @@ export function CorporateActionTable() {
               <tr
                 key={row.number}
                 className={cn(
-                  "border-b border-gray-100 transition duration-150 hover:bg-red-50/60",
+                  "border-b border-gray-100 transition duration-150 hover:bg-brand-50/60",
                   index % 2 === 1 ? "bg-gray-50" : "bg-white",
                 )}
               >
-                <td className="whitespace-nowrap px-4 py-4 align-top font-medium text-red-600">
+                <td className="whitespace-nowrap px-4 py-4 align-top font-medium text-brand-600">
                   <button
-                    className="inline-flex items-center gap-2 rounded text-left transition duration-150 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-red-500"
+                    className="inline-flex items-center gap-2 rounded text-left transition duration-150 hover:text-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500"
                     type="button"
                     onClick={() => toast.info("Dokumen belum tersedia pada mode demo.")}
                   >
@@ -123,7 +123,7 @@ export function CorporateActionTable() {
               key={page}
               className={cn(
                 "h-9 min-w-9 rounded-md border border-gray-200 px-3 text-gray-700 transition duration-150 hover:bg-gray-50",
-                page === "1" && "border-red-600 bg-red-600 text-white hover:bg-red-700",
+                page === "1" && "border-brand-600 bg-brand-600 text-white hover:bg-brand-700",
                 page === "..." && "cursor-default border-transparent hover:bg-transparent",
               )}
               type="button"
@@ -152,7 +152,7 @@ function SortableHead({
   className?: string;
 }) {
   return (
-    <th className={cn("border-r border-red-500/40 px-4 py-3 last:border-r-0", className)} scope="col">
+    <th className={cn("border-r border-brand-500/40 px-4 py-3 last:border-r-0", className)} scope="col">
       <button
         className="flex w-full items-center justify-between gap-3 text-left text-sm font-semibold"
         type="button"

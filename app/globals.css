@@ -1,13 +1,28 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand-50: #f0f6ff;
+  --color-brand-100: #e0edff;
+  --color-brand-200: #c2d9fa;
+  --color-brand-300: #95baf0;
+  --color-brand-400: #6196df;
+  --color-brand-500: #437dcc;
+  --color-brand-600: #3265ad;
+  --color-brand-700: #28518d;
+  --color-brand-800: #244675;
+  --color-brand-900: #243d61;
+  --color-brand-950: #18283f;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #111827;
   --muted: #6b7280;
   --border: #e5e7eb;
-  --primary: #dc2626;
-  --primary-dark: #b91c1c;
-  --primary-soft: #fef2f2;
+  --primary: var(--color-brand-600);
+  --primary-dark: var(--color-brand-700);
+  --primary-soft: var(--color-brand-50);
+  accent-color: var(--primary);
 }
 
 * {
@@ -42,7 +57,7 @@ input {
 }
 
 ::selection {
-  background: #fecaca;
+  background: var(--color-brand-100);
 }
 
 .bandarlab-scrollbar::-webkit-scrollbar {

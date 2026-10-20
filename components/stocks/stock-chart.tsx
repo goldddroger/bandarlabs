@@ -47,7 +47,7 @@ const indicatorOptions: Array<{ key: IndicatorKey; label: string; color: string 
   { key: "rsi14", label: "RSI 14", color: "#0891b2" },
 ];
 
-const drawingColors = ["#dc2626", "#2563eb", "#059669", "#111827"];
+const drawingColors = ["#3265ad", "#dc2626", "#059669", "#111827"];
 
 function drawingStorageKey(ticker: string) {
   return `bandarlab:chart-drawings:${ticker.toUpperCase()}`;
@@ -288,7 +288,7 @@ export function StockChart({ ticker }: { ticker: string }) {
 
       const priceSeries = mode === "candlestick"
         ? chart.addSeries(CandlestickSeries, { upColor: "#059669", downColor: "#dc2626", borderUpColor: "#059669", borderDownColor: "#dc2626", wickUpColor: "#059669", wickDownColor: "#dc2626", priceLineVisible: true })
-        : chart.addSeries(LineSeries, { color: "#dc2626", lineWidth: 2, priceLineVisible: true, crosshairMarkerVisible: true });
+        : chart.addSeries(LineSeries, { color: "#3265ad", lineWidth: 2, priceLineVisible: true, crosshairMarkerVisible: true });
       priceSeriesRef.current = priceSeries as PriceSeriesApi;
       renderedPriceSeries = priceSeries as PriceSeriesApi;
       priceLinesRef.current = [];
@@ -394,13 +394,13 @@ export function StockChart({ ticker }: { ticker: string }) {
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="text-base font-semibold text-gray-950">{ticker}</span>
           <div className="flex rounded-md border border-gray-200 bg-gray-50 p-1">
-            {ranges.map((item) => <button key={item.value} type="button" onClick={() => setRange(item.value)} className={cn("h-8 min-w-10 rounded px-2 text-xs font-semibold", range === item.value ? "bg-white text-red-700 shadow-sm" : "text-gray-500 hover:text-gray-900")}>{item.label}</button>)}
+            {ranges.map((item) => <button key={item.value} type="button" onClick={() => setRange(item.value)} className={cn("h-8 min-w-10 rounded px-2 text-xs font-semibold", range === item.value ? "bg-white text-brand-700 shadow-sm" : "text-gray-500 hover:text-gray-900")}>{item.label}</button>)}
           </div>
         </div>
         <div className="grid grid-cols-4 gap-1 sm:flex">
-          <button type="button" onClick={() => setMode("candlestick")} title="Candlestick" aria-label="Candlestick" aria-pressed={mode === "candlestick"} className={cn("flex size-9 items-center justify-center rounded-md border", mode === "candlestick" ? "border-red-200 bg-red-50 text-red-700" : "border-gray-200 text-gray-500 hover:bg-gray-50")}><CandlestickChart className="size-4" /></button>
-          <button type="button" onClick={() => setMode("line")} title="Line chart" aria-label="Line chart" aria-pressed={mode === "line"} className={cn("flex size-9 items-center justify-center rounded-md border", mode === "line" ? "border-red-200 bg-red-50 text-red-700" : "border-gray-200 text-gray-500 hover:bg-gray-50")}><ChartNoAxesCombined className="size-4" /></button>
-          <button type="button" onClick={() => setShowVolume((value) => !value)} title="Tampilkan volume" aria-label="Tampilkan volume" aria-pressed={showVolume} className={cn("flex size-9 items-center justify-center rounded-md border", showVolume ? "border-red-200 bg-red-50 text-red-700" : "border-gray-200 text-gray-500 hover:bg-gray-50")}><BarChart3 className="size-4" /></button>
+          <button type="button" onClick={() => setMode("candlestick")} title="Candlestick" aria-label="Candlestick" aria-pressed={mode === "candlestick"} className={cn("flex size-9 items-center justify-center rounded-md border", mode === "candlestick" ? "border-brand-200 bg-brand-50 text-brand-700" : "border-gray-200 text-gray-500 hover:bg-gray-50")}><CandlestickChart className="size-4" /></button>
+          <button type="button" onClick={() => setMode("line")} title="Line chart" aria-label="Line chart" aria-pressed={mode === "line"} className={cn("flex size-9 items-center justify-center rounded-md border", mode === "line" ? "border-brand-200 bg-brand-50 text-brand-700" : "border-gray-200 text-gray-500 hover:bg-gray-50")}><ChartNoAxesCombined className="size-4" /></button>
+          <button type="button" onClick={() => setShowVolume((value) => !value)} title="Tampilkan volume" aria-label="Tampilkan volume" aria-pressed={showVolume} className={cn("flex size-9 items-center justify-center rounded-md border", showVolume ? "border-brand-200 bg-brand-50 text-brand-700" : "border-gray-200 text-gray-500 hover:bg-gray-50")}><BarChart3 className="size-4" /></button>
           <button type="button" onClick={() => chartRef.current?.timeScale().fitContent()} title="Fit chart" aria-label="Fit chart" className="flex size-9 items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50"><Maximize2 className="size-4" /></button>
         </div>
       </div>
@@ -423,8 +423,8 @@ export function StockChart({ ticker }: { ticker: string }) {
 
       <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-white px-3 py-2 sm:px-4">
         <span className="mr-1 inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600"><MousePointer2 className="size-3.5" />Gambar</span>
-        <button type="button" onClick={() => setDrawingTool((current) => current === "horizontal" ? "cursor" : "horizontal")} aria-pressed={drawingTool === "horizontal"} title="Tambah garis horizontal" className={cn("inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold", drawingTool === "horizontal" ? "border-red-200 bg-red-50 text-red-700" : "border-gray-200 text-gray-600 hover:bg-gray-50")}><Minus className="size-4" />Horizontal</button>
-        <button type="button" onClick={() => setDrawingTool((current) => current === "vertical" ? "cursor" : "vertical")} aria-pressed={drawingTool === "vertical"} title="Tambah garis vertikal" className={cn("inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold", drawingTool === "vertical" ? "border-red-200 bg-red-50 text-red-700" : "border-gray-200 text-gray-600 hover:bg-gray-50")}><SeparatorVertical className="size-4" />Vertikal</button>
+        <button type="button" onClick={() => setDrawingTool((current) => current === "horizontal" ? "cursor" : "horizontal")} aria-pressed={drawingTool === "horizontal"} title="Tambah garis horizontal" className={cn("inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold", drawingTool === "horizontal" ? "border-brand-200 bg-brand-50 text-brand-700" : "border-gray-200 text-gray-600 hover:bg-gray-50")}><Minus className="size-4" />Horizontal</button>
+        <button type="button" onClick={() => setDrawingTool((current) => current === "vertical" ? "cursor" : "vertical")} aria-pressed={drawingTool === "vertical"} title="Tambah garis vertikal" className={cn("inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold", drawingTool === "vertical" ? "border-brand-200 bg-brand-50 text-brand-700" : "border-gray-200 text-gray-600 hover:bg-gray-50")}><SeparatorVertical className="size-4" />Vertikal</button>
         <span className="mx-1 hidden h-5 w-px bg-gray-200 sm:block" />
         <div className="flex h-8 items-center gap-1 rounded-md border border-gray-200 px-2" aria-label="Warna garis">
           {drawingColors.map((color) => <button key={color} type="button" onClick={() => setDrawingColor(color)} aria-label={`Pilih warna ${color}`} aria-pressed={drawingColor === color} className={cn("size-4 rounded-full border-2", drawingColor === color ? "border-gray-950 ring-2 ring-gray-200" : "border-white")} style={{ backgroundColor: color }} />)}
@@ -448,7 +448,7 @@ export function StockChart({ ticker }: { ticker: string }) {
           {verticalPositions.map((position) => <div key={position.id} className="absolute inset-y-0 border-l-2" style={{ left: position.x, borderColor: position.color }}><span className="absolute left-1 top-2 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm" style={{ backgroundColor: position.color }}>{formatDate(position.time)}</span></div>)}
         </div>
         {drawingTool !== "cursor" && !loading && !error ? <div className="pointer-events-none absolute left-3 top-3 rounded-md bg-gray-950/85 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm">Klik chart untuk menaruh garis {drawingTool === "horizontal" ? "horizontal" : "vertikal"}</div> : null}
-        {loading ? <div className="absolute inset-0 flex items-center justify-center bg-white/85 text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-red-600" />Memuat chart {ticker}...</div> : null}
+        {loading ? <div className="absolute inset-0 flex items-center justify-center bg-white/85 text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-brand-600" />Memuat chart {ticker}...</div> : null}
         {!loading && error ? <div className="absolute inset-0 flex flex-col items-center justify-center bg-white px-5 text-center"><CandlestickChart className="size-9 text-gray-300" /><p className="mt-3 text-sm font-semibold text-gray-900">Chart belum tersedia</p><p className="mt-1 max-w-md text-sm text-gray-500">{error}</p><Button type="button" variant="outline" className="mt-4" onClick={() => setReloadKey((value) => value + 1)}><RefreshCw className="size-4" />Coba Lagi</Button></div> : null}
       </div>
 
@@ -460,7 +460,7 @@ export function StockChart({ ticker }: { ticker: string }) {
           {historyMeta.marketPrice !== null ? ` (Rp ${formatPrice(historyMeta.marketPrice)})` : ""}
         </span>
         <span className={cn("font-semibold", change !== null && change >= 0 ? "text-emerald-700" : "text-red-700")}>{change === null || changePercent === null ? "-" : `${change >= 0 ? "+" : ""}${formatPrice(change)} (${changePercent >= 0 ? "+" : ""}${changePercent.toFixed(2)}%)`}</span>
-        <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer" className="font-medium text-gray-600 hover:text-red-700">Charts by TradingView</a>
+        <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer" className="font-medium text-gray-600 hover:text-brand-700">Charts by TradingView</a>
       </footer>
     </div>
   );

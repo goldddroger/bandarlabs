@@ -98,13 +98,13 @@ export function RightIssueScenarioSimulator({
     <section className="mt-6 border-t border-gray-200 pt-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="flex items-center gap-2"><Scale className="size-5 text-red-600" /><h2 className="text-lg font-semibold text-gray-950">Simulator Keputusan HMETD</h2></div>
+          <div className="flex items-center gap-2"><Scale className="size-5 text-brand-600" /><h2 className="text-lg font-semibold text-gray-950">Simulator Keputusan HMETD</h2></div>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-600">Bandingkan konsekuensi setiap pilihan pada harga teoretis ex-rights. Perhitungan belum memasukkan fee transaksi dan pergerakan harga pasar.</p>
         </div>
         <label className="grid gap-1.5 text-sm font-medium text-gray-700 lg:w-64">
           Porsi hak yang ditebus sebagian
           <span className="flex h-10 items-center gap-3 rounded-md border border-gray-200 bg-white px-3">
-            <input type="range" min="0" max="100" step="5" value={partialPercent} onChange={(event) => setPartialPercent(Number(event.target.value))} className="min-w-0 flex-1 accent-red-600" />
+            <input type="range" min="0" max="100" step="5" value={partialPercent} onChange={(event) => setPartialPercent(Number(event.target.value))} className="min-w-0 flex-1 accent-brand-600" />
             <span className="w-10 text-right text-sm font-semibold text-gray-950">{partialPercent}%</span>
           </span>
         </label>

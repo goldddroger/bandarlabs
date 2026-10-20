@@ -90,13 +90,13 @@ export function StockCaResearchNotes({ ticker }: { ticker: string }) {
     <div className="mt-5 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
       <div className="flex flex-col gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-semibold text-gray-950">Research Corporate Action</h3>{dueCount > 0 ? <span className="rounded bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">{dueCount} reminder jatuh tempo</span> : null}</div>
+          <div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-semibold text-gray-950">Research Corporate Action</h3>{dueCount > 0 ? <span className="rounded bg-brand-100 px-2 py-1 text-xs font-semibold text-brand-700">{dueCount} reminder jatuh tempo</span> : null}</div>
           <p className="mt-1 text-xs text-gray-500">Catat agenda yang sudah diriset dan tentukan kapan harus diperiksa kembali.</p>
         </div>
         <Button type="button" className="h-9 w-full px-3 text-xs sm:w-auto" onClick={() => setEditing(emptyNote(ticker))}><Plus className="size-4" />Tambah research</Button>
       </div>
 
-      {loading ? <div className="flex min-h-36 items-center justify-center text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-red-600" />Memuat research note...</div> : null}
+      {loading ? <div className="flex min-h-36 items-center justify-center text-sm text-gray-500"><Loader2 className="mr-2 size-5 animate-spin text-brand-600" />Memuat research note...</div> : null}
       {!loading && error ? <div className="flex min-h-36 flex-col items-center justify-center px-5 text-center"><p className="text-sm font-semibold text-gray-900">Research note belum tersinkron</p><p className="mt-1 text-xs text-gray-500">{error}</p><Button type="button" variant="outline" className="mt-3 h-9" onClick={() => { setLoading(true); setReloadKey((value) => value + 1); }}><RefreshCw className="size-4" />Coba Lagi</Button></div> : null}
       {!loading && !error && notes.length === 0 ? <div className="px-5 py-10 text-center"><NotebookPen className="mx-auto size-8 text-gray-300" /><p className="mt-3 text-sm font-semibold text-gray-900">Belum ada research corporate action {ticker}</p><p className="mt-1 text-sm text-gray-500">Tambahkan thesis, hasil riset, dan tanggal reminder.</p></div> : null}
       {!loading && !error && notes.length > 0 ? (

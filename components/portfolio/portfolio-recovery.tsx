@@ -48,7 +48,7 @@ export function PortfolioRecovery() {
         </section>
 
         <p className="mt-5 text-sm text-gray-600">Buka alamat pemulihan ini pada setiap perangkat dan origin yang pernah dipakai, misalnya localhost dan domain Vercel. Bila jumlah trade lebih dari empat, langsung unduh JSON sebelum membuka halaman portfolio biasa.</p>
-        <Link href="/portfolio" className="mt-4 inline-flex text-sm font-semibold text-red-700 hover:underline">Kembali ke Portfolio</Link>
+        <Link href="/portfolio" className="mt-4 inline-flex text-sm font-semibold text-brand-700 hover:underline">Kembali ke Portfolio</Link>
       </div>
     </main>
   );

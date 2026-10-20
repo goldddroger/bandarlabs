@@ -208,7 +208,7 @@ export function DashboardWorkspace({ marketSummary }: { marketSummary: MarketSum
           <Link href="/accumulation" className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
             <Radar className="size-4" /> Kelola Radar
           </Link>
-          <Link href="/portfolio" className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-600 bg-red-600 px-3 text-sm font-semibold text-white hover:bg-red-700">
+          <Link href="/portfolio" className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-brand-600 bg-brand-600 px-3 text-sm font-semibold text-white hover:bg-brand-700">
             <BriefcaseBusiness className="size-4" /> Buka Portfolio
           </Link>
         </div>
@@ -225,7 +225,7 @@ export function DashboardWorkspace({ marketSummary }: { marketSummary: MarketSum
             <p className={cn("mt-1 min-h-5 text-xs font-semibold leading-5", marketToneClass(item.tone))}>{item.detail}</p>
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
               <p>{item.updatedAt ? `Update ${item.updatedAt}` : item.source === "Unavailable" ? "Belum ada data terverifikasi" : "Waktu sumber belum tersedia"}</p>
-              {item.sourceUrl ? <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-gray-600 hover:text-red-700">{item.label === "Foreign Flow" ? "Sumber BEI" : "Sumber"}<ExternalLink aria-hidden="true" className="size-3" /></a> : null}
+              {item.sourceUrl ? <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-gray-600 hover:text-brand-700">{item.label === "Foreign Flow" ? "Sumber BEI" : "Sumber"}<ExternalLink aria-hidden="true" className="size-3" /></a> : null}
             </div>
           </div>
         ))}
@@ -295,7 +295,7 @@ export function DashboardWorkspace({ marketSummary }: { marketSummary: MarketSum
                 <WalletCards className="size-4 text-gray-500" />
                 <h2 className="text-sm font-semibold text-gray-950">Portfolio Snapshot</h2>
               </div>
-              <Link href="/portfolio" className="text-xs font-semibold text-red-700 hover:underline">Detail</Link>
+              <Link href="/portfolio" className="text-xs font-semibold text-brand-700 hover:underline">Detail</Link>
             </div>
             <div className="grid grid-cols-2 divide-x divide-y divide-gray-100">
               <DashboardValue label="Total equity" value={formatCompactCurrency(portfolioSummary.equity)} />
@@ -312,7 +312,7 @@ export function DashboardWorkspace({ marketSummary }: { marketSummary: MarketSum
                 <BellRing className="size-4 text-gray-500" />
                 <h2 className="text-sm font-semibold text-gray-950">Best Entry</h2>
               </div>
-              <Link href="/notifikasi" className="text-xs font-semibold text-red-700 hover:underline">Semua</Link>
+              <Link href="/notifikasi" className="text-xs font-semibold text-brand-700 hover:underline">Semua</Link>
             </div>
             {bestEntryRows.length === 0 ? (
               <div className="px-4 py-6 text-center text-sm text-gray-500">Belum ada best entry yang disimpan.</div>
@@ -340,7 +340,7 @@ export function DashboardWorkspace({ marketSummary }: { marketSummary: MarketSum
                 <CalendarDays className="size-4 text-gray-500" />
                 <h2 className="text-sm font-semibold text-gray-950">Agenda Corporate Action</h2>
               </div>
-              <Link href="/corporate-action" className="text-xs font-semibold text-red-700 hover:underline">Journal</Link>
+              <Link href="/corporate-action" className="text-xs font-semibold text-brand-700 hover:underline">Journal</Link>
             </div>
             <div className="divide-y divide-gray-100">
               {corporateAgenda.map((event) => (

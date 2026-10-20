@@ -73,7 +73,7 @@ export function GlobalSearch() {
           if (event.key === "Escape") setOpen(false);
         }}
         placeholder="Cari ticker atau nama emiten..."
-        className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-10 pr-20 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+        className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-10 pr-20 text-sm text-gray-900 transition duration-150 placeholder:text-gray-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
         autoComplete="off"
       />
       <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded border border-gray-200 px-2 py-1 text-xs text-gray-500">
@@ -93,7 +93,7 @@ export function GlobalSearch() {
                     setOpen(false);
                   }}
                   className={cn(
-                    "flex items-center justify-between gap-3 px-3 py-2.5 text-sm transition duration-150 hover:bg-red-50",
+                    "flex items-center justify-between gap-3 px-3 py-2.5 text-sm transition duration-150 hover:bg-brand-50",
                     index === 0 && "bg-gray-50",
                   )}
                 >

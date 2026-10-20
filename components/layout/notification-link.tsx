@@ -107,12 +107,12 @@ export function NotificationLink() {
     <Link
       href="/notifikasi"
       aria-label={reachedCount > 0 ? `Notifikasi, ${reachedCount} belum dibaca` : "Notifikasi"}
-      className="relative inline-flex h-10 items-center justify-center gap-2 rounded-md border border-transparent px-3 text-sm font-medium text-gray-700 transition duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+      className="relative inline-flex h-10 items-center justify-center gap-2 rounded-md border border-transparent px-3 text-sm font-medium text-gray-700 transition duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
     >
       <Bell className="size-5" />
       Notifikasi
       {reachedCount > 0 ? (
-        <span aria-live="polite" className="absolute -right-1 top-1 flex size-5 items-center justify-center rounded-full bg-red-600 text-[11px] font-bold text-white">
+        <span aria-live="polite" className="absolute -right-1 top-1 flex size-5 items-center justify-center rounded-full bg-brand-600 text-[11px] font-bold text-white">
           {reachedCount > 9 ? "9+" : reachedCount}
         </span>
       ) : null}

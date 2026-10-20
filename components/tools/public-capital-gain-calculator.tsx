@@ -57,7 +57,7 @@ function InputField({
   return (
     <label htmlFor={id} className="grid min-w-0 gap-2 text-sm font-semibold text-gray-800">
       <span>{label}</span>
-      <span className="flex h-12 min-w-0 items-center rounded-md border border-gray-300 bg-white px-3 transition focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-100">
+      <span className="flex h-12 min-w-0 items-center rounded-md border border-gray-300 bg-white px-3 transition focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100">
         {prefix ? <span className="mr-2 shrink-0 text-sm font-semibold text-gray-500">{prefix}</span> : null}
         <input
           id={id}
@@ -97,8 +97,8 @@ export function PublicCapitalGainCalculator() {
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/capital-gain" className="flex min-w-0 items-center gap-3" aria-label="BandarLab Capital Gain">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-red-600 text-white"><BarChart3 className="size-6" /></span>
-            <span className="min-w-0"><span className="block text-lg font-bold leading-5">Bandar<span className="text-red-600">Lab</span></span><span className="block truncate text-[11px] text-gray-500">Kalkulator Capital Gain</span></span>
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-brand-600 text-white"><BarChart3 className="size-6" /></span>
+            <span className="min-w-0"><span className="block text-lg font-bold leading-5">Bandar<span className="text-brand-600">Lab</span></span><span className="block truncate text-[11px] text-gray-500">Kalkulator Capital Gain</span></span>
           </Link>
           <Link href="/login" className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 sm:px-4"><LogIn className="size-4" /><span className="hidden sm:inline">Masuk BandarLab</span><span className="sm:hidden">Masuk</span></Link>
         </div>
@@ -107,7 +107,7 @@ export function PublicCapitalGainCalculator() {
       <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
         <div className="mb-6 flex flex-col gap-4 border-b border-gray-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase text-red-600">Alat publik</p>
+            <p className="text-xs font-semibold uppercase text-brand-600">Alat publik</p>
             <h1 className="mt-2 text-2xl font-semibold tracking-normal text-gray-950 sm:text-3xl">Kalkulator Capital Gain</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">Hitung estimasi profit atau loss transaksi saham Indonesia setelah fee beli dan fee jual. Tidak perlu login.</p>
           </div>
@@ -117,7 +117,7 @@ export function PublicCapitalGainCalculator() {
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.72fr)] lg:gap-6">
           <section className="rounded-lg border border-gray-200 bg-white shadow-sm" aria-labelledby="transaction-input">
             <div className="border-b border-gray-200 px-4 py-4 sm:px-5">
-              <h2 id="transaction-input" className="flex items-center gap-2 text-base font-semibold"><Calculator className="size-5 text-red-600" />Detail Transaksi</h2>
+              <h2 id="transaction-input" className="flex items-center gap-2 text-base font-semibold"><Calculator className="size-5 text-brand-600" />Detail Transaksi</h2>
               <p className="mt-1 text-xs leading-5 text-gray-500">Satu lot sama dengan 100 lembar saham.</p>
             </div>
             <div className="grid gap-5 p-4 sm:p-5">
@@ -136,7 +136,7 @@ export function PublicCapitalGainCalculator() {
 
           <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm" aria-live="polite">
             <div className="border-b border-gray-200 px-4 py-4 sm:px-5">
-              <h2 className="flex items-center gap-2 text-base font-semibold"><WalletCards className="size-5 text-red-600" />Hasil Perhitungan</h2>
+              <h2 className="flex items-center gap-2 text-base font-semibold"><WalletCards className="size-5 text-brand-600" />Hasil Perhitungan</h2>
               <p className="mt-1 text-xs text-gray-500">Estimasi berdasarkan data yang kamu masukkan.</p>
             </div>
             <div className="p-4 sm:p-5">
