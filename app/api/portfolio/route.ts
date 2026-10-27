@@ -49,6 +49,7 @@ function normalizePayload(value: unknown) {
     ticker: cleanText(row.ticker, 12).toUpperCase(),
     lots: positiveNumber(row.lots),
     average_price: positiveNumber(row.averagePrice),
+    security: cleanText(row.security, 120).replace(/\s+/g, " "),
     purchased_at: cleanText(row.purchasedAt, 10),
     note: cleanText(row.note, 2000),
   }));
@@ -91,7 +92,7 @@ export async function GET(request: Request) {
   if (!supabase) return NextResponse.json({ error: "Supabase portfolio belum dikonfigurasi." }, { status: 503 });
 
   const [holdingsResult, tradesResult, historyResult] = await Promise.all([
-    supabase.from("portfolio_holdings").select("id,ticker,lots,average_price,purchased_at,note").eq("owner_id", ownerId).order("created_at", { ascending: false }),
+    supabase.from("portfolio_holdings").select("id,ticker,security,lots,average_price,purchased_at,note").eq("owner_id", ownerId).order("created_at", { ascending: false }),
     supabase.from("portfolio_trades").select("id,ticker,lots,buy_price,sell_price,buy_fee_percent,sell_fee_percent,sold_at,note").eq("owner_id", ownerId).order("sold_at", { ascending: false }),
     supabase.from("portfolio_equity_history").select("snapshot_date,equity").eq("owner_id", ownerId).order("snapshot_date", { ascending: true }),
   ]);
@@ -102,7 +103,7 @@ export async function GET(request: Request) {
     ownerId,
     allowLocalBootstrap: session.role === "admin",
     portfolio: {
-      holdings: (holdingsResult.data ?? []).map((row) => ({ id: row.id, ticker: row.ticker, lots: Number(row.lots), averagePrice: Number(row.average_price), purchasedAt: row.purchased_at, note: row.note })),
+      holdings: (holdingsResult.data ?? []).map((row) => ({ id: row.id, ticker: row.ticker, security: row.security, lots: Number(row.lots), averagePrice: Number(row.average_price), purchasedAt: row.purchased_at, note: row.note })),
       trades: (tradesResult.data ?? []).map((row) => ({ id: row.id, ticker: row.ticker, lots: Number(row.lots), buyPrice: Number(row.buy_price), sellPrice: Number(row.sell_price), buyFeePercent: Number(row.buy_fee_percent), sellFeePercent: Number(row.sell_fee_percent), soldAt: row.sold_at, note: row.note })),
       equityHistory: (historyResult.data ?? []).map((row) => ({ date: row.snapshot_date, equity: Number(row.equity) })),
     },

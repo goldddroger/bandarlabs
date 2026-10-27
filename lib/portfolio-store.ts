@@ -5,6 +5,7 @@ import { useMemo, useSyncExternalStore } from "react";
 export type PortfolioHolding = {
   id: string;
   ticker: string;
+  security?: string;
   lots: number;
   averagePrice: number;
   purchasedAt: string;
@@ -134,7 +135,7 @@ function sqlText(value: unknown) {
 export function downloadPortfolioSql(data: PortfolioData) {
   const owner = sqlText(activePortfolioOwnerId);
   const holdings = data.holdings.length > 0
-    ? `insert into public.portfolio_holdings (id, owner_id, ticker, lots, average_price, purchased_at, note) values\n${data.holdings.map((row) => `  (${sqlText(row.id)}, ${owner}, ${sqlText(row.ticker)}, ${row.lots}, ${row.averagePrice}, ${sqlText(row.purchasedAt)}, ${sqlText(row.note)})`).join(",\n")};`
+    ? `insert into public.portfolio_holdings (id, owner_id, ticker, security, lots, average_price, purchased_at, note) values\n${data.holdings.map((row) => `  (${sqlText(row.id)}, ${owner}, ${sqlText(row.ticker)}, ${sqlText(row.security)}, ${row.lots}, ${row.averagePrice}, ${sqlText(row.purchasedAt)}, ${sqlText(row.note)})`).join(",\n")};`
     : "";
   const trades = data.trades.length > 0
     ? `insert into public.portfolio_trades (id, owner_id, ticker, lots, buy_price, sell_price, buy_fee_percent, sell_fee_percent, sold_at, note) values\n${data.trades.map((row) => `  (${sqlText(row.id)}, ${owner}, ${sqlText(row.ticker)}, ${row.lots}, ${row.buyPrice}, ${row.sellPrice}, ${row.buyFeePercent}, ${row.sellFeePercent}, ${sqlText(row.soldAt)}, ${sqlText(row.note)})`).join(",\n")};`
@@ -144,7 +145,7 @@ export function downloadPortfolioSql(data: PortfolioData) {
     : "";
   const sql = [
     "-- BandarLab Portfolio export",
-    "-- Run 202608230001_admin_portfolio.sql before this file.",
+    "-- Run portfolio migrations including 202610280001_portfolio_securities.sql before this file.",
     "begin;",
     `delete from public.portfolio_equity_history where owner_id = ${owner};`,
     `delete from public.portfolio_trades where owner_id = ${owner};`,

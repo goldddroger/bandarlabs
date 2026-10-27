@@ -143,3 +143,11 @@ Contoh LAPD memakai harga pelaksanaan indikatif Rp50 dari dokumen 11 September 2
 ## Disclaimer
 
 BandarLab adalah alat bantu riset dan pencatatan. Informasi yang ditampilkan bukan rekomendasi jual atau beli saham.
+
+### Penempatan portfolio per sekuritas
+
+Jalankan migration `supabase/migrations/202610280001_portfolio_securities.sql` di Supabase SQL Editor sebelum memakai versi ini. Migration menambahkan kolom `security` tanpa mengubah posisi lama.
+
+Di **Portfolio Saya → Tambah posisi**, isi ticker, nama sekuritas, jumlah lot, dan harga rata-rata per lembar. Tambahkan posisi lagi untuk sekuritas lain. Ticker yang sama pada sekuritas berbeda disimpan terpisah; penambahan ticker pada sekuritas yang sama menghitung rata-rata tertimbang. Melalui **Edit**, posisi lama dapat diberi nama sekuritas.
+
+Ringkasan **Penempatan per Sekuritas** menampilkan total lot, modal, dan valuasi per sekuritas serta jumlah keseluruhan. Modal dihitung sebagai lot × 100 × harga rata-rata yang diisi. Jika harga pasar belum tersedia, valuasi memakai harga rata-rata masing-masing posisi.

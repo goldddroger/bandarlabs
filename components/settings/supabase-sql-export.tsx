@@ -119,12 +119,12 @@ function createPersonalDataSql(ownerId: string) {
 
   statements.push(insertRows(
     "portfolio_holdings",
-    ["id", "owner_id", "ticker", "lots", "average_price", "purchased_at", "note"],
+    ["id", "owner_id", "ticker", "security", "lots", "average_price", "purchased_at", "note"],
     holdings.map((row) => [
-      sqlText(row.id), owner, sqlText(textValue(row.ticker).toUpperCase()), String(numberValue(row.lots)),
+      sqlText(row.id), owner, sqlText(textValue(row.ticker).toUpperCase()), sqlText(row.security), String(numberValue(row.lots)),
       String(numberValue(row.averagePrice)), sqlText(normalizeDate(row.purchasedAt)), sqlText(row.note),
     ]),
-    "on conflict (owner_id, id) do update set ticker = excluded.ticker, lots = excluded.lots, average_price = excluded.average_price, purchased_at = excluded.purchased_at, note = excluded.note",
+    "on conflict (owner_id, id) do update set ticker = excluded.ticker, security = excluded.security, lots = excluded.lots, average_price = excluded.average_price, purchased_at = excluded.purchased_at, note = excluded.note",
   ));
 
   statements.push(insertRows(
