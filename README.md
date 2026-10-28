@@ -148,6 +148,8 @@ BandarLab adalah alat bantu riset dan pencatatan. Informasi yang ditampilkan buk
 
 Jalankan migration `supabase/migrations/202610280001_portfolio_securities.sql` di Supabase SQL Editor sebelum memakai versi ini. Migration menambahkan kolom `security` tanpa mengubah posisi lama.
 
-Di **Portfolio Saya → Tambah posisi**, isi ticker, nama sekuritas, jumlah lot, dan harga rata-rata per lembar. Tambahkan posisi lagi untuk sekuritas lain. Ticker yang sama pada sekuritas berbeda disimpan terpisah; penambahan ticker pada sekuritas yang sama menghitung rata-rata tertimbang. Melalui **Edit**, posisi lama dapat diberi nama sekuritas.
+Di **Portfolio Saya → Tambah posisi**, isi ticker lalu tambahkan baris sekuritas (contoh CP, XL, KK) menggunakan **Tambah sekuritas**. Setiap baris memiliki jumlah lot dan harga rata-rata per lembar sendiri; semua baris disimpan sekaligus. Ticker yang sama pada sekuritas berbeda disimpan terpisah; penambahan ticker pada sekuritas yang sama menghitung rata-rata tertimbang. Melalui **Edit**, posisi lama dapat diberi nama sekuritas.
 
 Ringkasan **Penempatan per Sekuritas** menampilkan total lot, modal, dan valuasi per sekuritas serta jumlah keseluruhan. Modal dihitung sebagai lot × 100 × harga rata-rata yang diisi. Jika harga pasar belum tersedia, valuasi memakai harga rata-rata masing-masing posisi.
+
+Saat mengedit posisi, form memuat seluruh sekuritas untuk ticker yang dipilih. Baris yang dihapus ikut dihapus dari penyimpanan saat disimpan. Untuk membagi posisi lama, kurangi lot pada baris awal lalu bagi ke baris sekuritas lainnya; total lot dan modal diperbarui otomatis.

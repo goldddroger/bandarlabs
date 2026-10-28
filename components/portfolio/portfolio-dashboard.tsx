@@ -35,7 +35,7 @@ import {
   usePortfolioData,
 } from "@/lib/portfolio-store";
 import { cn } from "@/lib/utils";
-import { normalizeSecurity, samePlacement, summarizePlacements } from "@/lib/portfolio-placement";
+import { applyHoldingPlacements, normalizeSecurity, summarizePlacements } from "@/lib/portfolio-placement";
 import { summarizeTrades } from "@/lib/portfolio-performance";
 import { AverageDownSimulator } from "@/components/portfolio/average-down-simulator";
 
@@ -118,6 +118,7 @@ export function PortfolioDashboard({ view = "positions" }: { view?: "positions" 
   const [holdingModalOpen, setHoldingModalOpen] = useState(false);
   const [tradeModalOpen, setTradeModalOpen] = useState(false);
   const [averageDownHolding, setAverageDownHolding] = useState<PortfolioHolding | null>(null);
+  const [editingHoldingIds, setEditingHoldingIds] = useState<string[]>([]);
   const [holdingDraft, setHoldingDraft] = useState<HoldingDraft>(emptyHolding);
   const [tradeDraft, setTradeDraft] = useState<TradeDraft>(emptyTrade);
   const [tradeHistoryFilter, setTradeHistoryFilter] = useState<TradeHistoryFilter>(() => {
@@ -221,57 +222,26 @@ export function PortfolioDashboard({ view = "positions" }: { view?: "positions" 
   }, [historyView, portfolio, resolvedQuoteKey, tickerKey, totalEquity]);
 
   function openAddHolding() {
+    setEditingHoldingIds([]);
     setHoldingDraft({ ...emptyHolding, purchasedAt: getJakartaDate() });
     setHoldingModalOpen(true);
   }
 
   function editHolding(holding: PortfolioHolding) {
+    setEditingHoldingIds(portfolio.holdings.filter((item) => item.ticker === holding.ticker).map((item) => item.id));
     setHoldingDraft(holding);
     setHoldingModalOpen(true);
   }
 
-  function saveHolding(draft: HoldingDraft) {
-    const ticker = normalizeTicker(draft.ticker);
-    const security = normalizeSecurity(draft.security);
-    draft = { ...draft, security };
-    if (!ticker || !Number.isSafeInteger(draft.lots) || draft.lots <= 0 || !Number.isFinite(draft.averagePrice) || draft.averagePrice <= 0) {
-      toast.error("Data posisi belum lengkap", { description: "Ticker wajib diisi, lot harus bilangan bulat positif, dan harga rata-rata wajib lebih dari nol." });
-      return;
+  function saveHolding(drafts: HoldingDraft[]) {
+    try {
+      const result = applyHoldingPlacements(portfolio.holdings, drafts, editingHoldingIds);
+      savePortfolio({ ...portfolio, holdings: result.holdings }, { holdingIds: result.deletedHoldingIds });
+      setHoldingModalOpen(false);
+      toast.success("Penempatan semua sekuritas disimpan");
+    } catch (error) {
+      toast.error("Posisi gagal disimpan", { description: error instanceof Error ? error.message : "Periksa kembali data penempatan." });
     }
-
-    if (draft.id) {
-      if (portfolio.holdings.some((holding) => holding.id !== draft.id && samePlacement(holding, { ticker, security }))) {
-        toast.error("Posisi pada sekuritas ini sudah ada", { description: "Edit posisi yang sudah ada atau pilih sekuritas lain." });
-        return;
-      }
-      savePortfolio({
-        ...portfolio,
-        holdings: portfolio.holdings.map((holding) =>
-          holding.id === draft.id ? { ...draft, id: draft.id, ticker } : holding,
-        ),
-      });
-    } else {
-      const existing = portfolio.holdings.find((holding) => samePlacement(holding, { ticker, security }));
-      if (existing) {
-        const combinedLots = existing.lots + draft.lots;
-        const weightedAverage = ((existing.lots * existing.averagePrice) + (draft.lots * draft.averagePrice)) / combinedLots;
-        savePortfolio({
-          ...portfolio,
-          holdings: portfolio.holdings.map((holding) =>
-            holding.id === existing.id
-              ? { ...holding, lots: combinedLots, averagePrice: weightedAverage, note: draft.note || holding.note }
-              : holding,
-          ),
-        });
-      } else {
-        savePortfolio({
-          ...portfolio,
-          holdings: [{ ...draft, id: `holding-${crypto.randomUUID()}`, ticker }, ...portfolio.holdings],
-        });
-      }
-    }
-    setHoldingModalOpen(false);
-    toast.success("Posisi portfolio disimpan");
   }
 
   async function deleteHolding(id: string) {
@@ -449,7 +419,7 @@ export function PortfolioDashboard({ view = "positions" }: { view?: "positions" 
 
       {historyView ? <TradeHistorySection trades={portfolio.trades} filter={tradeHistoryFilter} onFilterChange={setTradeHistoryFilter} focus={tradeHistoryFocus} onAdd={openAddTrade} onEdit={editTrade} onDelete={deleteTrade} /> : <PositionsSection rows={positionRows} resolved={resolvedQuoteKey === tickerKey} onAdd={openAddHolding} onEdit={editHolding} onDelete={deleteHolding} onAverageDown={setAverageDownHolding} />}
 
-      {holdingModalOpen ? <HoldingModal securities={Array.from(new Set(portfolio.holdings.map((holding) => normalizeSecurity(holding.security)).filter(Boolean)))} draft={holdingDraft} onClose={() => setHoldingModalOpen(false)} onSave={saveHolding} /> : null}
+      {holdingModalOpen ? <HoldingModal placements={editingHoldingIds.length ? portfolio.holdings.filter((holding) => editingHoldingIds.includes(holding.id)) : undefined} securities={Array.from(new Set(portfolio.holdings.map((holding) => normalizeSecurity(holding.security)).filter(Boolean)))} draft={holdingDraft} onClose={() => setHoldingModalOpen(false)} onSave={saveHolding} /> : null}
       {tradeModalOpen ? <TradeModal draft={tradeDraft} onClose={() => setTradeModalOpen(false)} onSave={saveTrade} /> : null}
       {averageDownHolding ? <PortfolioModal title={`Simulasi Avg Down ${averageDownHolding.ticker}`} description="Target average dan kebutuhan dana tambahan. Tidak mengubah posisi portfolio." onClose={() => setAverageDownHolding(null)}>
         <AverageDownSimulator holding={averageDownHolding} marketPrice={quotes[averageDownHolding.ticker]?.source !== "Fallback" && Number.isFinite(quotes[averageDownHolding.ticker]?.price) && quotes[averageDownHolding.ticker]?.price > 0 ? quotes[averageDownHolding.ticker].price : undefined} source={quotes[averageDownHolding.ticker]?.source} updatedAt={quotes[averageDownHolding.ticker]?.updatedAt} onClose={() => setAverageDownHolding(null)} />
@@ -793,26 +763,58 @@ function EmptyState({ icon: Icon, title, description, action, onAction }: { icon
   return <div className="px-5 py-12 text-center"><Icon className="mx-auto size-8 text-gray-300" /><p className="mt-3 text-sm font-semibold text-gray-900">{title}</p><p className="mx-auto mt-1 max-w-md text-sm leading-6 text-gray-500">{description}</p><Button type="button" className="mt-4" onClick={onAction}>{action}</Button></div>;
 }
 
-export function HoldingModal({ draft: initialDraft, onClose, onSave, securities }: { draft: HoldingDraft; onClose: () => void; onSave: (draft: HoldingDraft) => void; securities: string[] }) {
+export function HoldingModal({ draft: initialDraft, placements, onClose, onSave, securities }: { draft: HoldingDraft; placements?: HoldingDraft[]; onClose: () => void; onSave: (drafts: HoldingDraft[]) => void; securities: string[] }) {
   const [draft, setDraft] = useState(initialDraft);
+  const [rows, setRows] = useState(() => (placements?.length ? placements : [initialDraft]).map((placement, index) => ({ key: placement.id ?? String(index), placement })));
   const stock = idxListedStocks.find((item) => item.ticker === normalizeTicker(draft.ticker));
+  const totalLots = rows.reduce((total, row) => total + row.placement.lots, 0);
+  const capital = rows.reduce((total, row) => total + row.placement.lots * 100 * row.placement.averagePrice, 0);
+  const previousLots = (placements?.length ? placements : [initialDraft]).reduce((total, placement) => total + placement.lots, 0);
+  const suggestions = Array.from(new Set(["CP", "XL", "KK", ...securities]));
+  function updateRow(key: string, patch: Partial<HoldingDraft>) {
+    setRows((current) => current.map((row) => row.key === key ? { ...row, placement: { ...row.placement, ...patch } } : row));
+  }
   return (
-    <PortfolioModal title={draft.id ? "Edit posisi" : "Tambah posisi aktif"} description="Isi posisi per sekuritas. Tambahkan ticker yang sama pada sekuritas lain untuk mencatat seluruh penempatan." onClose={onClose}>
-      <form className="grid gap-4" onSubmit={(event) => { event.preventDefault(); onSave(draft); }}>
+    <PortfolioModal title={draft.id ? "Edit penempatan saham" : "Tambah posisi aktif"} description="Isi satu saham, lalu tambahkan CP, XL, KK, atau sekuritas lainnya beserta lot masing-masing." onClose={onClose}>
+      <form className="grid min-w-0 gap-4" onSubmit={(event) => {
+        event.preventDefault();
+        onSave(rows.map(({ placement }) => ({
+          ...placement,
+          ticker: draft.ticker,
+          purchasedAt: draft.purchasedAt !== initialDraft.purchasedAt ? draft.purchasedAt : placement.purchasedAt,
+          note: draft.note !== initialDraft.note ? draft.note : placement.note,
+        })));
+      }}>
         <TickerField value={draft.ticker} onChange={(ticker) => setDraft({ ...draft, ticker })} stockName={stock?.name} />
-        <label className="grid gap-1.5 text-sm font-medium text-gray-700">Sekuritas
-          <input list="portfolio-securities" value={draft.security ?? ""} maxLength={120} onChange={(event) => setDraft({ ...draft, security: event.target.value })} placeholder="Contoh: Stockbit, Ajaib, atau sekuritas lainnya" className="h-11 min-w-0 w-full rounded-md border border-gray-300 px-3" />
-          <datalist id="portfolio-securities">{securities.map((security) => <option key={security} value={security} />)}</datalist>
-          <span className="text-xs font-normal text-gray-500">Pilih sekuritas sebelumnya atau ketik nama baru. Posisi lama dapat dilengkapi melalui Edit.</span>
-        </label>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <NumberField label="Jumlah lot di sekuritas ini" value={draft.lots} onChange={(lots) => setDraft({ ...draft, lots })} min="1" step="1" />
-          <NumberField label="Harga rata-rata / lembar" value={draft.averagePrice} onChange={(averagePrice) => setDraft({ ...draft, averagePrice })} min="1" />
+        <div className="grid min-w-0 gap-3">
+          <div><h3 className="text-sm font-semibold text-gray-900">Pembagian per sekuritas</h3><p className="mt-1 text-xs leading-5 text-gray-500">Setiap baris memiliki jumlah lot dan harga rata-rata sendiri.</p></div>
+          <datalist id="portfolio-securities">{suggestions.map((security) => <option key={security} value={security} />)}</datalist>
+          {rows.map(({ key, placement }, index) => (
+            <fieldset key={key} className="grid min-w-0 gap-3 rounded-lg border border-gray-200 p-3">
+              <legend className="px-1 text-xs font-semibold text-gray-600">Penempatan {index + 1}</legend>
+              <div className="flex min-w-0 items-end gap-2">
+                <label className="grid min-w-0 flex-1 gap-1.5 text-sm font-medium text-gray-700">Sekuritas
+                  <input aria-label={`Sekuritas ${index + 1}`} list="portfolio-securities" value={placement.security ?? ""} maxLength={120} onChange={(event) => updateRow(key, { security: event.target.value })} placeholder="Contoh: CP, XL, KK" className="h-11 min-w-0 w-full rounded-md border border-gray-300 px-3" />
+                </label>
+                <button type="button" disabled={rows.length === 1} onClick={() => setRows((current) => current.filter((row) => row.key !== key))} aria-label={`Hapus sekuritas ${index + 1}`} className="flex size-11 shrink-0 items-center justify-center rounded-md border border-gray-200 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30"><Trash2 className="size-4" /></button>
+              </div>
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                <NumberField label={`Jumlah lot · sekuritas ${index + 1}`} value={placement.lots} onChange={(lots) => updateRow(key, { lots })} min="1" step="1" />
+                <NumberField label={`Harga rata-rata / lembar · ${index + 1}`} value={placement.averagePrice} onChange={(averagePrice) => updateRow(key, { averagePrice })} min="1" />
+              </div>
+              <p className="text-xs text-gray-500">Modal penempatan: <span className="font-semibold text-gray-900">{formatCurrency(placement.lots * 100 * placement.averagePrice)}</span></p>
+            </fieldset>
+          ))}
+          <Button type="button" variant="outline" className="w-full" onClick={() => setRows((current) => [...current, { key: crypto.randomUUID(), placement: { ...emptyHolding, ticker: draft.ticker, averagePrice: rows[0]?.placement.averagePrice ?? 0, purchasedAt: draft.purchasedAt, note: draft.note } }])}><Plus className="size-4" />Tambah sekuritas</Button>
         </div>
-        <div className="rounded-md bg-gray-50 p-3"><p className="text-xs text-gray-500">Modal penempatan · lot × 100 × harga rata-rata</p><p className="mt-1 font-semibold text-gray-950">{formatCurrency(draft.lots * 100 * draft.averagePrice)}</p><p className="mt-1 text-xs text-gray-500">Berdasarkan harga rata-rata yang diisi, sebelum biaya tambahan.</p></div>
+        <div className="rounded-md bg-gray-50 p-3">
+          <div className="flex flex-wrap justify-between gap-2 text-sm"><span className="text-gray-600">Total lot seluruh sekuritas</span><strong className="text-gray-950">{totalLots.toLocaleString("id-ID")} lot</strong></div>
+          <p className="mt-3 text-xs text-gray-500">Total modal penempatan · lot × 100 × harga rata-rata</p><p className="mt-1 font-semibold text-gray-950">{formatCurrency(capital)}</p>
+          {draft.id ? <p className="mt-2 text-xs leading-5 text-gray-500">Sebelumnya {previousLots.toLocaleString("id-ID")} lot. Saat membagi posisi lama, sesuaikan lot pada baris awal agar tidak dihitung dua kali.</p> : null}
+        </div>
         <label className="grid gap-1.5 text-sm font-medium text-gray-700">Tanggal mulai hold<input type="date" required value={draft.purchasedAt} onChange={(event) => setDraft({ ...draft, purchasedAt: event.target.value })} className="h-11 rounded-md border border-gray-300 px-3" /></label>
         <label className="grid gap-1.5 text-sm font-medium text-gray-700">Catatan<textarea value={draft.note} onChange={(event) => setDraft({ ...draft, note: event.target.value })} placeholder="Contoh: Swing posisi utama" className="min-h-20 resize-y rounded-md border border-gray-300 px-3 py-2 text-sm" /></label>
-        <ModalActions onClose={onClose} submitLabel="Simpan posisi" />
+        <ModalActions onClose={onClose} submitLabel="Simpan semua penempatan" />
       </form>
     </PortfolioModal>
   );
